@@ -14,6 +14,7 @@ export default function Spiegazione() {
   const [chat, setChat] = useState<{ role: string; content: string }[]>([]);
   const [followUp, setFollowUp] = useState("");
   const [followUpLoading, setFollowUpLoading] = useState(false);
+  const [inviatoAFox, setInviatoAFox] = useState(false);
   const [chatSalvate, setChatSalvate] = useState<{ titolo: string; data: string }[]>([]);
 
   const router = useRouter();
@@ -169,22 +170,26 @@ export default function Spiegazione() {
       toast.error("Inserisci prima una domanda o un concetto.");
       return;
     }
-
+  
     const { data: { user } } = await supabase.auth.getUser();
     if (!user?.id) {
       toast.error("Non sei autenticato.");
       return;
     }
-
+  
     const { error } = await supabase.from("agente_fox").insert({
       user_id: user.id,
       domanda: input,
       stato: "in_attesa",
       inviata_il: new Date().toISOString(),
     });
-
-    if (!error) toast.success("✅ Richiesta inviata ad Agente Fox!");
-    else toast.error("Errore durante l'invio.");
+  
+    if (!error) {
+      toast.success("✅ Richiesta inviata ad Agente Fox!");
+      setInviatoAFox(true);
+    } else {
+      toast.error("Errore durante l'invio.");
+    }
   };
 
   const inviaFollowUp = async () => {
@@ -243,6 +248,13 @@ export default function Spiegazione() {
         <button onClick={inviaAgenteFox} className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
           🔎 Chiedi supporto all’Agente Fox 🦊
         </button>
+        {inviatoAFox && (
+  <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded mt-4">
+    <strong>🦊 L’Agente Fox sta elaborando la tua richiesta.</strong><br />
+    Potrai visualizzare la risposta appena disponibile nella sezione <span className="font-medium">“Le mie richieste Agente Fox”</span>.
+  </div>
+)}
+
       </div>
 
       {chatSalvate.length > 0 && (
@@ -290,8 +302,4 @@ export default function Spiegazione() {
     </DashboardLayout>
   );
 }
-
-
-
-
 
