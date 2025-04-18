@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
 import { saveAs } from "file-saver";
+import { createClient } from "@supabase/supabase-js";
 
 interface RichiestaFox {
   id: string;
@@ -18,22 +19,42 @@ export default function LeMieRichiesteFox() {
   const [caricamento, setCaricamento] = useState(true);
   const [query, setQuery] = useState("");
 
+  const fetchRichieste = async () => {
+    const sessionRes = await supabase.auth.getSession();
+    const accessToken = sessionRes.data.session?.access_token;
+    if (!accessToken) return;
+
+    const supabaseAuthed = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      }
+    );
+
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user?.id) return;
+
+    const { data, error } = await supabaseAuthed
+      .from("agente_fox")
+      .select("id, domanda, risposta, stato, inviata_il, risposta_il, allegati")
+      .eq("user_id", userData.user.id)
+      .order("inviata_il", { ascending: false });
+
+    if (!error && data) setRichieste(data);
+    setCaricamento(false);
+  };
+
   useEffect(() => {
-    const fetchRichieste = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.id) return;
-
-      const { data, error } = await supabase
-        .from("agente_fox")
-        .select("id, domanda, risposta, stato, inviata_il, risposta_il, allegati")
-        .eq("user_id", user.id)
-        .order("inviata_il", { ascending: false });
-
-
-      if (!error && data) setRichieste(data);
-      setCaricamento(false);
-    };
-
     fetchRichieste();
     const interval = setInterval(fetchRichieste, 30000);
     return () => clearInterval(interval);
@@ -78,17 +99,15 @@ export default function LeMieRichiesteFox() {
               <summary className="cursor-pointer p-4 font-medium hover:bg-gray-50">
                 <div className="flex justify-between items-center">
                   <span>
-                    🗓️ {new Date(r.inviata_il).toLocaleString()} — <strong>{r.domanda.slice(0, 60)}...</strong>
+                    🗓️ {new Date(r.inviata_il).toLocaleString()} — <strong>
+                      {r.domanda.length > 60 ? r.domanda.slice(0, 60) + "..." : r.domanda}
+                    </strong>
                   </span>
-                  <span
-                    className={`text-xs px-2 py-1 rounded font-semibold ${
-                      r.stato === "in_attesa"
-                        ? "bg-yellow-200 text-yellow-800"
-                        : r.stato === "in_lavorazione"
-                        ? "bg-blue-200 text-blue-800"
-                        : "bg-green-200 text-green-800"
-                    }`}
-                  >
+                  <span className={`text-xs px-2 py-1 rounded font-semibold ${
+                    r.stato === "in_attesa" ? "bg-yellow-200 text-yellow-800" :
+                    r.stato === "in_lavorazione" ? "bg-blue-200 text-blue-800" :
+                    "bg-green-200 text-green-800"
+                  }`}>
                     {r.stato.replace("_", " ")}
                   </span>
                 </div>
@@ -114,8 +133,15 @@ export default function LeMieRichiesteFox() {
 
                 {r.risposta ? (
                   <div className="bg-gray-50 p-3 rounded border border-gray-300">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap"><strong>Risposta:</strong> {r.risposta}</p>
-                    <p className="text-xs text-gray-400 mt-1">Risposta ricevuta il: {new Date(r.risposta_il!).toLocaleString()}</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      <strong>Risposta:</strong> {r.risposta}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Risposta ricevuta il: {new Date(r.risposta_il!).toLocaleString()}
+                    </p>
+                    {r.risposta_il && new Date().getTime() - new Date(r.risposta_il).getTime() < 5 * 60 * 1000 && (
+                      <div className="text-green-600 text-xs font-semibold mt-1">🆕 Nuova risposta appena ricevuta</div>
+                    )}
                     <button
                       onClick={() => downloadRisposta(r.risposta!, r.id)}
                       className="mt-2 text-sm text-blue-600 hover:underline"
@@ -124,7 +150,11 @@ export default function LeMieRichiesteFox() {
                     </button>
                   </div>
                 ) : (
-                  <p className="text-sm italic text-gray-500">⏳ Nessuna risposta ricevuta finora.</p>
+                  <p className="text-sm italic text-gray-500">
+                    {r.stato === "in_attesa"
+                      ? "🕒 In attesa che l'agente inizi a lavorare sulla tua richiesta."
+                      : "🤖 L'agente sta lavorando alla tua risposta. Torna tra poco!"}
+                  </p>
                 )}
 
                 <button
