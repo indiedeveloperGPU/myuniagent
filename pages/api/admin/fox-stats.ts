@@ -1,39 +1,26 @@
 // pages/api/admin/fox-stats.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Metodo non consentito" });
   }
 
-  const supabase = createServerClient(
+  const token = req.headers.authorization?.replace("Bearer ", "");
+
+  if (!token) {
+    return res.status(401).json({ error: "Token mancante" });
+  }
+
+  // 🔐 Supabase client autenticato via JWT header
+  const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      cookies: {
-        getAll() {
-          const cookieHeader = req.headers.cookie;
-          if (!cookieHeader) return [];
-          return cookieHeader.split(";").map((cookie) => {
-            const [name, ...rest] = cookie.trim().split("=");
-            return {
-              name,
-              value: rest.join("="),
-            };
-          });
-        },
-        setAll(cookies) {
-          const serialized = cookies.map(({ name, value, options }) => {
-            const cookie = `${name}=${value}; Path=${options?.path || "/"}` +
-              (options?.httpOnly ? "; HttpOnly" : "") +
-              (options?.secure ? "; Secure" : "") +
-              (options?.maxAge ? `; Max-Age=${options.maxAge}` : "") +
-              (options?.expires ? `; Expires=${options.expires.toUTCString()}` : "") +
-              (options?.sameSite ? `; SameSite=${options.sameSite}` : "");
-            return cookie;
-          });
-          res.setHeader("Set-Cookie", serialized);
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
       },
     }
@@ -41,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   console.log("🧪 Utente:", userData?.user?.id);
-  if (userError) {
+  if (userError || !userData?.user?.id) {
     console.error("❌ Errore utente:", userError);
     return res.status(401).json({ error: "Utente non autenticato" });
   }
@@ -103,3 +90,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "Errore interno" });
   }
 }
+
