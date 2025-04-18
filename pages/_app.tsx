@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Toaster } from "react-hot-toast";
+import { SpeedInsights } from "@vercel/speed-insights/next"; // ✅ aggiunto
 
 type CustomAppProps = AppProps & {
   Component: AppProps["Component"] & {
@@ -43,8 +44,11 @@ export default function App({ Component, pageProps }: CustomAppProps) {
     <>
       <Toaster position="top-right" reverseOrder={false} />
       {getLayout(<Component {...pageProps} />)}
+      <SpeedInsights /> {/* ✅ monitoraggio Vercel */}
     </>
   );
+}
+
 }
 
 
