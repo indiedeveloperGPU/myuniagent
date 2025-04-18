@@ -1,3 +1,4 @@
+// pages/api/admin/fox-stats.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServerClient } from "@supabase/ssr";
 
@@ -6,39 +7,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Metodo non consentito" });
   }
 
-  // ✅ Supabase client lato server con supporto cookie
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          return Object.entries(req.cookies || {}).map(([name, value]) => ({
-            name,
-            value: value || "", // assicura stringa valida
-          }));
+          const cookieHeader = req.headers.cookie;
+          if (!cookieHeader) return [];
+          return cookieHeader.split(";").map((cookie) => {
+            const [name, ...rest] = cookie.trim().split("=");
+            return {
+              name,
+              value: rest.join("="),
+            };
+          });
         },
         setAll(cookies) {
-          cookies.forEach(({ name, value, options }) => {
-            const cookie = `${name}=${value}; Path=${options?.path || "/"}${
-              options?.httpOnly ? "; HttpOnly" : ""
-            }${options?.secure ? "; Secure" : ""}${
-              options?.maxAge ? `; Max-Age=${options.maxAge}` : ""
-            }${
-              options?.expires ? `; Expires=${options.expires.toUTCString()}` : ""
-            }${options?.sameSite ? `; SameSite=${options.sameSite}` : ""}`;
-            res.setHeader("Set-Cookie", cookie);
+          const serialized = cookies.map(({ name, value, options }) => {
+            const cookie = `${name}=${value}; Path=${options?.path || "/"}` +
+              (options?.httpOnly ? "; HttpOnly" : "") +
+              (options?.secure ? "; Secure" : "") +
+              (options?.maxAge ? `; Max-Age=${options.maxAge}` : "") +
+              (options?.expires ? `; Expires=${options.expires.toUTCString()}` : "") +
+              (options?.sameSite ? `; SameSite=${options.sameSite}` : "");
+            return cookie;
           });
+          res.setHeader("Set-Cookie", serialized);
         },
       },
     }
   );
 
-  // 🔐 Check utente per policy RLS staff
   const { data: userData, error: userError } = await supabase.auth.getUser();
   console.log("🧪 Utente:", userData?.user?.id);
   if (userError) {
     console.error("❌ Errore utente:", userError);
+    return res.status(401).json({ error: "Utente non autenticato" });
   }
 
   try {
@@ -98,5 +103,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "Errore interno" });
   }
 }
-
-
