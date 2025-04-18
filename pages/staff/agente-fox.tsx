@@ -54,15 +54,30 @@ function AgenteFoxAdmin() {
   };
 
   const fetchStats = async () => {
+    const sessionResult = await supabase.auth.getSession();
+    const accessToken = sessionResult.data.session?.access_token;
+  
+    if (!accessToken) {
+      console.warn("⚠️ Token non disponibile, impossibile recuperare statistiche");
+      return;
+    }
+  
     const res = await fetch("/api/admin/fox-stats", {
-      credentials: "include", // ✅ questa è la parte fondamentale
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
   
     if (res.ok) {
       const data = await res.json();
       setStats(data);
+    } else {
+      console.error("❌ Errore recupero stats:", res.status, await res.text());
     }
   };
+  
+  
   
 
   useEffect(() => {
