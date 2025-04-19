@@ -94,7 +94,9 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center">
           <motion.h2 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-3xl font-bold mb-4">🦊 Agente Speciale Fox</motion.h2>
           <motion.p initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="text-gray-300 text-lg mb-6">
-            Non un semplice bot, ma un agente segreto dell'apprendimento. Analizza PDF, interpreta concetti complessi, e ti risponde con cura. 100% supporto umano + AI avanzata.
+            Un alleato invisibile, instancabile, geniale.
+Agente Fox analizza, comprende e risponde.
+Sempre. Ovunque. Al tuo fianco.
           </motion.p>
 
           <motion.div initial={{ scale: 0.8, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} transition={{ delay: 0.3 }} className="flex justify-center mb-6">
