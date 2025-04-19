@@ -36,6 +36,7 @@
     "pdfjs-dist": "^5.1.91",
     "prop-types": "^15.8.1",
     "react": "^19.0.0",
+    "react-countup": "^6.5.3",
     "react-csv": "^2.2.2",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
