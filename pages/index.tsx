@@ -73,6 +73,10 @@ export default function Home() {
               title: "🗂️ Dashboard intelligente",
               desc: "Salva tutto: spiegazioni, mappe concettuali, cronologia studio e quiz svolti."
             },
+      {
+        title: "🗣️ Allenamento lingue",
+        desc: "Esercitati in inglese, francese e spagnolo: grammatica, vocabolario, conversazioni simulate e preparazione certificazioni."
+      },
           ].map((item, i) => (
             <motion.div
               key={i}
