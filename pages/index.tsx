@@ -26,25 +26,25 @@ export default function Home() {
       <section className="py-20 px-6 max-w-6xl mx-auto">
         <h2 className="text-3xl font-bold text-center mb-12">📚 Cosa puoi fare con MyUniAgent</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          <div className="bg-white bg-opacity-10 backdrop-blur p-6 border rounded shadow-sm">
-            <h3 className="font-bold text-lg mb-2">📘 Spiegazioni personalizzate</h3>
-            <p>Ricevi risposte chiare, complete e su misura per ogni tua domanda accademica.</p>
+          <div className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700 shadow hover:shadow-lg transition">
+            <h3 className="font-bold text-lg text-white mb-2">📘 Spiegazioni personalizzate</h3>
+            <p className="text-gray-300">Ricevi risposte chiare, complete e su misura per ogni tua domanda accademica.</p>
           </div>
-          <div className="bg-white bg-opacity-10 backdrop-blur p-6 border rounded shadow-sm">
-            <h3 className="font-bold text-lg mb-2">🧾 Analisi tesi & supporto alla scrittura</h3>
-            <p>Carica la tua tesi, analizzala con l’AI o ricevi assistenza per scriverla al meglio.</p>
+          <div className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700 shadow hover:shadow-lg transition">
+            <h3 className="font-bold text-lg text-white mb-2">🧾 Analisi tesi & supporto alla scrittura</h3>
+            <p className="text-gray-300">Carica la tua tesi, analizzala con l’AI o ricevi assistenza per scriverla al meglio.</p>
           </div>
-          <div className="bg-white bg-opacity-10 backdrop-blur p-6 border rounded shadow-sm">
-            <h3 className="font-bold text-lg mb-2">🧠 Simulazioni esami universitari</h3>
-            <p>Allenati con quiz, domande orali simulate e correzioni intelligenti.</p>
+          <div className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700 shadow hover:shadow-lg transition">
+            <h3 className="font-bold text-lg text-white mb-2">🧠 Simulazioni esami universitari</h3>
+            <p className="text-gray-300">Allenati con quiz, domande orali simulate e correzioni intelligenti.</p>
           </div>
-          <div className="bg-white bg-opacity-10 backdrop-blur p-6 border rounded shadow-sm">
-            <h3 className="font-bold text-lg mb-2">🏫 Supporto scuole superiori</h3>
-            <p>Test d’ingresso, ripetizioni intelligenti, contenuti mirati per studenti delle superiori.</p>
+          <div className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700 shadow hover:shadow-lg transition">
+            <h3 className="font-bold text-lg text-white mb-2">🏫 Supporto scuole superiori</h3>
+            <p className="text-gray-300">Test d’ingresso, ripetizioni intelligenti, contenuti mirati per studenti delle superiori.</p>
           </div>
-          <div className="bg-white bg-opacity-10 backdrop-blur p-6 border rounded shadow-sm">
-            <h3 className="font-bold text-lg mb-2">🗂️ Dashboard intelligente</h3>
-            <p>Salva tutto: spiegazioni, mappe concettuali, cronologia studio e quiz svolti.</p>
+          <div className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700 shadow hover:shadow-lg transition">
+            <h3 className="font-bold text-lg text-white mb-2">🗂️ Dashboard intelligente</h3>
+            <p className="text-gray-300">Salva tutto: spiegazioni, mappe concettuali, cronologia studio e quiz svolti.</p>
           </div>
         </div>
       </section>
@@ -92,5 +92,4 @@ export default function Home() {
     </div>
   );
 }
-
 
