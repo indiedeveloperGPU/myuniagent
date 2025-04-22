@@ -200,57 +200,76 @@ function AgenteFoxAdmin() {
                 </div>
               )}
 
-              {editingId !== r.id ? (
-                r.risposta ? (
-                  <div className="bg-gray-50 p-3 rounded border border-gray-300">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap"><strong>Risposta:</strong> {r.risposta}</p>
-                    <div className="flex gap-2 mt-2">
-                      <button onClick={() => setEditingId(r.id)} className="text-sm text-blue-600 hover:underline">✏️ Modifica</button>
-                      <button onClick={() => eliminaRichiesta(r.id)} className="text-sm text-red-600 hover:underline">🗑️ Elimina</button>
-                    </div>
-                  </div>
-                ) : null
-              ) : (
-                <div className="space-y-2">
-                  <textarea
-                    className="w-full p-2 border rounded"
-                    rows={4}
-                    placeholder="Scrivi la risposta..."
-                    value={risposte[r.id] || r.risposta || ""}
-                    onChange={(e) =>
-                      setRisposte((prev) => ({ ...prev, [r.id]: e.target.value }))
-                    }
-                  />
-                  <div className="flex gap-2">
-                    {!r.risposta && r.stato === "in_attesa" && (
-                      <button
-                        onClick={() => prendiInCarico(r.id)}
-                        className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-                      >
-                        Prendi in carico
-                      </button>
-                    )}
-                    <button
-                      onClick={() => inviaRisposta(r.id)}
-                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                    >
-                      {r.risposta ? "Salva modifica" : "Invia risposta"}
-                    </button>
-                    <button
-                      onClick={() => eliminaRichiesta(r.id)}
-                      className="text-sm text-red-600 hover:underline"
-                    >
-                      🗑️ Elimina
-                    </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="text-gray-600 hover:underline"
-                    >
-                      Annulla modifica
-                    </button>
-                  </div>
-                </div>
-              )}
+{editingId !== r.id ? (
+  <div className="flex gap-2 mt-2">
+    {r.stato === "in_attesa" && (
+      <button
+        onClick={() => prendiInCarico(r.id)}
+        className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+      >
+        🟡 Prendi in carico
+      </button>
+    )}
+    {r.risposta && (
+      <>
+        <button
+          onClick={() => setEditingId(r.id)}
+          className="text-sm text-blue-600 hover:underline"
+        >
+          ✏️ Modifica
+        </button>
+        <button
+          onClick={() => eliminaRichiesta(r.id)}
+          className="text-sm text-red-600 hover:underline"
+        >
+          🗑️ Elimina
+        </button>
+      </>
+    )}
+  </div>
+) : (
+  <div className="space-y-2 mt-3">
+    <textarea
+      className="w-full p-2 border rounded"
+      rows={4}
+      placeholder="Scrivi la risposta..."
+      value={risposte[r.id] || r.risposta || ""}
+      onChange={(e) =>
+        setRisposte((prev) => ({ ...prev, [r.id]: e.target.value }))
+      }
+    />
+    <div className="flex gap-2">
+      {!r.risposta && r.stato === "in_attesa" && (
+        <button
+          onClick={() => prendiInCarico(r.id)}
+          className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+        >
+          🟡 Prendi in carico
+        </button>
+      )}
+      <button
+        onClick={() => inviaRisposta(r.id)}
+        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+      >
+        {r.risposta ? "Salva modifica" : "Invia risposta"}
+      </button>
+      <button
+        onClick={() => eliminaRichiesta(r.id)}
+        className="text-sm text-red-600 hover:underline"
+      >
+        🗑️ Elimina
+      </button>
+      <button
+        onClick={() => setEditingId(null)}
+        className="text-gray-600 hover:underline"
+      >
+        Annulla modifica
+      </button>
+    </div>
+  </div>
+)}
+
+                
             </div>
           ))}
         </div>
