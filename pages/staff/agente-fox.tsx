@@ -3,7 +3,6 @@ import StaffLayout from "@/components/StaffLayout";
 import { supabase } from "@/lib/supabaseClient";
 import toast from "react-hot-toast";
 
-
 interface RichiestaFox {
   id: string;
   user_id: string;
@@ -12,7 +11,7 @@ interface RichiestaFox {
   stato: string;
   inviata_il: string;
   risposta_il: string | null;
-  allegati?: string[]; // URL dei file
+  allegati?: string[] | string | null;
 }
 
 interface StatisticheFox {
@@ -56,19 +55,19 @@ function AgenteFoxAdmin() {
   const fetchStats = async () => {
     const sessionResult = await supabase.auth.getSession();
     const accessToken = sessionResult.data.session?.access_token;
-  
+
     if (!accessToken) {
       console.warn("⚠️ Token non disponibile, impossibile recuperare statistiche");
       return;
     }
-  
+
     const res = await fetch("/api/admin/fox-stats", {
       method: "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-  
+
     if (res.ok) {
       const data = await res.json();
       setStats(data);
@@ -76,9 +75,6 @@ function AgenteFoxAdmin() {
       console.error("❌ Errore recupero stats:", res.status, await res.text());
     }
   };
-  
-  
-  
 
   useEffect(() => {
     fetchRichieste();
@@ -130,8 +126,6 @@ function AgenteFoxAdmin() {
       toast.error("Errore durante l'eliminazione");
     }
   };
-  
-  
 
   const richiesteFiltrate = richieste.filter((r) =>
     filtro === "tutte" ? true : r.stato === filtro
@@ -152,10 +146,20 @@ function AgenteFoxAdmin() {
       )}
 
       <div className="flex gap-2 mb-6">
-        <button className={`px-3 py-1 rounded ${filtro === "tutte" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setFiltro("tutte")}>Tutte</button>
-        <button className={`px-3 py-1 rounded ${filtro === "in_attesa" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setFiltro("in_attesa")}>In attesa</button>
-        <button className={`px-3 py-1 rounded ${filtro === "in_lavorazione" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setFiltro("in_lavorazione")}>In lavorazione</button>
-        <button className={`px-3 py-1 rounded ${filtro === "completato" ? "bg-blue-600 text-white" : "bg-gray-200"}`} onClick={() => setFiltro("completato")}>Completate</button>
+        {[
+          { key: "tutte", label: "Tutte" },
+          { key: "in_attesa", label: "In attesa" },
+          { key: "in_lavorazione", label: "In lavorazione" },
+          { key: "completato", label: "Completate" },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            className={`px-3 py-1 rounded ${filtro === key ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+            onClick={() => setFiltro(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {caricamento ? (
@@ -172,48 +176,78 @@ function AgenteFoxAdmin() {
               <p className="mb-2"><strong>Domanda:</strong> {r.domanda}</p>
 
               {r.allegati && (
-  <div className="mb-3">
-    <p className="text-sm font-medium">📎 Allegati:</p>
-    <ul className="list-disc ml-5 text-sm">
-      {Array.isArray(r.allegati) ? (
-        r.allegati.map((url, i) => (
-          <li key={i}>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-              Scarica file {i + 1}
-            </a>
-          </li>
-        ))
-      ) : (
-        <li>
-          <a href={r.allegati} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-            Scarica file
-          </a>
-        </li>
-      )}
-    </ul>
-  </div>
-)}
-
-
-              {r.risposta && editingId !== r.id ? (
-                <div className="bg-gray-50 p-3 rounded border border-gray-300">
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap"><strong>Risposta:</strong> {r.risposta}</p>
-                  <div className="flex gap-2 mt-2">
-                    <button onClick={() => setEditingId(r.id)} className="text-sm text-blue-600 hover:underline">✏️ Modifica</button>
-                    <button onClick={() => eliminaRichiesta(r.id)} className="text-sm text-red-600 hover:underline">🗑️ Elimina</button>
-                  </div>
+                <div className="mb-3">
+                  <p className="text-sm font-medium">📎 Allegati:</p>
+                  <ul className="list-disc ml-5 text-sm">
+                    {Array.isArray(r.allegati) ? (
+                      r.allegati.map((url, i) => (
+                        <li key={i}>
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                            Scarica file {i + 1}
+                          </a>
+                        </li>
+                      ))
+                    ) : typeof r.allegati === "string" && (r.allegati as string).trim() !== "" ? (
+                      <li>
+                        <a href={r.allegati as string} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                          Scarica file
+                        </a>
+                      </li>
+                    ) : (
+                      <li>Nessun file allegato</li>
+                    )}
+                  </ul>
                 </div>
+              )}
+
+              {editingId !== r.id ? (
+                r.risposta ? (
+                  <div className="bg-gray-50 p-3 rounded border border-gray-300">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap"><strong>Risposta:</strong> {r.risposta}</p>
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => setEditingId(r.id)} className="text-sm text-blue-600 hover:underline">✏️ Modifica</button>
+                      <button onClick={() => eliminaRichiesta(r.id)} className="text-sm text-red-600 hover:underline">🗑️ Elimina</button>
+                    </div>
+                  </div>
+                ) : null
               ) : (
                 <div className="space-y-2">
-                  <textarea className="w-full p-2 border rounded" rows={4} placeholder="Scrivi la risposta..." value={risposte[r.id] || r.risposta || ""} onChange={(e) => setRisposte((prev) => ({ ...prev, [r.id]: e.target.value }))} />
+                  <textarea
+                    className="w-full p-2 border rounded"
+                    rows={4}
+                    placeholder="Scrivi la risposta..."
+                    value={risposte[r.id] || r.risposta || ""}
+                    onChange={(e) =>
+                      setRisposte((prev) => ({ ...prev, [r.id]: e.target.value }))
+                    }
+                  />
                   <div className="flex gap-2">
                     {!r.risposta && r.stato === "in_attesa" && (
-                      <button onClick={() => prendiInCarico(r.id)} className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Prendi in carico</button>
+                      <button
+                        onClick={() => prendiInCarico(r.id)}
+                        className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+                      >
+                        Prendi in carico
+                      </button>
                     )}
-                    <button onClick={() => inviaRisposta(r.id)} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">{r.risposta ? "Salva modifica" : "Invia risposta"}</button>
-                    {r.risposta && (
-                      <button onClick={() => setEditingId(null)} className="text-gray-600 hover:underline">Annulla modifica</button>
-                    )}
+                    <button
+                      onClick={() => inviaRisposta(r.id)}
+                      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                    >
+                      {r.risposta ? "Salva modifica" : "Invia risposta"}
+                    </button>
+                    <button
+                      onClick={() => eliminaRichiesta(r.id)}
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      🗑️ Elimina
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="text-gray-600 hover:underline"
+                    >
+                      Annulla modifica
+                    </button>
                   </div>
                 </div>
               )}
