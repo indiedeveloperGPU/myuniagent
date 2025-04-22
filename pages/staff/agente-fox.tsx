@@ -200,34 +200,7 @@ function AgenteFoxAdmin() {
                 </div>
               )}
 
-{editingId !== r.id ? (
-  <div className="flex gap-2 mt-2">
-    {r.stato === "in_attesa" && (
-      <button
-        onClick={() => prendiInCarico(r.id)}
-        className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-      >
-        🟡 Prendi in carico
-      </button>
-    )}
-    {r.risposta && (
-      <>
-        <button
-          onClick={() => setEditingId(r.id)}
-          className="text-sm text-blue-600 hover:underline"
-        >
-          ✏️ Modifica
-        </button>
-        <button
-          onClick={() => eliminaRichiesta(r.id)}
-          className="text-sm text-red-600 hover:underline"
-        >
-          🗑️ Elimina
-        </button>
-      </>
-    )}
-  </div>
-) : (
+{editingId === r.id ? (
   <div className="space-y-2 mt-3">
     <textarea
       className="w-full p-2 border rounded"
@@ -239,14 +212,6 @@ function AgenteFoxAdmin() {
       }
     />
     <div className="flex gap-2">
-      {!r.risposta && r.stato === "in_attesa" && (
-        <button
-          onClick={() => prendiInCarico(r.id)}
-          className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
-        >
-          🟡 Prendi in carico
-        </button>
-      )}
       <button
         onClick={() => inviaRisposta(r.id)}
         className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
@@ -263,11 +228,42 @@ function AgenteFoxAdmin() {
         onClick={() => setEditingId(null)}
         className="text-gray-600 hover:underline"
       >
-        Annulla modifica
+        Annulla
       </button>
     </div>
   </div>
+) : (
+  <div className="flex flex-wrap items-center gap-3 mt-3">
+    {r.risposta && (
+      <div className="bg-gray-50 p-3 rounded border border-gray-300 w-full">
+        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+          <strong>Risposta:</strong> {r.risposta}
+        </p>
+      </div>
+    )}
+    {r.stato === "in_attesa" && (
+      <button
+        onClick={() => prendiInCarico(r.id)}
+        className="text-yellow-600 text-sm underline"
+      >
+        🟡 Prendi in carico
+      </button>
+    )}
+    <button
+      onClick={() => setEditingId(r.id)}
+      className="text-blue-600 text-sm underline"
+    >
+      ✏️ Rispondi
+    </button>
+    <button
+      onClick={() => eliminaRichiesta(r.id)}
+      className="text-red-600 text-sm underline"
+    >
+      🗑️ Elimina
+    </button>
+  </div>
 )}
+
 
                 
             </div>
