@@ -171,20 +171,29 @@ function AgenteFoxAdmin() {
               </div>
               <p className="mb-2"><strong>Domanda:</strong> {r.domanda}</p>
 
-              {r.allegati && r.allegati.length > 0 && (
-                <div className="mb-3">
-                  <p className="text-sm font-medium">📎 Allegati:</p>
-                  <ul className="list-disc ml-5 text-sm">
-                    {r.allegati.map((url, i) => (
-                      <li key={i}>
-                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                          Scarica file {i + 1}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              {r.allegati && (
+  <div className="mb-3">
+    <p className="text-sm font-medium">📎 Allegati:</p>
+    <ul className="list-disc ml-5 text-sm">
+      {Array.isArray(r.allegati) ? (
+        r.allegati.map((url, i) => (
+          <li key={i}>
+            <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+              Scarica file {i + 1}
+            </a>
+          </li>
+        ))
+      ) : (
+        <li>
+          <a href={r.allegati} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+            Scarica file
+          </a>
+        </li>
+      )}
+    </ul>
+  </div>
+)}
+
 
               {r.risposta && editingId !== r.id ? (
                 <div className="bg-gray-50 p-3 rounded border border-gray-300">
