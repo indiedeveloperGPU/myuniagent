@@ -1,7 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import AllenamentoIngleseRisultati from "./AllenamentoIngleseRisultati";
 
 function ProfiloPage() {
   const [email, setEmail] = useState<string | null>(null);
@@ -220,19 +219,6 @@ function ProfiloPage() {
         )}
       </div>
 
-      {/* Allenamento inglese */}
-      <div className="mt-8 bg-white p-4 rounded shadow">
-        <h2 className="text-lg font-semibold mb-3">🌍 Allenamento Lingue – Risultati</h2>
-        <AllenamentoIngleseRisultati userId={userId} />
-        {badgeCertificazione && (
-          <div className="mt-6 p-4 border rounded bg-yellow-50 border-yellow-300 shadow">
-            <h3 className="text-lg font-semibold text-yellow-800">🏅 Badge ottenuto</h3>
-            <p className="text-yellow-700 text-sm mt-1">
-              Complimenti! Hai superato una simulazione con un punteggio superiore all'80%.
-            </p>
-          </div>
-        )}
-      </div>
 
       {/* Dashboard docente */}
       {role === "docente" && (
@@ -266,6 +252,7 @@ function ProfiloPage() {
 ProfiloPage.requireAuth = true;
 
 export default ProfiloPage;
+
 
 
 
