@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { IncomingForm, Files } from "formidable";
 import fs from "fs";
-import path from "path";
 import { createClient } from "@supabase/supabase-js";
 
 export const config = {
@@ -15,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Metodo non consentito" });
   }
 
-  // ✅ Crea client Supabase lato server e passa token manualmente
+  // ✅ Crea client Supabase con token JWT
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -28,6 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   );
 
+  // ✅ Recupera utente
   const {
     data: userData,
     error: authError,
@@ -40,10 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const userId = userData.user.id;
 
-  const form = new IncomingForm({
-    uploadDir: path.join(process.cwd(), "/uploads"),
-    keepExtensions: true,
-  });
+  // ✅ Parsing file
+  const form = new IncomingForm({ keepExtensions: true });
 
   form.parse(req, async (err: any, fields: any, files: Files) => {
     if (err) {
@@ -52,13 +50,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
-    const filename = path.basename(file?.filepath || "");
 
-    // ✅ Salvataggio nel DB Supabase
+if (!file || !file.filepath) {
+  return res.status(400).json({ error: "File non valido o assente" });
+}
+
+const buffer = fs.readFileSync(file.filepath);
+const originalName = file.originalFilename || "tesi.pdf";
+const storagePath = `${userId}/${originalName}`;
+const contentType = file.mimetype || undefined;
+
+const { data: uploadData, error: uploadError } = await supabase.storage
+  .from("tesi")
+  .upload(storagePath, buffer, {
+    contentType,
+    upsert: true,
+  });
+
+
+    if (uploadError) {
+      console.error("Errore upload:", uploadError.message);
+      return res.status(500).json({ error: "Errore upload Supabase Storage" });
+    }
+
+    // ✅ Salvataggio metadati nel DB
     const { error: insertError } = await supabase.from("uploaded_files").insert([
       {
         user_id: userId,
-        filename,
+        filename: storagePath,        // path completo nel bucket
+        originalname: originalName,   // nome originale file utente
       },
     ]);
 
@@ -67,7 +87,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: "Errore salvataggio DB" });
     }
 
-    return res.status(200).json({ message: "Upload completato", filename });
+    return res.status(200).json({
+      message: "Upload completato ✅",
+      path: storagePath,
+      originalname: originalName,
+    });
   });
 }
 
