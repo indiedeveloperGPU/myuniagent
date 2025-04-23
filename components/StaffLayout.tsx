@@ -6,7 +6,9 @@ const navItems = [
   { href: "/staff/gestione-utenti", label: "👥 Gestione Utenti" },
   { href: "/staff/supporto", label: "🆘  Richieste Supporto" },
   { href: "/staff/contenuti", label: "🧠 Genera contenuto" },
-  { href: "/staff/agente-fox", label: "🦊 Agente Fox" },
+  { href: "/staff/agente-fox", label: "🦊 Richieste Fox" },
+  { href: "/staff/lingue-fox", label: "🦊 Lingue Fox" },
+  { href: "/staff/fox-genera-contenuto", label: "🧠 Genera Contenuto Lingue" },
   // Puoi aggiungere altre sezioni in futuro...
 ];
 
