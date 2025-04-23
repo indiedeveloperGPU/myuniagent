@@ -25,7 +25,6 @@ const navItems = [
   { href: "/tools/simulazioni-orali", label: "🎤 Simulazioni Orali" },
   { href: "/tools/richieste-fox", label: "🦊 Richieste Agente Fox" },
   { href: "/tools/classi", label: "🏫 Classi" },
-  { href: "/tools/upload-tesi", label: "📤 Upload Tesi" },
   { href: "/tools/analyze-tesi", label: "🔍 Analisi Tesi" },
   { href: "/tools/biblioteca", label: "📚 Biblioteca" },
   { href: "/tools/supporto", label: "🆘 Supporto" },
