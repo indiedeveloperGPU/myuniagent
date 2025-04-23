@@ -1,20 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import StaffLayout from "@/components/StaffLayout";
 
 interface Profile {
   id: string;
   email: string;
-  name: string;
   ruolo: "studente" | "docente" | "staff";
   is_verified: boolean;
   abbonamento_attivo: boolean;
+  abbonamento_scadenza?: string;
+  ultimo_accesso?: string;
 }
 
 function GestioneUtenti() {
   const [utenti, setUtenti] = useState<Profile[]>([]);
   const [filtro, setFiltro] = useState<"tutti" | "studenti" | "docenti_approvati" | "docenti_attesa">("tutti");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [dropUpId, setDropUpId] = useState<string | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
   const fetchUtenti = async () => {
     setLoading(true);
@@ -27,8 +31,21 @@ function GestioneUtenti() {
     fetchUtenti();
   }, []);
 
-  const handleApprovaDocente = async (id: string) => {
-    await supabase.from("profiles").update({ is_verified: true }).eq("id", id);
+  useEffect(() => {
+    const handleClickOutside = () => setOpenDropdownId(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  const handleToggleAbbonamento = async (id: string, attivo: boolean) => {
+    const nuovaScadenza = !attivo ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null;
+    await supabase
+      .from("profiles")
+      .update({
+        abbonamento_attivo: !attivo,
+        abbonamento_scadenza: nuovaScadenza,
+      })
+      .eq("id", id);
     fetchUtenti();
   };
 
@@ -39,28 +56,43 @@ function GestioneUtenti() {
     fetchUtenti();
   };
 
-  const handleResetProfilo = async (id: string) => {
-    await supabase.from("profiles").update({ name: "", abbonamento_attivo: false }).eq("id", id);
-    fetchUtenti();
-  };
+  const exportCsv = () => {
+    const csv = [
+      "Email,Ruolo,Verificato,Abbonamento,Scadenza,Ultimo Accesso",
+      ...utentiFiltrati.map((u) =>
+        `"${u.email}","${u.ruolo}","${u.is_verified ? "Sì" : "No"}","${
+          u.abbonamento_attivo ? "Attivo" : "Non attivo"
+        }","${u.abbonamento_scadenza || "-"}","${u.ultimo_accesso || "-"}"`
+      ),
+    ].join("\n");
 
-  const handleToggleAbbonamento = async (id: string, attivo: boolean) => {
-    await supabase.from("profiles").update({ abbonamento_attivo: !attivo }).eq("id", id);
-    fetchUtenti();
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "utenti.csv";
+    a.click();
   };
 
   const utentiFiltrati = utenti.filter((u) => {
-    if (filtro === "studenti") return u.ruolo === "studente";
-    if (filtro === "docenti_approvati") return u.ruolo === "docente" && u.is_verified;
-    if (filtro === "docenti_attesa") return u.ruolo === "docente" && !u.is_verified;
-    return true;
+    const match = u.email.toLowerCase().includes(search.toLowerCase());
+    if (filtro === "studenti") return u.ruolo === "studente" && match;
+    if (filtro === "docenti_approvati") return u.ruolo === "docente" && u.is_verified && match;
+    if (filtro === "docenti_attesa") return u.ruolo === "docente" && !u.is_verified && match;
+    return match;
   });
+
+  const giorniRimanenti = (scadenza?: string) => {
+    if (!scadenza) return null;
+    const ms = new Date(scadenza).getTime() - Date.now();
+    return Math.max(Math.ceil(ms / (1000 * 60 * 60 * 24)), 0);
+  };
 
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">👥 Gestione Utenti</h1>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-4">
         {["tutti", "studenti", "docenti_approvati", "docenti_attesa"].map((f) => (
           <button
             key={f}
@@ -70,64 +102,103 @@ function GestioneUtenti() {
             {f.replace("_", " ")}
           </button>
         ))}
+        <button onClick={exportCsv} className="bg-gray-800 text-white px-3 py-2 rounded">
+          ⬇️ Esporta CSV
+        </button>
       </div>
+
+      <input
+        type="text"
+        placeholder="Cerca per email..."
+        className="border p-2 rounded w-full mb-6"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
       {loading ? (
         <p>Caricamento utenti...</p>
       ) : (
-        <div className="space-y-4">
-          {utentiFiltrati.length === 0 && <p className="text-gray-600">Nessun utente trovato.</p>}
-          {utentiFiltrati.map((u) => (
-            <div key={u.id} className="border p-4 rounded shadow bg-white">
-              <p><strong>Email:</strong> {u.email}</p>
-              <p><strong>Nome:</strong> {u.name || "—"}</p>
-              <p><strong>Ruolo:</strong> {u.ruolo}</p>
-              {u.ruolo === "docente" && (
-                <p><strong>Verificato:</strong> {u.is_verified ? "✅ Sì" : "❌ No"}</p>
-              )}
-              <p><strong>Abbonamento:</strong> {u.abbonamento_attivo ? "Attivo ✅" : "Non attivo ❌"}</p>
+        <div className="overflow-x-auto rounded shadow">
+          <table className="min-w-full text-sm text-gray-800">
+            <thead className="bg-gray-100 text-xs uppercase tracking-wide text-gray-600">
+              <tr>
+                <th className="px-4 py-3 text-left">Email</th>
+                <th className="text-center">Ruolo</th>
+                <th className="text-center">Verificato</th>
+                <th className="text-center">Abbonamento</th>
+                <th className="text-center">Scadenza</th>
+                <th className="text-center">Ultimo accesso</th>
+                <th className="text-center">Azioni</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {utentiFiltrati.map((u, idx) => (
+                <tr key={u.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50`}>
+                  <td className="px-4 py-3 align-middle">{u.email}</td>
+                  <td className="text-center align-middle capitalize">{u.ruolo}</td>
+                  <td className="text-center align-middle">{u.ruolo === "docente" ? (u.is_verified ? "✅" : "❌") : "—"}</td>
+                  <td className="text-center align-middle">{u.abbonamento_attivo ? "✅" : "❌"}</td>
+                  <td className="text-center align-middle">
+                    {u.abbonamento_attivo && u.abbonamento_scadenza
+                      ? `${giorniRimanenti(u.abbonamento_scadenza)} giorni`
+                      : "—"}
+                  </td>
+                  <td className="text-center align-middle">
+                    {u.ultimo_accesso ? new Date(u.ultimo_accesso).toLocaleString() : "—"}
+                  </td>
+                  <td className="text-center align-middle">
+                    <div className="relative inline-block text-left">
+                      <button
+                        className="flex items-center gap-1 bg-white border border-gray-300 hover:border-gray-500 text-gray-700 px-3 py-1 rounded shadow-sm text-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = (e.target as HTMLElement).getBoundingClientRect();
+                          const shouldDropUp = window.innerHeight - rect.bottom < 200;
+                          setDropUpId(shouldDropUp ? u.id : null);
+                          setOpenDropdownId(openDropdownId === u.id ? null : u.id);
+                        }}
+                      >
+                        ⚙️ Azioni
+                      </button>
+                      <div
+  className={`absolute ${
+    dropUpId === u.id ? "bottom-10" : "top-full mt-2"
+  } right-0 w-56 bg-white border border-gray-200 rounded shadow-md z-10 ${
+    openDropdownId === u.id ? "" : "hidden"
+  }`}
+  onClick={(e) => e.stopPropagation()}
+>
 
-              <div className="flex gap-2 mt-3 flex-wrap">
-                {u.ruolo === "docente" && !u.is_verified && (
-                  <button
-                    onClick={() => handleApprovaDocente(u.id)}
-                    className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                  >
-                    ✅ Approva
-                  </button>
-                )}
-                <button
-                  onClick={() => handleToggleAbbonamento(u.id, u.abbonamento_attivo)}
-                  className="bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700"
-                >
-                  {u.abbonamento_attivo ? "🔒 Disattiva" : "🔓 Attiva"}
-                </button>
-                <button
-                  onClick={() => handleResetProfilo(u.id)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                >
-                  ♻️ Reset profilo
-                </button>
-                <button
-                  onClick={() => handleBannaUtente(u.id)}
-                  className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                >
-                  🚫 Banna
-                </button>
-              </div>
-            </div>
-          ))}
+                        <button
+                          onClick={() => handleToggleAbbonamento(u.id, u.abbonamento_attivo)}
+                          className="block w-full text-left px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-100"
+                        >
+                          🔁 {u.abbonamento_attivo ? "Disattiva" : "Attiva"} abbonamento
+                        </button>
+                        <button
+                          onClick={() => handleBannaUtente(u.id)}
+                          className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-100"
+                        >
+                          🚫 Banna utente
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {utentiFiltrati.length === 0 && <p className="text-gray-500 p-4">Nessun utente trovato.</p>}
         </div>
       )}
     </div>
   );
 }
 
-// ✅ Layout dedicato e protezione pagina
 GestioneUtenti.getLayout = function getLayout(page: React.ReactNode) {
   return <StaffLayout>{page}</StaffLayout>;
 };
 
 GestioneUtenti.requireAuth = true;
-
 export default GestioneUtenti;
+
