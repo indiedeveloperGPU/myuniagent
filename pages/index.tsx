@@ -29,19 +29,25 @@ export default function Home() {
         <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 text-center gap-10">
           <div>
             <p className="text-4xl font-bold text-blue-400">
-              <CountUp end={10000} duration={2} separator="," />
+              <CountUp end={10000} separator="," duration={2}>
+                {({ countUpRef }) => <span ref={countUpRef} />}
+              </CountUp>
             </p>
             <p className="text-gray-300">Spiegazioni generate</p>
           </div>
           <div>
             <p className="text-4xl font-bold text-green-400">
-              <CountUp end={2000} duration={2} separator="," />
+              <CountUp end={2000} separator="," duration={2}>
+                {({ countUpRef }) => <span ref={countUpRef} />}
+              </CountUp>
             </p>
             <p className="text-gray-300">Studenti attivi</p>
           </div>
           <div>
             <p className="text-4xl font-bold text-orange-400">
-              <CountUp end={700} duration={2} separator="," />
+              <CountUp end={700} separator="," duration={2}>
+                {({ countUpRef }) => <span ref={countUpRef} />}
+              </CountUp>
             </p>
             <p className="text-gray-300">Richieste gestite da Agente Fox</p>
           </div>
@@ -115,6 +121,7 @@ export default function Home() {
     </div>
   );
 }
+
 
 
 
