@@ -20,7 +20,7 @@ const navItems = [
   { href: "/tools/riassunto", label: "📝 Riassunto" },
   { href: "/tools/spiegazione", label: "📚 Spiegazione" },
   { href: "/tools/mappa", label: "🧠 Mappa" },
-  { href: "/lingue", label: "🌍 Allenamento Lingue" }, 
+  { href: "/tools/home-lingue", label: "🌍 Allenamento Lingue" }, 
   { href: "/tools/simulazioni-scritte", label: "✍️ Simulazioni Scritte" },
   { href: "/tools/simulazioni-orali", label: "🎤 Simulazioni Orali" },
   { href: "/tools/richieste-fox", label: "🦊 Richieste Agente Fox" },
@@ -55,5 +55,4 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="flex-1 bg-gray-50 p-6">{children}</main>
     </div>
   );
-}
 
