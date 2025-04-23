@@ -70,7 +70,7 @@ const { data: uploadData, error: uploadError } = await supabase.storage
 
     if (uploadError) {
       console.error("Errore upload:", uploadError.message);
-      return res.status(500).json({ error: "Errore upload Supabase Storage" });
+      return res.status(500).json({ error: uploadError.message });
     }
 
     // ✅ Salvataggio metadati nel DB
