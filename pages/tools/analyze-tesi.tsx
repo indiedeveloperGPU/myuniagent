@@ -12,31 +12,31 @@ function TesiPage() {
   const [fileSelezionato, setFileSelezionato] = useState<string>("");
   const [richieste, setRichieste] = useState<any[]>([]);
 
-  // ✅ Recupera file caricati
+  // ✅ Recupera file caricati e richieste
+  const fetchData = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    if (!userId) return;
+
+    const { data: files } = await supabase
+      .from("uploaded_files")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    setFileUtente(files || []);
+
+    const { data: richiesteFox } = await supabase
+      .from("agente_fox")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("tipo", "tesi")
+      .order("inviata_il", { ascending: false });
+
+    setRichieste(richiesteFox || []);
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      if (!userId) return;
-
-      const { data: files } = await supabase
-        .from("uploaded_files")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-
-      setFileUtente(files || []);
-
-      const { data: richiesteFox } = await supabase
-        .from("agente_fox")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("tipo", "tesi")
-        .order("inviata_il", { ascending: false });
-
-      setRichieste(richiesteFox || []);
-    };
-
     fetchData();
   }, []);
 
@@ -82,6 +82,7 @@ function TesiPage() {
       setMessage("Upload completato ✅");
       setSelectedFile(null);
       setPreview("");
+      await fetchData(); // 🔄 aggiorna lista file dopo l'upload
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -111,6 +112,7 @@ function TesiPage() {
     });
 
     setMessage("Richiesta inviata ✅");
+    await fetchData(); // opzionale, per aggiornare subito lo storico
   };
 
   // ✅ Scarica PDF
@@ -127,7 +129,9 @@ function TesiPage() {
 
       <input type="file" onChange={handleFileChange} className="mb-2" />
       {selectedFile && <p className="text-sm text-gray-600 mb-2">File: {selectedFile.name}</p>}
-      <button onClick={handleUpload} className="bg-blue-600 text-white px-4 py-2 rounded mb-6">{loading ? "Caricamento..." : "Carica"}</button>
+      <button onClick={handleUpload} className="bg-blue-600 text-white px-4 py-2 rounded mb-6">
+        {loading ? "Caricamento..." : "Carica"}
+      </button>
 
       <div className="mb-4">
         <label className="block font-medium mb-2">Seleziona una tesi già caricata:</label>
@@ -162,11 +166,7 @@ function TesiPage() {
         <button onClick={() => inviaRichiesta("plagio")} className="bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700">
           🧬 Richiedi analisi plagio
         </button>
-        <button
-          onClick={() => inviaRichiesta("completa")}
-          className="bg-black text-white py-2 px-4 rounded hover:bg-gray-800"
-          title="Richiede più tempo, consigliata a fine tesi"
-        >
+        <button onClick={() => inviaRichiesta("completa")} className="bg-black text-white py-2 px-4 rounded hover:bg-gray-800" title="Richiede più tempo, consigliata a fine tesi">
           🧾 Richiedi analisi completa
         </button>
       </div>
@@ -202,5 +202,6 @@ function TesiPage() {
 
 TesiPage.requireAuth = true;
 export default TesiPage;
+
 
 
