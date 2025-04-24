@@ -9,6 +9,7 @@ export default function AdminLingueUpload() {
   const [lingua, setLingua] = useState("inglese");
   const [livello, setLivello] = useState("A1");
   const [titolo, setTitolo] = useState("");
+  const [argomento, setArgomento] = useState(""); // 👈 nuovo stato
   const [contenuto, setContenuto] = useState("");
   const [quiz, setQuiz] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,7 @@ export default function AdminLingueUpload() {
       lingua,
       livello,
       titolo,
+      argomento, // 👈 incluso nel payload
       contenuto,
       quiz: quiz.length > 0 ? JSON.parse(quiz) : null,
     };
@@ -57,6 +59,7 @@ export default function AdminLingueUpload() {
     } else {
       toast.success("Contenuto caricato con successo!");
       setTitolo("");
+      setArgomento(""); // 👈 reset campo
       setContenuto("");
       setQuiz("");
     }
@@ -96,6 +99,10 @@ export default function AdminLingueUpload() {
             <div>
               <label className="block text-sm font-medium">Titolo</label>
               <input value={titolo} onChange={(e) => setTitolo(e.target.value)} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium">Argomento</label> {/* 👈 nuovo input */}
+              <input value={argomento} onChange={(e) => setArgomento(e.target.value)} className="w-full border p-2 rounded" />
             </div>
           </div>
 
