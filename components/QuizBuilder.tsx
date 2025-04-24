@@ -20,18 +20,28 @@ export default function QuizBuilder({ onChange }: QuizBuilderProps) {
 
   const aggiornaDomanda = (index: number, campo: keyof DomandaQuiz, valore: any) => {
     const nuove = [...domande];
+
     if (campo === "opzioni") {
       nuove[index].opzioni = valore;
-      if (nuove[index].tipo !== "aperta" && !valore.includes(nuove[index].risposta as string)) {
-        nuove[index].risposta = nuove[index].tipo === "multipla" ? [] : "";
+      if (nuove[index].tipo === "multipla" && !Array.isArray(nuove[index].risposta)) {
+        nuove[index].risposta = [];
+      } else if (nuove[index].tipo === "singola" && typeof nuove[index].risposta !== "string") {
+        nuove[index].risposta = "";
       }
     } else {
       nuove[index][campo] = valore;
-      // Inizializza risposta multipla come array se serve
-      if (campo === "tipo" && valore === "multipla") {
-        nuove[index].risposta = Array.isArray(nuove[index].risposta) ? nuove[index].risposta : [];
+
+      if (campo === "tipo") {
+        if (valore === "multipla") {
+          nuove[index].risposta = [];
+        } else if (valore === "singola") {
+          nuove[index].risposta = "";
+        } else if (valore === "aperta") {
+          nuove[index].risposta = "";
+        }
       }
     }
+
     setDomande(nuove);
   };
 
@@ -171,3 +181,4 @@ export default function QuizBuilder({ onChange }: QuizBuilderProps) {
     </div>
   );
 }
+
