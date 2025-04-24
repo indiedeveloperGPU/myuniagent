@@ -3,13 +3,16 @@ import StaffLayout from "@/components/StaffLayout";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "react-hot-toast";
 import QuizBuilder from "@/components/QuizBuilder";
+import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 
 export default function AdminLingueUpload() {
   const [tipo, setTipo] = useState("teoria");
   const [lingua, setLingua] = useState("inglese");
   const [livello, setLivello] = useState("A1");
   const [titolo, setTitolo] = useState("");
-  const [argomento, setArgomento] = useState(""); // 👈 nuovo stato
+  const [argomento, setArgomento] = useState("");
   const [contenuto, setContenuto] = useState("");
   const [quiz, setQuiz] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,7 +36,7 @@ export default function AdminLingueUpload() {
       lingua,
       livello,
       titolo,
-      argomento, // 👈 incluso nel payload
+      argomento,
       contenuto,
       quiz: quiz.length > 0 ? JSON.parse(quiz) : null,
     };
@@ -59,7 +62,7 @@ export default function AdminLingueUpload() {
     } else {
       toast.success("Contenuto caricato con successo!");
       setTitolo("");
-      setArgomento(""); // 👈 reset campo
+      setArgomento("");
       setContenuto("");
       setQuiz("");
     }
@@ -101,21 +104,34 @@ export default function AdminLingueUpload() {
               <input value={titolo} onChange={(e) => setTitolo(e.target.value)} className="w-full border p-2 rounded" />
             </div>
             <div>
-              <label className="block text-sm font-medium">Argomento</label> {/* 👈 nuovo input */}
+              <label className="block text-sm font-medium">Argomento</label>
               <input value={argomento} onChange={(e) => setArgomento(e.target.value)} className="w-full border p-2 rounded" />
             </div>
           </div>
 
           {(tipo === "teoria" || tipo === "vocabolario") && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Contenuto (spiegazione o parole)</label>
-              <textarea
-                value={contenuto}
-                onChange={(e) => setContenuto(e.target.value)}
-                className="w-full border p-2 rounded h-40"
-                placeholder="Scrivi qui il contenuto testuale..."
-              />
-            </div>
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1">Contenuto (spiegazione o parole)</label>
+                <textarea
+                  value={contenuto}
+                  onChange={(e) => setContenuto(e.target.value)}
+                  className="w-full border p-2 rounded h-40"
+                  placeholder="Scrivi qui il contenuto testuale..."
+                />
+              </div>
+
+              {contenuto && (
+                <div className="mt-6 border-t pt-4">
+                  <h3 className="text-sm font-semibold mb-2">📄 Anteprima contenuto:</h3>
+                  <div className="prose prose-sm max-w-none bg-white border p-4 rounded shadow-sm">
+                    <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+                      {contenuto}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {(tipo === "teoria" || tipo === "vocabolario" || tipo === "certificazioni") && (
@@ -143,6 +159,7 @@ export default function AdminLingueUpload() {
     </StaffLayout>
   );
 }
+
 
 
 
