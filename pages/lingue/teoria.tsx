@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabaseClient";
 import DashboardLayout from "@/components/DashboardLayout";
+import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 
 interface Contenuto {
   id: string;
@@ -67,12 +70,23 @@ export default function TeoriaGrammaticale() {
     const { data: session } = await supabase.auth.getUser();
     if (!session.user) return;
 
+    const risposteUtente = Object.entries(risposte[contenuto.id] || {}).map(([idx, risposta]) => {
+      const quiz = contenuto.quiz[parseInt(idx)];
+      return {
+        domanda: quiz.domanda,
+        tipo: quiz.tipo,
+        opzioni: quiz.opzioni || [],
+        risposta_corretta: quiz.risposta,
+        risposta_utente: risposta,
+      };
+    });
+
     const payload = {
       user_id: session.user.id,
       contenuto_id: contenuto.id,
       lingua,
       livello,
-      risposte: risposte[contenuto.id] || {},
+      risposte: risposteUtente,
       stato: "in_attesa",
     };
 
@@ -127,10 +141,12 @@ export default function TeoriaGrammaticale() {
           {contenuti.map((item) => (
             <div key={item.id} className="p-4 border rounded-md bg-white shadow">
               <h2 className="text-lg font-semibold mb-2">📍 {item.argomento}</h2>
-              <div
-                className="prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: item.contenuto }}
-              />
+
+              <div className="prose max-w-none">
+                <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+                  {item.contenuto}
+                </ReactMarkdown>
+              </div>
 
               {Array.isArray(item.quiz) && item.quiz.length > 0 && (
                 <div className="mt-6">
