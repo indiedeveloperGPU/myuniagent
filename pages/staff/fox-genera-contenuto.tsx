@@ -124,7 +124,7 @@ export default function AdminLingueUpload() {
               {contenuto && (
                 <div className="mt-6 border-t pt-4">
                   <h3 className="text-sm font-semibold mb-2">📄 Anteprima contenuto:</h3>
-                  <div className="prose prose-sm max-w-none bg-white border p-4 rounded shadow-sm">
+                  <div className="prose-lg max-w-none bg-white border p-4 rounded shadow-sm">
                     <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>
                       {contenuto}
                     </ReactMarkdown>
