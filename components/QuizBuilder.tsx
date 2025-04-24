@@ -27,6 +27,10 @@ export default function QuizBuilder({ onChange }: QuizBuilderProps) {
       }
     } else {
       nuove[index][campo] = valore;
+      // Inizializza risposta multipla come array se serve
+      if (campo === "tipo" && valore === "multipla") {
+        nuove[index].risposta = Array.isArray(nuove[index].risposta) ? nuove[index].risposta : [];
+      }
     }
     setDomande(nuove);
   };
@@ -49,12 +53,14 @@ export default function QuizBuilder({ onChange }: QuizBuilderProps) {
 
   const toggleRispostaMultipla = (index: number, opzione: string) => {
     const nuove = [...domande];
-    const risposte = nuove[index].risposta as string[];
+    const risposte = Array.isArray(nuove[index].risposta) ? nuove[index].risposta : [];
+
     if (risposte.includes(opzione)) {
       nuove[index].risposta = risposte.filter(r => r !== opzione);
     } else {
       nuove[index].risposta = [...risposte, opzione];
     }
+
     setDomande(nuove);
   };
 
@@ -115,7 +121,7 @@ export default function QuizBuilder({ onChange }: QuizBuilderProps) {
                   ) : (
                     <input
                       type="checkbox"
-                      checked={(d.risposta as string[]).includes(op)}
+                      checked={Array.isArray(d.risposta) && d.risposta.includes(op)}
                       onChange={() => toggleRispostaMultipla(i, op)}
                     />
                   )}
