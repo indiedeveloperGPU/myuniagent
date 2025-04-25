@@ -20,6 +20,8 @@ export default function TeoriaGrammaticale() {
   const [lingua, setLingua] = useState<string>("");
   const [livello, setLivello] = useState<string>("A1");
   const [contenuti, setContenuti] = useState<Contenuto[]>([]);
+  const [completati, setCompletati] = useState<Set<string>>(new Set());
+  const [selezionato, setSelezionato] = useState<string | null>(null);
   const [risposte, setRisposte] = useState<Record<string, Record<string, string>>>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [messaggi, setMessaggi] = useState<Record<string, string>>({});
@@ -42,18 +44,38 @@ export default function TeoriaGrammaticale() {
 
   useEffect(() => {
     if (!lingua) return;
-    const fetchContenuti = async () => {
+
+    const fetchData = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("teoria_contenuti")
-        .select("id, argomento, contenuto, quiz")
-        .eq("lingua", lingua)
-        .eq("livello", livello)
-        .order("argomento", { ascending: true });
-      if (!error && data) setContenuti(data);
+      const session = await supabase.auth.getUser();
+      const user = session.data?.user;
+      if (!user) return;
+
+      const [{ data: contenutiData }, { data: completatiData }] = await Promise.all([
+        supabase
+          .from("teoria_contenuti")
+          .select("id, argomento, contenuto, quiz")
+          .eq("lingua", lingua)
+          .eq("livello", livello)
+          .order("argomento", { ascending: true }),
+
+        supabase
+          .from("teoria_quiz_risposte")
+          .select("contenuto_id")
+          .eq("user_id", user.id)
+          .eq("stato", "corretto")
+      ]);
+
+      if (contenutiData) setContenuti(contenutiData);
+      if (completatiData) {
+        const ids = completatiData.map((c) => c.contenuto_id);
+        setCompletati(new Set(ids));
+      }
+
       setLoading(false);
     };
-    fetchContenuti();
+
+    fetchData();
   }, [lingua, livello]);
 
   const handleRispostaChange = (contenutoId: string, domandaIdx: number, valore: string) => {
@@ -102,102 +124,114 @@ export default function TeoriaGrammaticale() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
+      <div className="flex gap-6">
+        {/* Sidebar sinistra */}
+        <div className="w-1/4 border-r pr-4">
           <button
             onClick={() => router.back()}
-            className="inline-flex items-center gap-2 bg-white text-blue-700 border border-blue-300 rounded-full px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-50 transition"
+            className="mb-4 inline-flex items-center gap-2 bg-white text-blue-700 border border-blue-300 rounded-full px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-50 transition"
           >
             🔙 Torna alla pagina Lingue
           </button>
-        </div>
 
-        {lingua && (
-          <h1 className="text-2xl font-bold mb-4">
-            📘 Teoria Grammaticale ({lingua.toUpperCase()})
-          </h1>
-        )}
-
-        <div className="mb-6">
-          <label className="block text-sm text-gray-600 mb-1">Seleziona il livello:</label>
+          <h2 className="text-lg font-semibold mb-3">📘 Moduli disponibili ({livello})</h2>
           <select
             value={livello}
             onChange={(e) => setLivello(e.target.value)}
-            className="border px-3 py-2 rounded-md"
+            className="w-full border px-3 py-2 mb-4 rounded"
           >
             {livelli.map((lvl) => (
               <option key={lvl} value={lvl}>{lvl}</option>
             ))}
           </select>
+
+          <ul className="space-y-2">
+            {contenuti.map((c) => (
+              <li key={c.id}>
+                <button
+                  onClick={() => setSelezionato(c.id)}
+                  className={`w-full text-left px-3 py-2 rounded-md border flex items-center justify-between ${selezionato === c.id ? 'bg-blue-100 font-semibold' : 'bg-white hover:bg-gray-100'}`}
+                >
+                  <span>📍 {c.argomento}</span>
+                  {completati.has(c.id) && <span className="text-green-600">✔️</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {loading && <p className="text-gray-500">Caricamento contenuti...</p>}
+        {/* Contenuto modulo selezionato */}
+        <div className="w-3/4">
+          {loading && <p className="text-gray-500">Caricamento contenuti...</p>}
 
-        {!loading && contenuti.length === 0 && (
-          <p className="text-gray-500">Nessun contenuto disponibile per questo livello.</p>
-        )}
+          {!loading && contenuti.length === 0 && (
+            <p className="text-gray-500">Nessun contenuto disponibile per questo livello.</p>
+          )}
 
-        <div className="space-y-10">
-          {contenuti.map((item) => (
-            <div key={item.id} className="p-4 border rounded-md bg-white shadow">
-              <h2 className="text-lg font-semibold mb-2">📍 {item.argomento}</h2>
+          {!loading && contenuti.length > 0 && selezionato && (
+            <div className="bg-white p-6 rounded shadow">
+              {contenuti.filter((c) => c.id === selezionato).map((item) => (
+                <div key={item.id}>
+                  <h2 className="text-xl font-bold mb-3">📘 {item.argomento}</h2>
 
-              <div className="prose max-w-none">
-                <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-                  {item.contenuto}
-                </ReactMarkdown>
-              </div>
-
-              {Array.isArray(item.quiz) && item.quiz.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="font-medium mb-2">📝 Quiz</h3>
-                  <div className="space-y-4">
-                    {item.quiz.map((q: any, idx: number) => (
-                      <div key={idx} className="border p-3 rounded">
-                        <p className="text-sm font-medium mb-1">{q.domanda}</p>
-                        {q.tipo === "multipla" ? (
-                          <div className="space-y-1">
-                            {q.opzioni.map((opt: string, oidx: number) => (
-                              <label key={oidx} className="block text-sm">
-                                <input
-                                  type="radio"
-                                  name={`quiz-${item.id}-${idx}`}
-                                  value={opt}
-                                  checked={risposte[item.id]?.[idx] === opt}
-                                  onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
-                                  className="mr-2"
-                                />
-                                {opt}
-                              </label>
-                            ))}
-                          </div>
-                        ) : (
-                          <textarea
-                            rows={2}
-                            className="w-full border mt-1 p-2 rounded"
-                            placeholder="Scrivi la tua risposta"
-                            value={risposte[item.id]?.[idx] || ""}
-                            onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
-                          />
-                        )}
-                      </div>
-                    ))}
+                  <div className="prose max-w-none mb-6">
+                    <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+                      {item.contenuto}
+                    </ReactMarkdown>
                   </div>
 
-                  <button
-                    onClick={() => inviaRisposte(item)}
-                    className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                  >
-                    Invia risposte
-                  </button>
+                  {Array.isArray(item.quiz) && item.quiz.length > 0 && (
+                    <div className="mt-4">
+                      <h3 className="font-semibold mb-2">📝 Quiz</h3>
+                      <div className="space-y-4">
+                        {item.quiz.map((q: any, idx: number) => (
+                          <div key={idx} className="border p-3 rounded">
+                            <p className="text-sm font-medium mb-1">{q.domanda}</p>
+                            {q.tipo === "multipla" ? (
+                              <div className="space-y-1">
+                                {q.opzioni.map((opt: string, oidx: number) => (
+                                  <label key={oidx} className="block text-sm">
+                                    <input
+                                      type="radio"
+                                      name={`quiz-${item.id}-${idx}`}
+                                      value={opt}
+                                      checked={risposte[item.id]?.[idx] === opt}
+                                      onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
+                                      className="mr-2"
+                                    />
+                                    {opt}
+                                  </label>
+                                ))}
+                              </div>
+                            ) : (
+                              <textarea
+                                rows={2}
+                                className="w-full border mt-1 p-2 rounded"
+                                placeholder="Scrivi la tua risposta"
+                                value={risposte[item.id]?.[idx] || ""}
+                                onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
 
-                  {messaggi[item.id] && (
-                    <p className="text-green-600 text-sm mt-2">{messaggi[item.id]}</p>
+                      <button
+                        onClick={() => inviaRisposte(item)}
+                        className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                      >
+                        Invia risposte
+                      </button>
+
+                      {messaggi[item.id] && (
+                        <p className="text-green-600 text-sm mt-2">{messaggi[item.id]}</p>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
+              ))}
             </div>
-          ))}
+          )}
         </div>
       </div>
     </DashboardLayout>
