@@ -23,30 +23,49 @@ export default function LingueHomePage() {
 
   useEffect(() => {
     const fetchLingua = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) return;
+      const { data: session } = await supabase.auth.getUser();
+      const user = session?.user;
+      if (!user) return;
+  
       const { data: profilo } = await supabase
         .from("profiles")
         .select("lingua_preferita")
-        .eq("id", data.user.id)
+        .eq("id", user.id)
         .single();
+  
       if (profilo?.lingua_preferita) {
         setLingua(profilo.lingua_preferita as Lingua);
+        console.log("Lingua caricata dal profilo:", profilo.lingua_preferita);
       }
     };
     fetchLingua();
   }, []);
+  
 
   const handleLinguaChange = async (nuovaLingua: Lingua) => {
     setLingua(nuovaLingua);
-    const { data } = await supabase.auth.getUser();
-    if (data.user) {
-      await supabase
-        .from("profiles")
-        .update({ lingua_preferita: nuovaLingua })
-        .eq("id", data.user.id);
+    const { data: session, error: userError } = await supabase.auth.getUser();
+    const user = session?.user;
+  
+    if (!user || userError) {
+      toast.error("Errore: utente non autenticato.");
+      return;
+    }
+  
+    const { error } = await supabase
+      .from("profiles")
+      .update({ lingua_preferita: nuovaLingua })
+      .eq("id", user.id);
+  
+    if (error) {
+      toast.error("Errore nel salvataggio della lingua.");
+      console.error("Errore Supabase:", error);
+    } else {
+      toast.success("Lingua aggiornata nel profilo!");
+      console.log("Lingua salvata con successo su Supabase:", nuovaLingua);
     }
   };
+  
 
   const showInDevelopment = () => {
     toast("💬 La sezione Conversazione è in arrivo! Siamo nelle fasi finali dello sviluppo.", {
