@@ -69,7 +69,15 @@ export default function Certificazioni() {
           .eq("stato", "corretto")
       ]);
 
-      if (testData) setTests(testData);
+      if (testData) {
+        const ordinati = [...testData].sort((a, b) => {
+          const numA = parseInt(a.titolo.split(".")[0]);
+          const numB = parseInt(b.titolo.split(".")[0]);
+          return numA - numB;
+        });
+        setTests(ordinati);
+      }
+
       if (completatiData) {
         const ids = completatiData.map((t) => t.test_id);
         setCompletati(new Set(ids));
@@ -137,13 +145,13 @@ export default function Certificazioni() {
           </select>
 
           <ul className="space-y-2">
-            {tests.map((t) => (
+            {tests.map((t, idx) => (
               <li key={t.id}>
                 <button
                   onClick={() => setTestSelezionato(t)}
                   className={`w-full text-left px-3 py-2 rounded-md border flex items-center justify-between ${testSelezionato?.id === t.id ? 'bg-blue-100 font-semibold' : 'bg-white hover:bg-gray-100'}`}
                 >
-                  <span>🧩 {t.titolo}</span>
+                  <span>🧩 {idx + 1}. {t.titolo}</span>
                   {completati.has(t.id) && <span className="text-green-600">✔️</span>}
                 </button>
               </li>
@@ -219,5 +227,4 @@ export default function Certificazioni() {
     </DashboardLayout>
   );
 }
-
 
