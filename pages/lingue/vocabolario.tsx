@@ -15,6 +15,7 @@ interface VocabolarioItem {
   introduzione?: string;
   parole: Parola[];
   quiz: any;
+  ordine: number;
 }
 
 const livelli = ["A1", "A2", "B1", "B2", "C1", "C2"];
@@ -57,10 +58,10 @@ export default function Vocabolario() {
       const [{ data: vocabolarioData }, { data: completatiData }] = await Promise.all([
         supabase
           .from("vocabolario")
-          .select("id, tema, parole, quiz, introduzione")
+          .select("id, tema, parole, quiz, introduzione, ordine")
           .eq("lingua", lingua)
           .eq("livello", livello)
-          .order("tema", { ascending: true }),
+          .order("ordine", { ascending: true }),
 
         supabase
           .from("vocabolario_risposte")
@@ -134,13 +135,13 @@ export default function Vocabolario() {
           </select>
 
           <ul className="space-y-2">
-            {vocabolario.map((v) => (
+            {vocabolario.map((v, i) => (
               <li key={v.id}>
                 <button
                   onClick={() => setSelezionato(v.id)}
                   className={`w-full text-left px-3 py-2 rounded-md border flex items-center justify-between ${selezionato === v.id ? 'bg-blue-100 font-semibold' : 'bg-white hover:bg-gray-100'}`}
                 >
-                  <span>📌 {v.tema}</span>
+                  <span>📌 {i + 1}. {v.tema}</span>
                   {completati.has(v.id) && <span className="text-green-600">✔️</span>}
                 </button>
               </li>
@@ -160,7 +161,7 @@ export default function Vocabolario() {
             <div className="bg-white p-6 rounded shadow">
               {vocabolario.filter((v) => v.id === selezionato).map((item) => (
                 <div key={item.id}>
-                  <h2 className="text-xl font-bold mb-1">📌 Tema: {item.tema}</h2>
+                  <h2 className="text-xl font-bold mb-1">📌 {item.tema}</h2>
                   {item.introduzione && (
                     <p className="text-gray-600 text-sm italic mb-3">{item.introduzione}</p>
                   )}
