@@ -11,6 +11,7 @@ interface Contenuto {
   argomento: string;
   contenuto: string;
   quiz: any[];
+  ordine?: number;
 }
 
 const livelli = ["A1", "A2", "B1", "B2", "C1", "C2"];
@@ -54,10 +55,10 @@ export default function TeoriaGrammaticale() {
       const [{ data: contenutiData }, { data: completatiData }] = await Promise.all([
         supabase
           .from("teoria_contenuti")
-          .select("id, argomento, contenuto, quiz")
+          .select("id, argomento, contenuto, quiz, ordine")
           .eq("lingua", lingua)
           .eq("livello", livello)
-          .order("argomento", { ascending: true }),
+          .order("ordine", { ascending: true }),
 
         supabase
           .from("teoria_quiz_risposte")
@@ -135,6 +136,10 @@ export default function TeoriaGrammaticale() {
           </button>
 
           <h2 className="text-lg font-semibold mb-3">📘 Moduli disponibili ({livello})</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Completa i moduli in ordine per costruire passo dopo passo la tua grammatica.
+          </p>
+
           <select
             value={livello}
             onChange={(e) => setLivello(e.target.value)}
@@ -146,13 +151,13 @@ export default function TeoriaGrammaticale() {
           </select>
 
           <ul className="space-y-2">
-            {contenuti.map((c) => (
+            {contenuti.map((c, i) => (
               <li key={c.id}>
                 <button
                   onClick={() => setSelezionato(c.id)}
                   className={`w-full text-left px-3 py-2 rounded-md border flex items-center justify-between ${selezionato === c.id ? 'bg-blue-100 font-semibold' : 'bg-white hover:bg-gray-100'}`}
                 >
-                  <span>📍 {c.argomento}</span>
+                  <span>📘 {i + 1}. {c.argomento}</span>
                   {completati.has(c.id) && <span className="text-green-600">✔️</span>}
                 </button>
               </li>
