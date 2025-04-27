@@ -13,6 +13,8 @@ export default function RiassuntoPage() {
   const [loadingBlocks, setLoadingBlocks] = useState<boolean[]>([]);
   const [error, setError] = useState("");
   const [userChecked, setUserChecked] = useState(false);
+  const [filePathFox, setFilePathFox] = useState<string | null>(null);
+  const [allegatoFox, setAllegatoFox] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -114,30 +116,49 @@ export default function RiassuntoPage() {
     const sessionResult = await supabase.auth.getSession();
     const accessToken = sessionResult.data.session?.access_token;
     const user = sessionResult.data.session?.user;
-
+  
     if (!accessToken || !user?.id) {
       setError("⚠️ Sessione scaduta o utente non autenticato. Effettua di nuovo l’accesso.");
       return;
     }
-
+  
     const { error } = await supabase.from("agente_fox").insert({
       user_id: user.id,
       tipo: "riassunto",
       stato: "in_attesa",
       domanda: text || "",
-      allegati: null,  // ✅
+      allegati: allegatoFox || null,
       inviata_il: new Date().toISOString(),
     });
-    
-
+  
     if (!error) {
-      alert("✅ Il tuo testo è stato inviato all’Agente Fox!");
+      alert("✅ La tua richiesta è stata inviata all’Agente Fox!");
       setText("");
       setResults([]);
+      setAllegatoFox(null); // reset allegato
     } else {
       setError("❌ Errore durante l'invio ad Agente Fox.");
     }
   };
+
+  const handleRemoveFile = async () => {
+    if (!filePathFox) return;
+  
+    const { error } = await supabase.storage
+      .from("uploads")
+      .remove([filePathFox]);
+  
+    if (error) {
+      setError(`❌ Errore durante la rimozione del file: ${error.message}`);
+      return;
+    }
+  
+    setAllegatoFox(null);
+    setFilePathFox(null);
+    alert("✅ File eliminato correttamente.");
+  };
+  
+  
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -156,62 +177,47 @@ export default function RiassuntoPage() {
       return;
     }
   
-    e.target.value = "";
+    e.target.value = ""; // reset input
   
     setError("");
     setResults([]);
     setLoadingBlocks([]);
   
     if (modalitaFox) {
-      // modalità Agente Fox: carica il file e salva URL
+      // Modalità Agente Fox: carica solo il file, senza inviare ancora
       const sessionResult = await supabase.auth.getSession();
       const accessToken = sessionResult.data.session?.access_token;
       const user = sessionResult.data.session?.user;
-
+  
       if (!accessToken || !user?.id) {
         setError("⚠️ Sessione scaduta o utente non autenticato. Effettua di nuovo l’accesso.");
         return;
       }
-
+  
       const safeName = file.name.replace(/\s+/g, "_").replace(/[^\w.]/gi, "");
       const filePath = `${user.id}/${Date.now()}_${safeName}`;
-
-
+  
       const { error: uploadError } = await supabase.storage
         .from("uploads")
         .upload(filePath, file);
-
+  
       if (uploadError) {
         setError(`Errore nel caricamento del file ${file.name}: ${uploadError.message}`);
         return;
       }
-
+  
       const { data: urlData } = supabase.storage
         .from("uploads")
         .getPublicUrl(filePath);
-
-        const { error } = await supabase.from("agente_fox").insert({
-          user_id: user.id,
-          tipo: "riassunto",
-          stato: "in_attesa",
-          domanda: text || "", // ✅ fix qui: obbligatorio
-          allegati: urlData.publicUrl,
-          inviata_il: new Date().toISOString(),
-        });
-        
-        
-        if (error) {
-          console.error("❌ Errore Supabase INSERT:", error);
-          setError(`❌ Errore durante l’invio ad Agente Fox: ${error.message}`);
-          return;
-        }
-        
-
-      alert("✅ Il tuo file è stato inviato all’Agente Fox!");
+  
+      setAllegatoFox(urlData.publicUrl); // ✅ salva URL pubblico
+      setFilePathFox(filePath);           // ✅ salva anche il percorso per eventuale delete
+  
+      alert("✅ File caricato correttamente! Ora puoi aggiungere un commento e inviare la richiesta.");
       return;
     }
   
-    // modalità GPT automatica (estrazione testo)
+    // Modalità GPT automatica (estrazione testo dal file)
     const formData = new FormData();
     formData.append("file", file);
   
@@ -231,8 +237,7 @@ export default function RiassuntoPage() {
       setError(`Errore nel file ${file.name}: ${err.message}`);
       return;
     }
-  };
-  
+  }; 
 
   const handleExport = async () => {
     const doc = new Document({
@@ -341,6 +346,19 @@ export default function RiassuntoPage() {
               >
                 🦊 Invia richiesta all’Agente Fox
               </button>
+              {allegatoFox && (
+  <div className="mt-2 text-sm text-green-600 flex items-center gap-4">
+    📎 File allegato pronto per l'invio.
+    <button
+      onClick={handleRemoveFile}
+      className="text-red-500 text-sm underline hover:text-red-700"
+    >
+      ❌ Rimuovi file
+    </button>
+  </div>
+)}
+
+
             </div>
           )}
 
