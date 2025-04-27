@@ -11,7 +11,7 @@ interface RichiestaFox {
   stato: string;
   inviata_il: string;
   risposta_il: string | null;
-  allegati?: string[];
+  risposta_allegati?: string[]; // 🔥 aggiunto solo questo
 }
 
 export default function LeMieRichiesteFox() {
@@ -46,7 +46,7 @@ export default function LeMieRichiesteFox() {
 
     const { data, error } = await supabaseAuthed
       .from("agente_fox")
-      .select("id, domanda, risposta, stato, inviata_il, risposta_il, allegati")
+      .select("id, domanda, risposta, stato, inviata_il, risposta_il, risposta_allegati")
       .eq("user_id", userData.user.id)
       .order("inviata_il", { ascending: false });
 
@@ -75,6 +75,26 @@ export default function LeMieRichiesteFox() {
   const richiesteFiltrate = richieste.filter((r) =>
     r.domanda.toLowerCase().includes(query.toLowerCase())
   );
+
+  const getFileType = (url: string) => {
+    const extension = url.split(".").pop()?.toLowerCase();
+    switch (extension) {
+      case "pdf":
+        return "PDF";
+      case "doc":
+      case "docx":
+        return "DOCX";
+      case "txt":
+        return "TXT";
+      case "xlsx":
+        return "XLSX";
+      case "ppt":
+      case "pptx":
+        return "PPTX";
+      default:
+        return "FILE";
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -116,46 +136,35 @@ export default function LeMieRichiesteFox() {
               <div className="p-4 border-t space-y-3">
                 <p><strong>Domanda:</strong> {r.domanda}</p>
 
-                {r.allegati && (
-  <div className="mb-3">
-    <p className="text-sm font-medium">📎 Allegati:</p>
-    <ul className="list-disc ml-5 text-sm">
-      {Array.isArray(r.allegati) ? (
-        r.allegati.map((url, i) => (
-          <li key={i}>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-              Scarica file {i + 1}
-            </a>
-          </li>
-        ))
-      ) : (
-        typeof r.allegati === "string" && (r.allegati as string).trim() !== ""
-        ? (
-          <li>
-            <a href={r.allegati} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-              Scarica file
-            </a>
-          </li>
-        ) : (
-          <li>Nessun file allegato</li>
-        )
-      )}
-    </ul>
-  </div>
-)}
-
-
                 {r.risposta ? (
-                  <div className="bg-gray-50 p-3 rounded border border-gray-300">
+                  <div className="bg-gray-50 p-3 rounded border border-gray-300 space-y-3">
                     <p className="text-sm text-gray-700 whitespace-pre-wrap">
                       <strong>Risposta:</strong> {r.risposta}
                     </p>
-                    <p className="text-xs text-gray-400 mt-1">
+
+                    {r.risposta_allegati && Array.isArray(r.risposta_allegati) && r.risposta_allegati.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium mb-1">📎 File allegati alla risposta:</p>
+                        <ul className="list-disc ml-5 text-sm">
+                          {r.risposta_allegati.map((url, i) => (
+                            <li key={i}>
+                              <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                                {getFileType(url)} - Scarica allegato {i + 1}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-gray-400">
                       Risposta ricevuta il: {new Date(r.risposta_il!).toLocaleString()}
                     </p>
+
                     {r.risposta_il && new Date().getTime() - new Date(r.risposta_il).getTime() < 5 * 60 * 1000 && (
-                      <div className="text-green-600 text-xs font-semibold mt-1">🆕 Nuova risposta appena ricevuta</div>
+                      <div className="text-green-600 text-xs font-semibold">🆕 Nuova risposta appena ricevuta</div>
                     )}
+
                     <button
                       onClick={() => downloadRisposta(r.risposta!, r.id)}
                       className="mt-2 text-sm text-blue-600 hover:underline"
