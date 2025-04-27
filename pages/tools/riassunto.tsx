@@ -122,11 +122,13 @@ export default function RiassuntoPage() {
 
     const { error } = await supabase.from("agente_fox").insert({
       user_id: user.id,
-      domanda: text,
       tipo: "riassunto",
       stato: "in_attesa",
+      domanda: text || "",
+      allegati: null,  // ✅
       inviata_il: new Date().toISOString(),
     });
+    
 
     if (!error) {
       alert("✅ Il tuo testo è stato inviato all’Agente Fox!");
@@ -193,7 +195,7 @@ export default function RiassuntoPage() {
           tipo: "riassunto",
           stato: "in_attesa",
           domanda: text || "", // ✅ fix qui: obbligatorio
-          allegati: [urlData.publicUrl],
+          allegati: urlData.publicUrl,
           inviata_il: new Date().toISOString(),
         });
         
@@ -390,3 +392,6 @@ export default function RiassuntoPage() {
 }
 
 RiassuntoPage.requireAuth = true;
+
+
+
