@@ -11,7 +11,7 @@ interface RichiestaFox {
   stato: string;
   inviata_il: string;
   risposta_il: string | null;
-  risposta_allegati?: string[]; // 🔥 aggiunto solo questo
+  risposta_allegati?: string[];
 }
 
 export default function LeMieRichiesteFox() {
@@ -63,13 +63,6 @@ export default function LeMieRichiesteFox() {
   const downloadRisposta = (testo: string, id: string) => {
     const blob = new Blob([testo], { type: "text/plain;charset=utf-8" });
     saveAs(blob, `Risposta_AgenteFox_${id}.txt`);
-  };
-
-  const eliminaRichiesta = async (id: string) => {
-    const { error } = await supabase.from("agente_fox").delete().eq("id", id);
-    if (!error) {
-      setRichieste((prev) => prev.filter((r) => r.id !== id));
-    }
   };
 
   const richiesteFiltrate = richieste.filter((r) =>
@@ -179,13 +172,6 @@ export default function LeMieRichiesteFox() {
                       : "🤖 L'agente sta lavorando alla tua risposta. Torna tra poco!"}
                   </p>
                 )}
-
-                <button
-                  onClick={() => eliminaRichiesta(r.id)}
-                  className="text-sm text-red-600 hover:underline"
-                >
-                  🗑️ Elimina richiesta
-                </button>
               </div>
             </details>
           ))}
