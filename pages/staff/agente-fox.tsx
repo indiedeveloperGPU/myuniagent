@@ -12,7 +12,9 @@ interface RichiestaFox {
   inviata_il: string;
   risposta_il: string | null;
   allegati?: string[] | string | null;
+  risposta_allegati?: string[] | null; // 🔥 aggiunto correttamente
 }
+
 
 interface StatisticheFox {
   totale: number;
@@ -52,6 +54,17 @@ function AgenteFoxAdmin() {
     setCaricamento(false);
   };
 
+  const [fileAllegati, setFileAllegati] = useState<Record<string, File[]>>({});
+
+const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
+  const files = e.target.files;
+  if (files) {
+    const fileArray = Array.from(files);
+    setFileAllegati((prev) => ({ ...prev, [id]: fileArray }));
+  }
+};
+
+
   const fetchStats = async () => {
     const sessionResult = await supabase.auth.getSession();
     const accessToken = sessionResult.data.session?.access_token;
@@ -89,20 +102,54 @@ function AgenteFoxAdmin() {
   const inviaRisposta = async (id: string) => {
     const risposta = risposte[id];
     if (!risposta?.trim()) return;
-
+  
+    const files = fileAllegati[id] || [];
+    let uploadedFilesUrls: string[] = [];
+  
+    if (files.length > 0) {
+      for (const file of files) {
+        const { data, error } = await supabase.storage
+          .from("fox-risposte") // devi creare questo bucket se non esiste!
+          .upload(`${id}/${file.name}`, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+  
+        if (error) {
+          console.error("Errore caricamento file:", error.message);
+        } else if (data) {
+          const { publicUrl } = supabase.storage
+            .from("fox-risposte")
+            .getPublicUrl(data.path).data;
+          uploadedFilesUrls.push(publicUrl);
+        }
+      }
+    }
+  
     const { error } = await supabase
       .from("agente_fox")
-      .update({ risposta, stato: "completato", risposta_il: new Date().toISOString() })
+      .update({
+        risposta,
+        stato: "completato",
+        risposta_il: new Date().toISOString(),
+        risposta_allegati: uploadedFilesUrls.length > 0 ? uploadedFilesUrls : null,
+      })
       .eq("id", id);
-
+  
     if (!error) {
       setRichieste((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, risposta, stato: "completato" } : r))
+        prev.map((r) =>
+          r.id === id
+            ? { ...r, risposta, stato: "completato", risposta_allegati: uploadedFilesUrls }
+            : r
+        )
       );
       setRisposte((prev) => ({ ...prev, [id]: "" }));
+      setFileAllegati((prev) => ({ ...prev, [id]: [] }));
       setEditingId(null);
     }
   };
+  
 
   const prendiInCarico = async (id: string) => {
     const { error } = await supabase
@@ -211,6 +258,21 @@ function AgenteFoxAdmin() {
         setRisposte((prev) => ({ ...prev, [r.id]: e.target.value }))
       }
     />
+    
+    {/* 🔥 Input file */}
+    <input
+      type="file"
+      multiple
+      onChange={(e) => handleFileUpload(e, r.id)}
+      className="block w-full text-sm text-gray-500
+        file:mr-4 file:py-2 file:px-4
+        file:rounded-full file:border-0
+        file:text-sm file:font-semibold
+        file:bg-blue-50 file:text-blue-700
+        hover:file:bg-blue-100
+      "
+    />
+
     <div className="flex gap-2">
       <button
         onClick={() => inviaRisposta(r.id)}
@@ -235,12 +297,29 @@ function AgenteFoxAdmin() {
 ) : (
   <div className="flex flex-wrap items-center gap-3 mt-3">
     {r.risposta && (
-      <div className="bg-gray-50 p-3 rounded border border-gray-300 w-full">
-        <p className="text-sm text-gray-700 whitespace-pre-wrap">
-          <strong>Risposta:</strong> {r.risposta}
-        </p>
+  <div className="bg-gray-50 p-3 rounded border border-gray-300 w-full space-y-2">
+    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+      <strong>Risposta:</strong> {r.risposta}
+    </p>
+
+    {/* 🔥 Se ci sono file allegati nella risposta */}
+    {r.risposta_allegati && Array.isArray(r.risposta_allegati) && r.risposta_allegati.length > 0 && (
+      <div>
+        <p className="text-sm font-medium mb-1">📎 File allegati alla risposta:</p>
+        <ul className="list-disc ml-5 text-sm">
+          {r.risposta_allegati.map((url: string, i: number) => (
+            <li key={i}>
+              <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                Scarica allegato {i + 1}
+              </a>
+            </li>
+          ))}
+        </ul>
       </div>
     )}
+  </div>
+)}
+
     {r.stato === "in_attesa" && (
       <button
         onClick={() => prendiInCarico(r.id)}
