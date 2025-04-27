@@ -80,19 +80,19 @@ export default function LeMieRichiesteFox() {
     const extension = url.split(".").pop()?.toLowerCase();
     switch (extension) {
       case "pdf":
-        return "PDF";
+        return "📄 PDF";
       case "doc":
       case "docx":
-        return "DOCX";
+        return "📝 DOCX";
       case "txt":
-        return "TXT";
+        return "📑 TXT";
       case "xlsx":
-        return "XLSX";
+        return "📊 XLSX";
       case "ppt":
       case "pptx":
-        return "PPTX";
+        return "📽️ PPTX";
       default:
-        return "FILE";
+        return "🗎 File";
     }
   };
 
