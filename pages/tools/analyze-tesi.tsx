@@ -96,11 +96,24 @@ function TesiPage() {
       setError("Seleziona un file prima di inviare la richiesta");
       return;
     }
-
+  
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData?.user?.id;
     if (!userId) return;
-
+  
+    // ✅ Recupera l'URL pubblico del file nel bucket "tesi"
+    const { data: publicData } = supabase
+      .storage
+      .from('tesi')
+      .getPublicUrl(`${userId}/${fileSelezionato}`);
+  
+    // ✅ Verifica se l'URL è stato generato correttamente
+    if (!publicData || !publicData.publicUrl) {
+      setError("Errore nel recuperare il file dal server");
+      return;
+    }
+  
+    // ✅ Ora salvi l'URL vero dentro agente_fox
     await supabase.from("agente_fox").insert({
       user_id: userId,
       domanda: `Richiesta analisi ${tipo} per la tesi ${fileSelezionato}`,
@@ -108,12 +121,14 @@ function TesiPage() {
       analisi_tipo: tipo,
       stato: "in_attesa",
       inviata_il: new Date().toISOString(),
-      allegati: fileSelezionato,
+      allegati: publicData.publicUrl, // 🔥 corretta qui
     });
-
+  
     setMessage("Richiesta inviata ✅");
-    await fetchData(); // opzionale, per aggiornare subito lo storico
+    await fetchData();
   };
+  
+  
 
   // ✅ Scarica PDF
   const handleDownloadPDF = async (contenuto: string, tipo: string) => {
@@ -202,6 +217,7 @@ function TesiPage() {
 
 TesiPage.requireAuth = true;
 export default TesiPage;
+
 
 
 
