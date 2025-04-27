@@ -3,6 +3,7 @@ import { IncomingForm, Files } from "formidable";
 import fs from "fs";
 import { createClient } from "@supabase/supabase-js";
 
+// Disabilita il body parser predefinito di Next.js
 export const config = {
   api: {
     bodyParser: false,
@@ -51,22 +52,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
 
-if (!file || !file.filepath) {
-  return res.status(400).json({ error: "File non valido o assente" });
-}
+    if (!file || !file.filepath) {
+      return res.status(400).json({ error: "File non valido o assente" });
+    }
 
-const buffer = fs.readFileSync(file.filepath);
-const originalName = file.originalFilename || "tesi.pdf";
-const storagePath = `${userId}/${originalName}`;
-const contentType = file.mimetype || undefined;
+    const buffer = fs.readFileSync(file.filepath);
 
-const { data: uploadData, error: uploadError } = await supabase.storage
-  .from("tesi")
-  .upload(storagePath, buffer, {
-    contentType,
-    upsert: true,
-  });
+    // ✅ Sanificazione del nome del file
+    const originalName = file.originalFilename || `tesi-${Date.now()}.pdf`; // Usa un nome generico se non disponibile
+    const safeName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");  // Sanifica il nome del file
 
+    // ✅ Crea il percorso nel bucket
+    const storagePath = `tesi/${userId}/${safeName}`;  // file path con userId e nome sicuro
+
+    const contentType = file.mimetype || undefined;
+
+    // ✅ Carica il file nel bucket "tesi"
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("tesi")
+      .upload(storagePath, buffer, {
+        contentType,
+        upsert: true,
+      });
 
     if (uploadError) {
       console.error("Errore upload:", uploadError.message);
@@ -87,11 +94,19 @@ const { data: uploadData, error: uploadError } = await supabase.storage
       return res.status(500).json({ error: "Errore salvataggio DB" });
     }
 
+    // ✅ Restituisce la risposta con l'URL pubblico
+    const { data: publicData } = supabase
+      .storage
+      .from('tesi')
+      .getPublicUrl(storagePath);
+
     return res.status(200).json({
       message: "Upload completato ✅",
       path: storagePath,
       originalname: originalName,
+      publicUrl: publicData?.publicUrl,  // Restituisci l'URL pubblico del file
     });
   });
 }
+
 
