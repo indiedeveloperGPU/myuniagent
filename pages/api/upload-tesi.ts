@@ -1,7 +1,9 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { IncomingForm, Files } from "formidable";
+import { supabase } from "@/lib/supabaseClient";
+import { NextApiRequest, NextApiResponse } from "next";
+
+// Middleware per gestire il parsing multipart/form-data
+import formidable from "formidable";
 import fs from "fs";
-import { createClient } from "@supabase/supabase-js";
 
 export const config = {
   api: {
@@ -14,85 +16,64 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Metodo non consentito" });
   }
 
-  // ✅ Crea client Supabase con token JWT
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: {
-        headers: {
-          Authorization: req.headers.authorization || "",
-        },
-      },
-    }
-  );
+  const form = new formidable.IncomingForm();
 
-  // ✅ Recupera utente
-  const {
-    data: userData,
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !userData?.user) {
-    console.error("Errore autenticazione:", authError?.message);
-    return res.status(401).json({ error: "Utente non autenticato" });
-  }
-
-  const userId = userData.user.id;
-
-  // ✅ Parsing file
-  const form = new IncomingForm({ keepExtensions: true });
-
-  form.parse(req, async (err: any, fields: any, files: Files) => {
+  form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error("Errore parsing:", err);
-      return res.status(500).json({ error: "Errore durante il parsing del file" });
+      console.error(err);
+      return res.status(500).json({ error: "Errore nel parsing del form" });
     }
 
-    const file = Array.isArray(files.file) ? files.file[0] : files.file;
-
-if (!file || !file.filepath) {
-  return res.status(400).json({ error: "File non valido o assente" });
-}
-
-const buffer = fs.readFileSync(file.filepath);
-const originalName = file.originalFilename || "tesi.pdf";
-const storagePath = `${userId}/${originalName}`;
-const contentType = file.mimetype || undefined;
-
-const { data: uploadData, error: uploadError } = await supabase.storage
-  .from("tesi")
-  .upload(storagePath, buffer, {
-    contentType,
-    upsert: true,
-  });
-
-
-    if (uploadError) {
-      console.error("Errore upload:", uploadError.message);
-      return res.status(500).json({ error: uploadError.message });
+    const file = files.file?.[0];
+    if (!file) {
+      return res.status(400).json({ error: "Nessun file caricato" });
     }
 
-    // ✅ Salvataggio metadati nel DB
-    const { error: insertError } = await supabase.from("uploaded_files").insert([
-      {
+    try {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) {
+        return res.status(401).json({ error: "Token mancante" });
+      }
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !user) {
+        console.error(userError);
+        return res.status(401).json({ error: "Utente non autenticato" });
+      }
+
+      const userId = user.id;
+
+      const fileBuffer = fs.readFileSync(file.filepath);
+
+      // ✅ CORRETTO: solo userId + file.name, senza duplicazioni
+      const filePath = `${userId}/${file.originalFilename}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('tesi')
+        .upload(filePath, fileBuffer, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error(uploadError);
+        return res.status(500).json({ error: "Errore durante l'upload" });
+      }
+
+      // ✅ Salva anche in uploaded_files (opzionale)
+      await supabase.from("uploaded_files").insert({
         user_id: userId,
-        filename: storagePath,        // path completo nel bucket
-        originalname: originalName,   // nome originale file utente
-      },
-    ]);
+        filename: file.originalFilename,
+      });
 
-    if (insertError) {
-      console.error("Errore DB:", insertError.message);
-      return res.status(500).json({ error: "Errore salvataggio DB" });
+      return res.status(200).json({ message: "Upload completato" });
+
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Errore interno" });
     }
-
-    return res.status(200).json({
-      message: "Upload completato ✅",
-      path: storagePath,
-      originalname: originalName,
-    });
   });
 }
+
 
 
