@@ -1,7 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
 import { NextApiRequest, NextApiResponse } from "next";
-
-// Middleware per gestire il parsing multipart/form-data
 import formidable from "formidable";
 import fs from "fs";
 
@@ -20,13 +18,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Errore nel parsing del form" });
+      console.error("Errore durante il parsing del form:", err);
+      return res.status(500).json({ error: "Errore durante il parsing del file" });
     }
 
     const file = files.file?.[0];
     if (!file) {
-      return res.status(400).json({ error: "Nessun file caricato" });
+      return res.status(400).json({ error: "File non trovato" });
     }
 
     try {
@@ -37,15 +35,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const { data: { user }, error: userError } = await supabase.auth.getUser(token);
       if (userError || !user) {
-        console.error(userError);
+        console.error("Errore autenticazione Supabase:", userError);
         return res.status(401).json({ error: "Utente non autenticato" });
       }
 
       const userId = user.id;
-
       const fileBuffer = fs.readFileSync(file.filepath);
-
-      // ✅ CORRETTO: solo userId + file.name, senza duplicazioni
       const filePath = `${userId}/${file.originalFilename}`;
 
       const { data, error: uploadError } = await supabase.storage
@@ -56,24 +51,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
       if (uploadError) {
-        console.error(uploadError);
-        return res.status(500).json({ error: "Errore durante l'upload" });
+        console.error("Errore upload Supabase:", uploadError);
+        return res.status(500).json({ error: "Errore durante l'upload su Supabase" });
       }
 
-      // ✅ Salva anche in uploaded_files (opzionale)
+      // Se vuoi salvare anche nel database (opzionale)
       await supabase.from("uploaded_files").insert({
         user_id: userId,
         filename: file.originalFilename,
       });
 
-      return res.status(200).json({ message: "Upload completato" });
+      // ✅ RISPOSTA CORRETTA JSON
+      return res.status(200).json({ success: true, message: "Upload completato" });
 
     } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: "Errore interno" });
+      console.error("Errore interno:", error);
+      return res.status(500).json({ error: "Errore interno del server" });
     }
   });
 }
+
 
 
 
