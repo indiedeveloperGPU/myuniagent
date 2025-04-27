@@ -91,45 +91,46 @@ function TesiPage() {
   };
 
   // ✅ Richiesta analisi
-  const inviaRichiesta = async (tipo: string) => {
-    if (!fileSelezionato) {
-      setError("Seleziona un file prima di inviare la richiesta");
-      return;
-    }
-  
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id;
-    if (!userId) return;
-  
-    // ✅ Crea il percorso del file usando l'ID dell'utente e il nome del file
-    const filePath = `${userId}/${fileSelezionato}`;
-  
-    // ✅ Recupera l'URL pubblico del file nel bucket "tesi"
-    const { data: publicData } = supabase
-      .storage
-      .from('tesi')
-      .getPublicUrl(filePath);
-  
-    // ✅ Verifica se l'URL è stato generato correttamente
-    if (!publicData || !publicData.publicUrl) {
-      setError("Errore nel recuperare il file dal server");
-      return;
-    }
-  
-    // ✅ Ora salva l'URL vero dentro agente_fox
-    await supabase.from("agente_fox").insert({
-      user_id: userId,
-      domanda: `Richiesta analisi ${tipo} per la tesi ${fileSelezionato}`,
-      tipo: "tesi",
-      analisi_tipo: tipo,
-      stato: "in_attesa",
-      inviata_il: new Date().toISOString(),
-      allegati: publicData.publicUrl, // 🔥 Salva l'URL corretto qui
-    });
-  
-    setMessage("Richiesta inviata ✅");
-    await fetchData(); // aggiorna lo storico
-  };
+ const inviaRichiesta = async (tipo: string) => {
+  if (!fileSelezionato) {
+    setError("Seleziona un file prima di inviare la richiesta");
+    return;
+  }
+
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData?.user?.id;
+  if (!userId) return;
+
+  // ✅ Crea il percorso del file con solo userId e filename
+  const filePath = `${userId}/${fileSelezionato}`; // Usa solo l'ID dell'utente come prefisso
+
+  // ✅ Recupera l'URL pubblico del file nel bucket "tesi"
+  const { data: publicData } = supabase
+    .storage
+    .from('tesi')
+    .getPublicUrl(filePath);
+
+  // ✅ Verifica se l'URL è stato generato correttamente
+  if (!publicData || !publicData.publicUrl) {
+    setError("Errore nel recuperare il file dal server");
+    return;
+  }
+
+  // ✅ Ora salva l'URL vero dentro agente_fox
+  await supabase.from("agente_fox").insert({
+    user_id: userId,
+    domanda: `Richiesta analisi ${tipo} per la tesi ${fileSelezionato}`,
+    tipo: "tesi",
+    analisi_tipo: tipo,
+    stato: "in_attesa",
+    inviata_il: new Date().toISOString(),
+    allegati: publicData.publicUrl, // 🔥 Salva l'URL corretto qui
+  });
+
+  setMessage("Richiesta inviata ✅");
+  await fetchData(); // aggiorna lo storico
+};
+
   
   
   
