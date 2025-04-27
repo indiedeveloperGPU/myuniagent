@@ -9,7 +9,7 @@ function TesiPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [fileUtente, setFileUtente] = useState<any[]>([]);
-  const [fileSelezionato, setFileSelezionato] = useState<string>("");
+  const [fileSelezionato, setFileSelezionato] = useState<any | null>(null);
   const [richieste, setRichieste] = useState<any[]>([]);
 
   // ✅ Recupera file caricati e richieste
@@ -91,50 +91,42 @@ function TesiPage() {
   };
 
   // ✅ Richiesta analisi
- const inviaRichiesta = async (tipo: string) => {
-  if (!fileSelezionato) {
-    setError("Seleziona un file prima di inviare la richiesta");
-    return;
-  }
+  const inviaRichiesta = async (tipo: string) => {
+    if (!fileSelezionato) {
+      setError("Seleziona un file prima di inviare la richiesta");
+      return;
+    }
 
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData?.user?.id;
-  if (!userId) return;
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    if (!userId) return;
 
-  // ✅ Crea il percorso corretto del file nel bucket "tesi"
-   const filePath = `${userId}/${fileSelezionato}`;
+    const originalname = fileSelezionato.originalname; // ✅ Usa il nome reale del file
+    const filePath = `${userId}/${originalname}`; // ✅ Percorso corretto
 
-  // ✅ Recupera l'URL pubblico del file nel bucket "tesi"
-  const { data: publicData } = supabase
-    .storage
-    .from('tesi')
-    .getPublicUrl(filePath);
+    const { data: publicData } = supabase
+      .storage
+      .from("tesi")
+      .getPublicUrl(filePath);
 
-  // ✅ Verifica se l'URL è stato generato correttamente
-  if (!publicData || !publicData.publicUrl) {
-    setError("Errore nel recuperare il file dal server");
-    return;
-  }
+    if (!publicData || !publicData.publicUrl) {
+      setError("Errore nel recuperare il file dal server");
+      return;
+    }
 
-  // ✅ Ora salva l'URL pubblico nel database
-  await supabase.from("agente_fox").insert({
-    user_id: userId,
-    domanda: `Richiesta analisi ${tipo} per la tesi ${fileSelezionato}`,
-    tipo: "tesi",
-    analisi_tipo: tipo,
-    stato: "in_attesa",
-    inviata_il: new Date().toISOString(),
-    allegati: publicData.publicUrl, // 🔥 Salva l'URL corretto nel database
-  });
+    await supabase.from("agente_fox").insert({
+      user_id: userId,
+      domanda: `Richiesta analisi ${tipo} per la tesi ${originalname}`,
+      tipo: "tesi",
+      analisi_tipo: tipo,
+      stato: "in_attesa",
+      inviata_il: new Date().toISOString(),
+      allegati: publicData.publicUrl,
+    });
 
-  setMessage("Richiesta inviata ✅");
-  await fetchData(); // aggiorna lo storico
-};
-
-
-  
-  
-  
+    setMessage("Richiesta inviata ✅");
+    await fetchData(); // aggiorna lo storico
+  };
 
   // ✅ Scarica PDF
   const handleDownloadPDF = async (contenuto: string, tipo: string) => {
@@ -158,12 +150,17 @@ function TesiPage() {
         <label className="block font-medium mb-2">Seleziona una tesi già caricata:</label>
         <select
           className="w-full border rounded p-2"
-          value={fileSelezionato}
-          onChange={(e) => setFileSelezionato(e.target.value)}
+          value={fileSelezionato?.id || ""}
+          onChange={(e) => {
+            const file = fileUtente.find((f) => f.id === e.target.value);
+            setFileSelezionato(file || null);
+          }}
         >
           <option value="">-- Seleziona un file --</option>
           {fileUtente.map((f) => (
-            <option key={f.id} value={f.filename}>{f.filename}</option>
+            <option key={f.id} value={f.id}>
+              {f.originalname}
+            </option>
           ))}
         </select>
       </div>
@@ -223,6 +220,7 @@ function TesiPage() {
 
 TesiPage.requireAuth = true;
 export default TesiPage;
+
 
 
 
