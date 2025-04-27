@@ -101,8 +101,8 @@ function TesiPage() {
   const userId = userData?.user?.id;
   if (!userId) return;
 
-  // ✅ Crea il percorso del file con solo userId e filename
-  const filePath = `${userId}/${fileSelezionato}`; // Usa solo l'ID dell'utente come prefisso
+  // ✅ Crea il percorso corretto del file nel bucket "tesi"
+  const filePath = `${userId}/${fileSelezionato}`;  // filePath ora è corretto
 
   // ✅ Recupera l'URL pubblico del file nel bucket "tesi"
   const { data: publicData } = supabase
@@ -116,7 +116,7 @@ function TesiPage() {
     return;
   }
 
-  // ✅ Ora salva l'URL vero dentro agente_fox
+  // ✅ Ora salva l'URL pubblico nel database
   await supabase.from("agente_fox").insert({
     user_id: userId,
     domanda: `Richiesta analisi ${tipo} per la tesi ${fileSelezionato}`,
@@ -124,12 +124,13 @@ function TesiPage() {
     analisi_tipo: tipo,
     stato: "in_attesa",
     inviata_il: new Date().toISOString(),
-    allegati: publicData.publicUrl, // 🔥 Salva l'URL corretto qui
+    allegati: publicData.publicUrl, // 🔥 Salva l'URL corretto nel database
   });
 
   setMessage("Richiesta inviata ✅");
   await fetchData(); // aggiorna lo storico
 };
+
 
   
   
