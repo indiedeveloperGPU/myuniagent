@@ -101,11 +101,14 @@ function TesiPage() {
     const userId = userData?.user?.id;
     if (!userId) return;
   
+    // ✅ Crea il percorso del file usando l'ID dell'utente e il nome del file
+    const filePath = `${userId}/${fileSelezionato}`;
+  
     // ✅ Recupera l'URL pubblico del file nel bucket "tesi"
     const { data: publicData } = supabase
       .storage
       .from('tesi')
-      .getPublicUrl(`${userId}/${fileSelezionato}`);
+      .getPublicUrl(filePath);
   
     // ✅ Verifica se l'URL è stato generato correttamente
     if (!publicData || !publicData.publicUrl) {
@@ -113,7 +116,7 @@ function TesiPage() {
       return;
     }
   
-    // ✅ Ora salvi l'URL vero dentro agente_fox
+    // ✅ Ora salva l'URL vero dentro agente_fox
     await supabase.from("agente_fox").insert({
       user_id: userId,
       domanda: `Richiesta analisi ${tipo} per la tesi ${fileSelezionato}`,
@@ -121,12 +124,13 @@ function TesiPage() {
       analisi_tipo: tipo,
       stato: "in_attesa",
       inviata_il: new Date().toISOString(),
-      allegati: publicData.publicUrl, // 🔥 corretta qui
+      allegati: publicData.publicUrl, // 🔥 Salva l'URL corretto qui
     });
   
     setMessage("Richiesta inviata ✅");
-    await fetchData();
+    await fetchData(); // aggiorna lo storico
   };
+  
   
   
 
@@ -217,7 +221,6 @@ function TesiPage() {
 
 TesiPage.requireAuth = true;
 export default TesiPage;
-
 
 
 
