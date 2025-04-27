@@ -96,7 +96,7 @@ export default function Vocabolario() {
 
     const payload = {
       user_id: session.user.id,
-      vocabolario_id: item.id,
+      contenuto_id: item.id,
       lingua,
       livello,
       tema: item.tema,
