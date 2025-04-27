@@ -65,14 +65,14 @@ export default function Vocabolario() {
 
         supabase
           .from("vocabolario_risposte")
-          .select("vocabolario_id")
+          .select("contenuto_id")
           .eq("user_id", user.id)
           .eq("stato", "corretto")
       ]);
 
       if (vocabolarioData) setVocabolario(vocabolarioData);
       if (completatiData) {
-        const ids = completatiData.map((c) => c.vocabolario_id);
+        const ids = completatiData.map((c) => c.contenuto_id);
         setCompletati(new Set(ids));
       }
       setLoading(false);
