@@ -102,7 +102,7 @@ function TesiPage() {
   if (!userId) return;
 
   // ✅ Crea il percorso corretto del file nel bucket "tesi"
-  const filePath = `${userId}/${userId}/${fileSelezionato}`;
+   const filePath = `${userId}/${fileSelezionato}`;
 
   // ✅ Recupera l'URL pubblico del file nel bucket "tesi"
   const { data: publicData } = supabase
