@@ -5,12 +5,17 @@ import Link from "next/link";
 
 export default function SimulazioniScrittePage() {
   const [categoria, setCategoria] = useState("superiori");
+  const [indirizzo, setIndirizzo] = useState("");
   const [materia, setMateria] = useState("");
   const [argomento, setArgomento] = useState("");
-  const [tipoSimulazione, setTipoSimulazione] = useState("aperte");
+  const [tipoSimulazione, setTipoSimulazione] = useState("");
+  const [materieDisponibili, setMaterieDisponibili] = useState<string[]>([]);
+  const [argomentiDisponibili, setArgomentiDisponibili] = useState<string[]>([]);
+  const [tipologieDisponibili, setTipologieDisponibili] = useState<string[]>([]);
   const [simulazione, setSimulazione] = useState<any>(null);
   const [risposteUtente, setRisposteUtente] = useState("");
   const [correzione, setCorrezione] = useState("");
+  const [successo, setSuccesso] = useState(false);
   const [voto, setVoto] = useState(0);
   const [lode, setLode] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -26,8 +31,76 @@ export default function SimulazioniScrittePage() {
     fetchUser();
   }, []);
 
+  useEffect(() => {
+    const fetchMaterie = async () => {
+      if (categoria && indirizzo) {
+        const { data, error } = await supabase
+          .from("simulazioni_scritti_dataset")
+          .select("materia")
+          .eq("categoria", categoria)
+          .eq("indirizzo", indirizzo)
+          .neq("materia", null);
+
+        if (!error && data) {
+          const uniche = [...new Set(data.map((d) => d.materia))];
+          setMaterieDisponibili(uniche);
+        }
+      } else {
+        setMaterieDisponibili([]);
+      }
+      setMateria("");
+      setArgomento("");
+      setArgomentiDisponibili([]);
+    };
+    fetchMaterie();
+  }, [categoria, indirizzo]);
+
+  useEffect(() => {
+    const fetchArgomenti = async () => {
+      if (materia) {
+        const { data, error } = await supabase
+          .from("simulazioni_scritti_dataset")
+          .select("argomento")
+          .eq("materia", materia)
+          .neq("argomento", null);
+
+        if (!error && data) {
+          const unici = [...new Set(data.map((d) => d.argomento))];
+          setArgomentiDisponibili(unici);
+        }
+      } else {
+        setArgomentiDisponibili([]);
+      }
+      setArgomento("");
+    };
+    fetchArgomenti();
+  }, [materia]);
+
+  useEffect(() => {
+    const fetchTipologie = async () => {
+      if (materia && argomento) {
+        const { data, error } = await supabase
+          .from("simulazioni_scritti_dataset")
+          .select("tipo")
+          .eq("materia", materia)
+          .eq("argomento", argomento);
+  
+        if (!error && data) {
+          const tipiUnici = [...new Set(data.map((d) => d.tipo))];
+          setTipologieDisponibili(tipiUnici);
+          if (tipiUnici.length === 1) {
+            setTipoSimulazione(tipiUnici[0]);
+          }
+        }
+      } else {
+        setTipologieDisponibili([]);
+      }
+    };
+    fetchTipologie();
+  }, [materia, argomento]);
+
   const generaSimulazione = async () => {
-    if (!categoria || !materia || !argomento) {
+    if (!categoria || !indirizzo || !materia || !argomento || !tipoSimulazione) {
       setErrore("Inserisci tutti i campi richiesti.");
       return;
     }
@@ -43,16 +116,15 @@ export default function SimulazioniScrittePage() {
         .from("simulazioni_scritti_dataset")
         .select("*")
         .eq("categoria", categoria)
+        .eq("indirizzo", indirizzo)
         .eq("materia", materia)
         .eq("argomento", argomento)
-        .eq("tipo", tipoSimulazione)
-        .order("random()")
-        .limit(1)
-        .single();
+        .eq("tipo", tipoSimulazione);
 
-      if (error || !data) throw new Error("Simulazione non trovata.");
+      if (error || !data || data.length === 0) throw new Error("Simulazione non trovata.");
 
-      setSimulazione(data);
+      const randomSimulazione = data[Math.floor(Math.random() * data.length)];
+      setSimulazione(randomSimulazione);
     } catch (err: any) {
       setErrore(err.message || "Errore durante il caricamento della simulazione.");
     } finally {
@@ -65,20 +137,22 @@ export default function SimulazioniScrittePage() {
       setErrore("Compila la simulazione prima di correggerla.");
       return;
     }
-
+  
     if (!voto && voto !== 0) {
       setErrore("Assegna un voto prima di correggere.");
       return;
     }
-
+  
     setLoading(true);
     setErrore("");
-
+    setSuccesso(false);
+  
     try {
       const { error } = await supabase.from("simulazioni_scritti_risposte").insert({
         user_id: user.id,
         simulazione_id: simulazione.id,
         categoria,
+        indirizzo,
         materia: simulazione.materia,
         argomento: simulazione.argomento,
         tipo: simulazione.tipo,
@@ -87,16 +161,22 @@ export default function SimulazioniScrittePage() {
         lode: lode,
         correzione: simulazione.soluzione_esempio,
       });
-
+  
       if (error) throw new Error("Errore nel salvataggio della simulazione.");
-
+  
       setCorrezione(simulazione.soluzione_esempio);
+      setSuccesso(true); // ✅ Mostriamo il messaggio di successo
+      // Reset campi
+      setRisposteUtente("");
+      setVoto(0);
+      setLode(false);
     } catch (err: any) {
       setErrore(err.message || "Errore durante la correzione.");
     } finally {
       setLoading(false);
     }
   };
+  
 
   if (!user) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
 
@@ -110,14 +190,12 @@ export default function SimulazioniScrittePage() {
       </div>
 
       <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm mb-6 text-gray-700 text-sm animate-fadein">
-  <div className="flex items-center gap-2">
-    <span className="text-green-500 text-lg">📝</span>
-    <p><strong>Info:</strong> Scegli categoria, materia e argomento per generare una simulazione. Dopo aver risposto, assegna il tuo voto e salva il risultato per visualizzarlo nello storico.</p>
-  </div>
-</div>
+        <div className="flex items-center gap-2">
+          <span className="text-green-500 text-lg">📝</span>
+          <p><strong>Info:</strong> Scegli categoria, indirizzo, materia e argomento per generare una simulazione. Dopo aver risposto, assegna il tuo voto e salva il risultato per visualizzarlo nello storico.</p>
+        </div>
+      </div>
 
-
-      {/* Sezione Selezione Parametri */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
           <label className="font-medium">Categoria</label>
@@ -128,32 +206,64 @@ export default function SimulazioniScrittePage() {
         </div>
 
         <div>
+          <label className="font-medium">Indirizzo</label>
+          <select value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} className="w-full border rounded p-2">
+            <option value="">-- Seleziona Indirizzo --</option>
+            <option value="scientifico">🔬 Liceo Scientifico</option>
+            <option value="classico">📚 Liceo Classico</option>
+            <option value="linguistico">🌎 Liceo Linguistico</option>
+            <option value="scienze-umane">🧠 Liceo Scienze Umane</option>
+            <option value="artistico">🎨 Liceo Artistico</option>
+            <option value="musicale-coreutico">🎵 Liceo Musicale/Coreutico</option>
+            <option value="istituto-tecnico-economico">💼 Tecnico Economico</option>
+            <option value="istituto-tecnico-tecnologico">⚙️ Tecnico Tecnologico</option>
+            <option value="istituto-professionale">🔧 Istituto Professionale</option>
+          </select>
+        </div>
+
+        <div>
           <label className="font-medium">Materia</label>
-          <input type="text" value={materia} onChange={(e) => setMateria(e.target.value)} className="w-full border rounded p-2" placeholder="Es: Diritto, Fisica..." />
+          <select value={materia} onChange={(e) => setMateria(e.target.value)} className="w-full border rounded p-2">
+            <option value="">-- Seleziona Materia --</option>
+            {materieDisponibili.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
         </div>
 
         <div>
           <label className="font-medium">Argomento</label>
-          <input type="text" value={argomento} onChange={(e) => setArgomento(e.target.value)} className="w-full border rounded p-2" placeholder="Es: Contratto, Legge di Ohm..." />
+          <select value={argomento} onChange={(e) => setArgomento(e.target.value)} className="w-full border rounded p-2">
+            <option value="">-- Seleziona Argomento --</option>
+            {argomentiDisponibili.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
         </div>
 
         <div>
           <label className="font-medium">Tipo Simulazione</label>
           <select value={tipoSimulazione} onChange={(e) => setTipoSimulazione(e.target.value)} className="w-full border rounded p-2">
-            <option value="aperte">📄 Domande Aperte</option>
-            <option value="multiple">✅ Risposte Multiple</option>
-            <option value="misto">🔀 Misto</option>
+            <option value="">-- Seleziona Tipo --</option>
+            {tipologieDisponibili.map((tipo) => (
+              <option key={tipo} value={tipo}>
+                {tipo === "aperte" && "📄 Domande Aperte"}
+                {tipo === "multiple" && "✅ Risposte Multiple"}
+                {tipo === "misto" && "🔀 Misto"}
+              </option>
+            ))}
           </select>
         </div>
       </div>
 
-      <button onClick={generaSimulazione} disabled={loading} className="bg-green-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-green-700 hover:scale-105"      >
+      <button onClick={generaSimulazione} disabled={loading} className="bg-green-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-green-700 hover:scale-105">
         {loading ? "Caricamento..." : "Genera Simulazione"}
       </button>
 
       {errore && <p className="text-red-600 mt-4">{errore}</p>}
+      {successo && <p className="text-green-600 mt-4">✅ Simulazione salvata con successo!</p>}
 
-      {/* Simulazione */}
+
       {simulazione && (
         <div className="mt-8 bg-gray-50 p-6 rounded border">
           <h2 className="text-lg font-semibold mb-4">📝 Simulazione</h2>
@@ -166,7 +276,6 @@ export default function SimulazioniScrittePage() {
             placeholder="Scrivi qui le tue risposte..."
           />
 
-          {/* Assegna Voto */}
           <div className="mt-6">
             <label className="font-medium block mb-2">🎯 Assegna il tuo voto:</label>
             <input
@@ -185,13 +294,12 @@ export default function SimulazioniScrittePage() {
             )}
           </div>
 
-          <button onClick={correggiRisposte} disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-blue-700 hover:scale-105"          >
+          <button onClick={correggiRisposte} disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-blue-700 hover:scale-105">
             {loading ? "Salvataggio..." : "Correggi e Salva"}
           </button>
         </div>
       )}
 
-      {/* Correzione */}
       {correzione && (
         <div className="mt-8 bg-green-50 p-6 rounded border">
           <h2 className="text-lg font-semibold mb-4">✅ Soluzione Ideale:</h2>
