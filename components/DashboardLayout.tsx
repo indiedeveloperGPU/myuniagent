@@ -24,6 +24,7 @@ const navItems = [
   { href: "/tools/simulazioni-scritte", label: "✍️ Simulazioni Scritte" },
   { href: "/tools/simulazioni-orali", label: "🎤 Simulazioni Orali" },
   { href: "/tools/richieste-fox", label: "🦊 Richieste Agente Fox" },
+  { href: "/tools/storico-simulazioni", label: "📊 Storico Simulazioni" },
   { href: "/tools/classi", label: "🏫 Classi" },
   { href: "/tools/analyze-tesi", label: "🔍 Analisi Tesi" },
   { href: "/tools/biblioteca", label: "📚 Biblioteca" },
