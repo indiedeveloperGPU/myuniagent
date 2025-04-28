@@ -163,3 +163,5 @@ export default function LingueHomePage() {
   );
 }
 
+LingueHomePage.requireAuth = true
+
