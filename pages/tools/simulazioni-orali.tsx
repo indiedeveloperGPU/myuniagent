@@ -109,3 +109,5 @@ export default function SimulazioniOraliPage() {
     </DashboardLayout>
   );
 }
+
+SimulazioniOraliPage.requireAuth = true
