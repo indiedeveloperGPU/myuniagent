@@ -12,6 +12,8 @@ export default function RiassuntoPage() {
   const [results, setResults] = useState<string[]>([]);
   const [loadingBlocks, setLoadingBlocks] = useState<boolean[]>([]);
   const [error, setError] = useState("");
+  const [inviatoAFox, setInviatoAFox] = useState(false);
+  const [fade, setFade] = useState(false);
   const [userChecked, setUserChecked] = useState(false);
   const [filePathFox, setFilePathFox] = useState<string | null>(null);
   const [allegatoFox, setAllegatoFox] = useState<string | null>(null);
@@ -29,40 +31,30 @@ export default function RiassuntoPage() {
     checkUser();
   }, []);
 
-  // ✅ Polling per risposte da Agente Fox (tipo riassunto)
   useEffect(() => {
     if (!userChecked) return;
-
     const checkRisposteFox = async () => {
       const sessionResult = await supabase.auth.getSession();
       const accessToken = sessionResult.data.session?.access_token;
       const user = sessionResult.data.session?.user;
-
       if (!accessToken || !user?.id) {
         setError("⚠️ Sessione scaduta o utente non autenticato. Effettua di nuovo l’accesso.");
         return;
       }
-
-      if (!user) return;
-
       const { data, error } = await supabase
         .from("agente_fox")
         .select("id, stato")
         .eq("user_id", user.id)
         .eq("tipo", "riassunto")
         .eq("stato", "completato");
-
       if (error) return;
-
       if (data && data.length > 0) {
         alert("🦊 L'Agente Fox ha completato una tua richiesta di riassunto!");
       }
     };
-
     const interval = setInterval(() => {
       checkRisposteFox();
     }, 30000);
-
     return () => clearInterval(interval);
   }, [userChecked]);
 
@@ -116,12 +108,10 @@ export default function RiassuntoPage() {
     const sessionResult = await supabase.auth.getSession();
     const accessToken = sessionResult.data.session?.access_token;
     const user = sessionResult.data.session?.user;
-  
     if (!accessToken || !user?.id) {
       setError("⚠️ Sessione scaduta o utente non autenticato. Effettua di nuovo l’accesso.");
       return;
     }
-  
     const { error } = await supabase.from("agente_fox").insert({
       user_id: user.id,
       tipo: "riassunto",
@@ -130,12 +120,16 @@ export default function RiassuntoPage() {
       allegati: allegatoFox || null,
       inviata_il: new Date().toISOString(),
     });
-  
     if (!error) {
-      alert("✅ La tua richiesta è stata inviata all’Agente Fox!");
+      setInviatoAFox(true);
+      setFade(true);
       setText("");
       setResults([]);
-      setAllegatoFox(null); // reset allegato
+      setAllegatoFox(null);
+      setTimeout(() => {
+        setFade(false);
+        setTimeout(() => setInviatoAFox(false), 500);
+      }, 7500);
     } else {
       setError("❌ Errore durante l'invio ad Agente Fox.");
     }
@@ -143,22 +137,15 @@ export default function RiassuntoPage() {
 
   const handleRemoveFile = async () => {
     if (!filePathFox) return;
-  
-    const { error } = await supabase.storage
-      .from("uploads")
-      .remove([filePathFox]);
-  
+    const { error } = await supabase.storage.from("uploads").remove([filePathFox]);
     if (error) {
       setError(`❌ Errore durante la rimozione del file: ${error.message}`);
       return;
     }
-  
     setAllegatoFox(null);
     setFilePathFox(null);
     alert("✅ File eliminato correttamente.");
   };
-  
-  
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -166,70 +153,45 @@ export default function RiassuntoPage() {
       setError("⚠️ Nessun file selezionato.");
       return;
     }
-  
     if (files.length > 1) {
       alert("📎 Puoi inviare un solo file per volta. Per più documenti, invia più richieste separate.");
     }
-  
     const file = files[0];
     if (!file) {
       setError("⚠️ File non valido.");
       return;
     }
-  
-    e.target.value = ""; // reset input
-  
+    e.target.value = "";
     setError("");
     setResults([]);
     setLoadingBlocks([]);
-  
     if (modalitaFox) {
-      // Modalità Agente Fox: carica solo il file, senza inviare ancora
       const sessionResult = await supabase.auth.getSession();
       const accessToken = sessionResult.data.session?.access_token;
       const user = sessionResult.data.session?.user;
-  
       if (!accessToken || !user?.id) {
         setError("⚠️ Sessione scaduta o utente non autenticato. Effettua di nuovo l’accesso.");
         return;
       }
-  
       const safeName = file.name.replace(/\s+/g, "_").replace(/[^\w.]/gi, "");
       const filePath = `${user.id}/${Date.now()}_${safeName}`;
-  
-      const { error: uploadError } = await supabase.storage
-        .from("uploads")
-        .upload(filePath, file);
-  
+      const { error: uploadError } = await supabase.storage.from("uploads").upload(filePath, file);
       if (uploadError) {
         setError(`Errore nel caricamento del file ${file.name}: ${uploadError.message}`);
         return;
       }
-  
-      const { data: urlData } = supabase.storage
-        .from("uploads")
-        .getPublicUrl(filePath);
-  
-      setAllegatoFox(urlData.publicUrl); // ✅ salva URL pubblico
-      setFilePathFox(filePath);           // ✅ salva anche il percorso per eventuale delete
-  
+      const { data: urlData } = supabase.storage.from("uploads").getPublicUrl(filePath);
+      setAllegatoFox(urlData.publicUrl);
+      setFilePathFox(filePath);
       alert("✅ File caricato correttamente! Ora puoi aggiungere un commento e inviare la richiesta.");
       return;
     }
-  
-    // Modalità GPT automatica (estrazione testo dal file)
     const formData = new FormData();
     formData.append("file", file);
-  
     try {
-      const response = await fetch("/api/estrai-testo", {
-        method: "POST",
-        body: formData,
-      });
-  
+      const response = await fetch("/api/estrai-testo", { method: "POST", body: formData });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Errore estrazione testo");
-  
       if (data.testo) {
         setText(data.testo.trim());
       }
@@ -237,18 +199,21 @@ export default function RiassuntoPage() {
       setError(`Errore nel file ${file.name}: ${err.message}`);
       return;
     }
-  }; 
+  };
 
   const handleExport = async () => {
     const doc = new Document({
-      sections: [{
-        children: results.map((text, i) => [
-          new Paragraph({ children: [new TextRun({ text: `🧩 Blocco ${i + 1}`, bold: true })] }),
-          new Paragraph({ text: text, spacing: { after: 300 } }),
-        ]).flat(),
-      }],
+      sections: [
+        {
+          children: results
+            .map((text, i) => [
+              new Paragraph({ children: [new TextRun({ text: `🧩 Blocco ${i + 1}`, bold: true })] }),
+              new Paragraph({ text: text, spacing: { after: 300 } }),
+            ])
+            .flat(),
+        },
+      ],
     });
-
     const blob = await Packer.toBlob(doc);
     saveAs(blob, "Riassunto_MyUniAgent.docx");
   };
@@ -263,140 +228,67 @@ export default function RiassuntoPage() {
         <div className="mb-8">
           <h2 className="text-lg font-semibold mb-2">📌 Scegli il tipo di riassunto che vuoi ottenere:</h2>
           <div className="flex gap-4">
-            <button
-              onClick={() => setModalitaFox(false)}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            >
-              📝 Riassunto automatico
-            </button>
-            <button
-              onClick={() => setModalitaFox(true)}
-              className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700"
-            >
-              🦊 Riassunto avanzato con Agente Fox
-            </button>
+            <button onClick={() => setModalitaFox(false)} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">📝 Riassunto automatico</button>
+            <button onClick={() => setModalitaFox(true)} className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">🦊 Riassunto avanzato con Agente Fox</button>
           </div>
         </div>
       )}
 
       {modalitaFox !== null && (
         <>
-          {/* Box informativo */}
           <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-900 p-4 rounded mb-6">
             <h2 className="font-semibold text-lg mb-1">ℹ️ Come funziona il riassunto</h2>
-            <p className="text-sm mb-2">
-              Questo strumento genera <strong>riassunti dettagliati e professionali</strong> partendo da un testo che inserisci o da un file caricato.
-              Per garantire la qualità delle risposte, puoi inserire un massimo di <strong>3500 caratteri</strong> per volta con la modalità classica.
-            </p>
-            <p className="text-sm mb-2">📝 <strong>Riassumi</strong> utilizza un sistema ideale per <strong>testi brevi, suddivisi o ben strutturati</strong>.</p>
-            <p className="text-sm mb-2">🦊 <strong>Riassunto avanzato</strong> invia il contenuto all’<strong>Agente Fox</strong>, utile per <strong>documenti lunghi</strong>.</p>
-            <p className="text-sm mb-2">📌 Puoi caricare file PDF, DOCX, TXT o immagini.</p>
-            <p className="text-sm mb-2">🎯 Ideale per: <span className="italic">appunti, dispense, tesi, capitoli universitari</span>.</p>
+            <p className="text-sm mb-2">Questo strumento genera <strong>riassunti dettagliati</strong> partendo da testo o file. Max 3500 caratteri in modalità classica.</p>
+            <p className="text-sm mb-2">🦊 Usa Fox per documenti lunghi!</p>
           </div>
 
-          <p className="text-sm text-gray-600 mb-4">
-            ✅ Modalità attiva: <strong>{modalitaFox ? "Riassunto avanzato con Agente Fox 🦊" : "Riassunto automatico 📝"}</strong>
-          </p>
+          <p className="text-sm text-gray-600 mb-4">✅ Modalità attiva: <strong>{modalitaFox ? "Riassunto avanzato con Agente Fox 🦊" : "Riassunto automatico 📝"}</strong></p>
 
-          <button
-            onClick={() => {
-              setModalitaFox(null);
-              setText("");
-              setResults([]);
-              setError("");
-            }}
-            className="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 mb-6"
-          >
-            🔙 Torna alla scelta modalità
-          </button>
+          <button onClick={() => { setModalitaFox(null); setText(""); setResults([]); setError(""); }} className="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 mb-6">🔙 Torna alla scelta modalità</button>
 
-          {/* Modalità classica */}
           {modalitaFox === false && (
             <div className="mb-4">
-              <textarea
-                className="w-full p-2 border rounded"
-                rows={8}
-                placeholder="Incolla il testo da riassumere..."
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-              />
-              <button
-                onClick={handleSubmitGPT}
-                className="bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-blue-700"
-                disabled={!text}
-              >
-                📝 Riassumi
-              </button>
+              <textarea className="w-full p-2 border rounded" rows={8} placeholder="Incolla il testo da riassumere..." value={text} onChange={(e) => setText(e.target.value)} />
+              <button onClick={handleSubmitGPT} className="bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-blue-700" disabled={!text}>📝 Riassumi</button>
             </div>
           )}
 
-          {/* Modalità Fox */}
           {modalitaFox === true && (
             <div className="mb-4">
-              <textarea
-                className="w-full p-2 border rounded"
-                rows={6}
-                placeholder="Puoi aggiungere un commento o una nota per l’Agente Fox (opzionale)"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-              />
-              <button
-                onClick={inviaAFox}
-                className="bg-orange-600 text-white px-4 py-2 rounded mt-2 hover:bg-orange-700"
-              >
-                🦊 Invia richiesta all’Agente Fox
-              </button>
+              <textarea className="w-full p-2 border rounded" rows={6} placeholder="Commento per Agente Fox (opzionale)" value={text} onChange={(e) => setText(e.target.value)} />
+              <button onClick={inviaAFox} className="bg-orange-600 text-white px-4 py-2 rounded mt-2 hover:bg-orange-700">🦊 Invia richiesta all’Agente Fox</button>
+
               {allegatoFox && (
-  <div className="mt-2 text-sm text-green-600 flex items-center gap-4">
-    📎 File allegato pronto per l'invio.
-    <button
-      onClick={handleRemoveFile}
-      className="text-red-500 text-sm underline hover:text-red-700"
-    >
-      ❌ Rimuovi file
-    </button>
-  </div>
-)}
+                <div className="mt-2 text-sm text-green-600 flex items-center gap-4">
+                  📎 File allegato pronto per l'invio.
+                  <button onClick={handleRemoveFile} className="text-red-500 text-sm underline hover:text-red-700">❌ Rimuovi file</button>
+                </div>
+              )}
 
-
+              {inviatoAFox && (
+                <div className={`bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded mt-4 text-sm transition-all duration-500 ease-in-out ${fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
+                  <strong>🦊 L’Agente Fox sta elaborando la tua richiesta.</strong><br />
+                  Potrai visualizzare la risposta nella sezione <span className="font-medium">“Le mie richieste Agente Fox”</span>.
+                </div>
+              )}
             </div>
           )}
 
           <div className="mb-6">
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept=".pdf,.docx,.txt,.png,.jpg,.jpeg"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-gray-100 border border-gray-300 px-4 py-2 rounded hover:bg-gray-200 text-sm"
-            >
-              📁 Carica file
-            </button>
+            <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" onChange={handleFileUpload} className="hidden" />
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-gray-100 border border-gray-300 px-4 py-2 rounded hover:bg-gray-200 text-sm">📁 Carica file</button>
           </div>
 
           {results.length > 0 && results.map((r, i) => (
             <div key={i} className="bg-gray-100 p-4 rounded whitespace-pre-wrap border-l-4 border-blue-400 mb-4">
               <h2 className="font-semibold mb-1">🧩 Blocco {i + 1}</h2>
-              {loadingBlocks[i]
-                ? <p className="italic text-gray-600">Generazione in corso...</p>
-                : <p>{r}</p>}
+              {loadingBlocks[i] ? <p className="italic text-gray-600">Generazione in corso...</p> : <p>{r}</p>}
             </div>
           ))}
 
           {results.length > 0 && !loadingBlocks.includes(true) && (
             <div className="mt-6">
-              <button
-                onClick={handleExport}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-              >
-                📥 Esporta in DOCX
-              </button>
+              <button onClick={handleExport} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">📥 Esporta in DOCX</button>
             </div>
           )}
 
