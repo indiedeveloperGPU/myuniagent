@@ -18,6 +18,8 @@ export default function LeMieRichiesteFox() {
   const [richieste, setRichieste] = useState<RichiestaFox[]>([]);
   const [caricamento, setCaricamento] = useState(true);
   const [query, setQuery] = useState("");
+  const [selectedRichiesta, setSelectedRichiesta] = useState<RichiestaFox | null>(null);
+  const [filtro, setFiltro] = useState<string>("tutte");
 
   const fetchRichieste = async () => {
     const sessionRes = await supabase.auth.getSession();
@@ -28,16 +30,8 @@ export default function LeMieRichiesteFox() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          detectSessionInUrl: false,
-        },
+        global: { headers: { Authorization: `Bearer ${accessToken}` } },
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       }
     );
 
@@ -65,33 +59,38 @@ export default function LeMieRichiesteFox() {
     saveAs(blob, `Risposta_AgenteFox_${id}.txt`);
   };
 
-  const richiesteFiltrate = richieste.filter((r) =>
-    r.domanda.toLowerCase().includes(query.toLowerCase())
-  );
+  const richiesteFiltrate = richieste.filter((r) => {
+    const matchQuery = r.domanda.toLowerCase().includes(query.toLowerCase());
+    const matchFiltro =
+      filtro === "tutte" ||
+      (filtro === "in_attesa" && r.stato === "in_attesa") ||
+      (filtro === "in_lavorazione" && r.stato === "in_lavorazione") ||
+      (filtro === "completato" && r.stato === "completato");
+    return matchQuery && matchFiltro;
+  });
 
   const getFileType = (url: string) => {
     const extension = url.split(".").pop()?.toLowerCase();
     switch (extension) {
-      case "pdf":
-        return "📄 PDF";
-      case "doc":
-      case "docx":
-        return "📝 DOCX";
-      case "txt":
-        return "📑 TXT";
-      case "xlsx":
-        return "📊 XLSX";
-      case "ppt":
-      case "pptx":
-        return "📽️ PPTX";
-      default:
-        return "🗎 File";
+      case "pdf": return "📄 PDF";
+      case "doc": case "docx": return "📝 DOCX";
+      case "txt": return "📑 TXT";
+      case "xlsx": return "📊 XLSX";
+      case "ppt": case "pptx": return "📽️ PPTX";
+      default: return "🗎 File";
     }
   };
 
   return (
     <DashboardLayout>
       <h1 className="text-2xl font-bold mb-4">🦊 Le mie richieste ad Agente Fox</h1>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button onClick={() => setFiltro("tutte")} className={`px-3 py-1 rounded ${filtro === "tutte" ? "bg-blue-600 text-white" : "bg-gray-200"}`}>Tutte</button>
+        <button onClick={() => setFiltro("in_attesa")} className={`px-3 py-1 rounded ${filtro === "in_attesa" ? "bg-blue-600 text-white" : "bg-gray-200"}`}>In attesa</button>
+        <button onClick={() => setFiltro("in_lavorazione")} className={`px-3 py-1 rounded ${filtro === "in_lavorazione" ? "bg-blue-600 text-white" : "bg-gray-200"}`}>In lavorazione</button>
+        <button onClick={() => setFiltro("completato")} className={`px-3 py-1 rounded ${filtro === "completato" ? "bg-blue-600 text-white" : "bg-gray-200"}`}>Completato</button>
+      </div>
 
       <input
         type="text"
@@ -106,75 +105,102 @@ export default function LeMieRichiesteFox() {
       ) : richiesteFiltrate.length === 0 ? (
         <p>Non hai ancora inviato richieste ad Agente Fox.</p>
       ) : (
-        <div className="space-y-6">
-          {richiesteFiltrate.map((r) => (
-            <details key={r.id} className="bg-white rounded shadow border border-gray-200">
-              <summary className="cursor-pointer p-4 font-medium hover:bg-gray-50">
-                <div className="flex justify-between items-center">
-                  <span>
-                    🗓️ {new Date(r.inviata_il).toLocaleString()} — <strong>
-                      {r.domanda.length > 60 ? r.domanda.slice(0, 60) + "..." : r.domanda}
-                    </strong>
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded font-semibold ${
-                    r.stato === "in_attesa" ? "bg-yellow-200 text-yellow-800" :
-                    r.stato === "in_lavorazione" ? "bg-blue-200 text-blue-800" :
-                    "bg-green-200 text-green-800"
-                  }`}>
-                    {r.stato.replace("_", " ")}
-                  </span>
-                </div>
-              </summary>
-
-              <div className="p-4 border-t space-y-3">
-                <p><strong>Domanda:</strong> {r.domanda}</p>
-
-                {r.risposta ? (
-                  <div className="bg-gray-50 p-3 rounded border border-gray-300 space-y-3">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                      <strong>Risposta:</strong> {r.risposta}
-                    </p>
-
-                    {r.risposta_allegati && Array.isArray(r.risposta_allegati) && r.risposta_allegati.length > 0 && (
-                      <div>
-                        <p className="text-sm font-medium mb-1">📎 File allegati alla risposta:</p>
-                        <ul className="list-disc ml-5 text-sm">
-                          {r.risposta_allegati.map((url, i) => (
-                            <li key={i}>
-                              <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                                {getFileType(url)} - Scarica allegato {i + 1}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    <p className="text-xs text-gray-400">
-                      Risposta ricevuta il: {new Date(r.risposta_il!).toLocaleString()}
-                    </p>
-
-                    {r.risposta_il && new Date().getTime() - new Date(r.risposta_il).getTime() < 5 * 60 * 1000 && (
-                      <div className="text-green-600 text-xs font-semibold">🆕 Nuova risposta appena ricevuta</div>
-                    )}
-
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white border border-gray-200">
+            <thead>
+              <tr>
+                <th className="p-3 border-b text-left">Data invio</th>
+                <th className="p-3 border-b text-left">Domanda</th>
+                <th className="p-3 border-b text-left">Stato</th>
+                <th className="p-3 border-b text-left">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {richiesteFiltrate.map((r) => (
+                <tr key={r.id} className="hover:bg-gray-50">
+                  <td className="p-3 border-b">{new Date(r.inviata_il).toLocaleDateString()}</td>
+                  <td className="p-3 border-b">{r.domanda.length > 50 ? r.domanda.slice(0, 50) + "..." : r.domanda}</td>
+                  <td className="p-3 border-b">
+                    <span className={`text-xs px-2 py-1 rounded font-semibold ${
+                      r.stato === "in_attesa" ? "bg-yellow-200 text-yellow-800" :
+                      r.stato === "in_lavorazione" ? "bg-blue-200 text-blue-800" :
+                      "bg-green-200 text-green-800"
+                    }`}>
+                      {r.stato.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="p-3 border-b">
                     <button
-                      onClick={() => downloadRisposta(r.risposta!, r.id)}
-                      className="mt-2 text-sm text-blue-600 hover:underline"
+                      onClick={() => setSelectedRichiesta(r)}
+                      className="text-sm text-blue-600 hover:underline"
                     >
-                      📥 Scarica risposta
+                      🔍 Visualizza
                     </button>
-                  </div>
-                ) : (
-                  <p className="text-sm italic text-gray-500">
-                    {r.stato === "in_attesa"
-                      ? "🕒 In attesa che l'agente inizi a lavorare sulla tua richiesta."
-                      : "🤖 L'agente sta lavorando alla tua risposta. Torna tra poco!"}
-                  </p>
-                )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modale animata */}
+      {selectedRichiesta && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-sm backdrop-brightness-90 bg-black/20">
+          <div className="bg-white/70 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-lg backdrop-blur-md">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              onClick={() => setSelectedRichiesta(null)}
+            >
+              ❌
+            </button>
+
+            <h2 className="text-xl font-bold mb-4">🦊 Dettagli richiesta</h2>
+
+            <p className="text-sm mb-2"><strong>Data invio:</strong> {new Date(selectedRichiesta.inviata_il).toLocaleString()}</p>
+            <p className="text-sm mb-2"><strong>Domanda:</strong><br />{selectedRichiesta.domanda}</p>
+
+            {selectedRichiesta.risposta ? (
+              <div className="bg-gray-50 p-3 rounded border border-gray-300 mt-4 space-y-2">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                  <strong>Risposta:</strong><br />{selectedRichiesta.risposta}
+                </p>
+
+                {selectedRichiesta.risposta_allegati && selectedRichiesta.risposta_allegati.length > 0 && (
+  <div className="mt-3">
+    <p className="text-sm font-medium mb-1">📎 File allegati:</p>
+    <ul className="list-disc ml-5 text-sm">
+      {selectedRichiesta.risposta_allegati.map((url, i) => (
+        <li key={i}>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+            {getFileType(url)} - Scarica allegato {i + 1}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
+
+                <p className="text-xs text-gray-400">
+                  Risposta ricevuta il: {new Date(selectedRichiesta.risposta_il!).toLocaleString()}
+                </p>
+
+                <button
+                  onClick={() => downloadRisposta(selectedRichiesta.risposta!, selectedRichiesta.id)}
+                  className="mt-3 bg-blue-600 text-white text-sm px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  📥 Scarica risposta
+                </button>
               </div>
-            </details>
-          ))}
+            ) : (
+              <p className="text-sm italic text-gray-500 mt-4">
+                {selectedRichiesta.stato === "in_attesa"
+                  ? "🕒 In attesa che l'agente inizi a lavorare sulla tua richiesta."
+                  : "🤖 L'agente sta lavorando alla tua risposta. Torna tra poco!"}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </DashboardLayout>
