@@ -109,6 +109,14 @@ export default function SimulazioniScrittePage() {
         </Link>
       </div>
 
+      <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm mb-6 text-gray-700 text-sm animate-fadein">
+  <div className="flex items-center gap-2">
+    <span className="text-green-500 text-lg">📝</span>
+    <p><strong>Info:</strong> Scegli categoria, materia e argomento per generare una simulazione. Dopo aver risposto, assegna il tuo voto e salva il risultato per visualizzarlo nello storico.</p>
+  </div>
+</div>
+
+
       {/* Sezione Selezione Parametri */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
