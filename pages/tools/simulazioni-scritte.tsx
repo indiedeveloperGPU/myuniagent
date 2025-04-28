@@ -1,195 +1,198 @@
-import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/DashboardLayout";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-
+import DashboardLayout from "@/components/DashboardLayout";
+import Link from "next/link";
 
 export default function SimulazioniScrittePage() {
+  const [categoria, setCategoria] = useState("superiori");
   const [materia, setMateria] = useState("");
   const [argomento, setArgomento] = useState("");
-  const [simulazione, setSimulazione] = useState("");
+  const [tipoSimulazione, setTipoSimulazione] = useState("aperte");
+  const [simulazione, setSimulazione] = useState<any>(null);
   const [risposteUtente, setRisposteUtente] = useState("");
   const [correzione, setCorrezione] = useState("");
-  const [tipoSimulazione, setTipoSimulazione] = useState("aperte");
-  const [loadingSimulazione, setLoadingSimulazione] = useState(false);
-  const [loadingCorrezione, setLoadingCorrezione] = useState(false);
+  const [voto, setVoto] = useState(0);
+  const [lode, setLode] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState("");
-  const [userChecked, setUserChecked] = useState(false);
 
   useEffect(() => {
-    const checkUser = async () => {
+    const fetchUser = async () => {
       const { data } = await supabase.auth.getUser();
-      if (!data.user) {
-        window.location.href = "/auth";
-        return;
-      }
-      setUserChecked(true);
+      if (!data.user) window.location.href = "/auth";
+      setUser(data.user);
     };
-    checkUser();
+    fetchUser();
   }, []);
 
   const generaSimulazione = async () => {
-    if (!materia || !argomento) {
-      setErrore("Inserisci sia la materia che l’argomento.");
+    if (!categoria || !materia || !argomento) {
+      setErrore("Inserisci tutti i campi richiesti.");
       return;
     }
 
-    setLoadingSimulazione(true);
-    setSimulazione("");
-    setCorrezione("");
-    setErrore("");
+    setLoading(true);
+    setSimulazione(null);
     setRisposteUtente("");
+    setErrore("");
+    setCorrezione("");
 
     try {
-      const res = await fetch("/api/simulazioni-scritte", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          materia,
-          argomento,
-          tipo: tipoSimulazione, // ✅ aggiunto
-        }),
-      });
-      
+      const { data, error } = await supabase
+        .from("simulazioni_scritti_dataset")
+        .select("*")
+        .eq("categoria", categoria)
+        .eq("materia", materia)
+        .eq("argomento", argomento)
+        .eq("tipo", tipoSimulazione)
+        .order("random()")
+        .limit(1)
+        .single();
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Errore generazione simulazione");
+      if (error || !data) throw new Error("Simulazione non trovata.");
 
-      setSimulazione(data.output);
+      setSimulazione(data);
     } catch (err: any) {
-      setErrore(err.message || "Errore generico");
+      setErrore(err.message || "Errore durante il caricamento della simulazione.");
     } finally {
-      setLoadingSimulazione(false);
+      setLoading(false);
     }
   };
 
   const correggiRisposte = async () => {
     if (!simulazione || !risposteUtente) {
-      setErrore("Inserisci le risposte prima di avviare la correzione.");
+      setErrore("Compila la simulazione prima di correggerla.");
       return;
     }
 
-    setLoadingCorrezione(true);
-    setCorrezione("");
+    if (!voto && voto !== 0) {
+      setErrore("Assegna un voto prima di correggere.");
+      return;
+    }
+
+    setLoading(true);
     setErrore("");
 
     try {
-      const res = await fetch("/api/correggi-simulazione", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domanda: simulazione, risposta: risposteUtente }),
+      const { error } = await supabase.from("simulazioni_scritti_risposte").insert({
+        user_id: user.id,
+        simulazione_id: simulazione.id,
+        categoria,
+        materia: simulazione.materia,
+        argomento: simulazione.argomento,
+        tipo: simulazione.tipo,
+        risposte_utente: risposteUtente,
+        voto,
+        lode: lode,
+        correzione: simulazione.soluzione_esempio,
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Errore durante la correzione");
+      if (error) throw new Error("Errore nel salvataggio della simulazione.");
 
-      setCorrezione(data.output);
+      setCorrezione(simulazione.soluzione_esempio);
     } catch (err: any) {
-      setErrore(err.message || "Errore imprevisto");
+      setErrore(err.message || "Errore durante la correzione.");
     } finally {
-      setLoadingCorrezione(false);
+      setLoading(false);
     }
   };
 
-  if (!userChecked) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
+  if (!user) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
 
   return (
     <DashboardLayout>
-      <h1 className="text-2xl font-bold mb-6">✍️ Simulazione Esame Scritto</h1>
-
-      {/* ℹ️ BOX INFORMATIVO */}
-      <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-900 p-4 rounded mb-6">
-        <h2 className="font-semibold text-lg mb-1">ℹ️ Come funziona</h2>
-        <p className="text-sm">
-          Inserisci una materia e un argomento. Verrà generata automaticamente una simulazione con domande aperte sul tema selezionato.
-          Dopo aver scritto le risposte, potrai ricevere una correzione automatica con suggerimenti utili per migliorare.
-        </p>
-        <p className="mt-2 text-sm font-medium">
-          ✅ Ideale per esercitarsi in vista di prove scritte universitarie o maturità.
-        </p>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">✍️ Simulazione Esame Scritto</h1>
+        <Link href="/tools/storico-simulazioni" className="text-blue-600 hover:underline font-medium">
+          📚 Vai al tuo Storico
+        </Link>
       </div>
 
-      <div className="mb-4">
-        <label className="block font-medium">Materia</label>
-        <input
-          type="text"
-          value={materia}
-          onChange={(e) => setMateria(e.target.value)}
-          className="w-full border rounded p-2"
-          placeholder="Es: Diritto, Fisica, Filosofia..."
-        />
+      {/* Sezione Selezione Parametri */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <label className="font-medium">Categoria</label>
+          <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className="w-full border rounded p-2">
+            <option value="superiori">🏫 Scuola Superiore</option>
+            <option value="università">🎓 Università</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="font-medium">Materia</label>
+          <input type="text" value={materia} onChange={(e) => setMateria(e.target.value)} className="w-full border rounded p-2" placeholder="Es: Diritto, Fisica..." />
+        </div>
+
+        <div>
+          <label className="font-medium">Argomento</label>
+          <input type="text" value={argomento} onChange={(e) => setArgomento(e.target.value)} className="w-full border rounded p-2" placeholder="Es: Contratto, Legge di Ohm..." />
+        </div>
+
+        <div>
+          <label className="font-medium">Tipo Simulazione</label>
+          <select value={tipoSimulazione} onChange={(e) => setTipoSimulazione(e.target.value)} className="w-full border rounded p-2">
+            <option value="aperte">📄 Domande Aperte</option>
+            <option value="multiple">✅ Risposte Multiple</option>
+            <option value="misto">🔀 Misto</option>
+          </select>
+        </div>
       </div>
 
-      <div className="mb-4">
-        <label className="block font-medium">Argomento specifico</label>
-        <input
-          type="text"
-          value={argomento}
-          onChange={(e) => setArgomento(e.target.value)}
-          className="w-full border rounded p-2"
-          placeholder="Es: la legge di Ohm, il contratto, Kant..."
-        />
-      </div>
-
-      <div className="mb-4">
-  <label className="block font-medium">Tipo di simulazione</label>
-  <select
-    value={tipoSimulazione}
-    onChange={(e) => setTipoSimulazione(e.target.value)}
-    className="w-full border rounded p-2"
-  >
-    <option value="aperte">📄 Domande aperte</option>
-    <option value="multiple">✅ Risposta multipla</option>
-    <option value="misto">🔀 Misto (aperte + multiple)</option>
-  </select>
-</div>
-
-
-      <button
-        onClick={generaSimulazione}
-        disabled={loadingSimulazione}
-        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-      >
-        {loadingSimulazione ? "Generazione in corso..." : "Genera simulazione"}
+      <button onClick={generaSimulazione} disabled={loading} className="bg-green-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-green-700 hover:scale-105"      >
+        {loading ? "Caricamento..." : "Genera Simulazione"}
       </button>
 
-      {errore && <p className="mt-4 text-red-600">{errore}</p>}
+      {errore && <p className="text-red-600 mt-4">{errore}</p>}
 
+      {/* Simulazione */}
       {simulazione && (
-        <div className="mt-6 bg-gray-50 border rounded p-4 whitespace-pre-line">
-          <h2 className="text-lg font-semibold mb-2">📝 Simulazione generata:</h2>
-          <p>{simulazione}</p>
-        </div>
-      )}
+        <div className="mt-8 bg-gray-50 p-6 rounded border">
+          <h2 className="text-lg font-semibold mb-4">📝 Simulazione</h2>
+          <p className="whitespace-pre-line">{simulazione.contenuto_simulazione}</p>
 
-      {simulazione && (
-        <div className="mt-6">
-          <label className="block font-medium mb-2">✍️ Inserisci qui le tue risposte:</label>
           <textarea
             value={risposteUtente}
             onChange={(e) => setRisposteUtente(e.target.value)}
-            className="w-full p-3 border rounded h-40"
-            placeholder="Rispondi a ciascuna domanda..."
+            className="w-full border p-3 mt-6 rounded h-40"
+            placeholder="Scrivi qui le tue risposte..."
           />
 
-          <button
-            onClick={correggiRisposte}
-            disabled={loadingCorrezione}
-            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            {loadingCorrezione ? "Correzione in corso..." : "Correggi le mie risposte"}
+          {/* Assegna Voto */}
+          <div className="mt-6">
+            <label className="font-medium block mb-2">🎯 Assegna il tuo voto:</label>
+            <input
+              type="number"
+              min={0}
+              max={categoria === "università" ? 30 : 10}
+              value={voto}
+              onChange={(e) => setVoto(Number(e.target.value))}
+              className="w-full border rounded p-2 mb-2"
+            />
+            {categoria === "università" && (
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={lode} onChange={(e) => setLode(e.target.checked)} />
+                <span>Con Lode</span>
+              </div>
+            )}
+          </div>
+
+          <button onClick={correggiRisposte} disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-blue-700 hover:scale-105"          >
+            {loading ? "Salvataggio..." : "Correggi e Salva"}
           </button>
         </div>
       )}
 
+      {/* Correzione */}
       {correzione && (
-        <div className="mt-6 bg-green-50 border rounded p-4 whitespace-pre-line">
-          <h2 className="text-lg font-semibold mb-2">✅ Correzione AI:</h2>
-          <p>{correzione}</p>
+        <div className="mt-8 bg-green-50 p-6 rounded border">
+          <h2 className="text-lg font-semibold mb-4">✅ Soluzione Ideale:</h2>
+          <p className="whitespace-pre-line">{correzione}</p>
         </div>
       )}
     </DashboardLayout>
   );
 }
 
-SimulazioniScrittePage.requireAuth = true
+SimulazioniScrittePage.requireAuth = true;
 
