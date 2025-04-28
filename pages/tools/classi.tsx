@@ -148,3 +148,5 @@ export default function ClassiStudentePage() {
     </DashboardLayout>
   );
 }
+
+ClassiStudentePage.requireAuth = true
