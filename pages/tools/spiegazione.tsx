@@ -13,8 +13,9 @@ export default function Spiegazione() {
   const [userChecked, setUserChecked] = useState(false);
   const [chat, setChat] = useState<{ role: string; content: string }[]>([]);
   const [followUp, setFollowUp] = useState("");
-  const [followUpLoading, setFollowUpLoading] = useState(false);
   const [inviatoAFox, setInviatoAFox] = useState(false);
+  const [fade, setFade] = useState(false); // 🔥 aggiunto per il fade
+  const [followUpLoading, setFollowUpLoading] = useState(false);
   const [chatSalvate, setChatSalvate] = useState<{ titolo: string; data: string }[]>([]);
 
   const router = useRouter();
@@ -185,12 +186,19 @@ export default function Spiegazione() {
     });
   
     if (!error) {
-      toast.success("✅ Richiesta inviata ad Agente Fox!");
+      toast.success("Richiesta inviata ad Agente Fox!");
       setInviatoAFox(true);
+      setFade(true); // 🔥 attiva fade-in
+  
+      setTimeout(() => {
+        setFade(false); // 🔥 fade-out dopo 7.5s
+        setTimeout(() => setInviatoAFox(false), 500); // 🔥 togli completamente dopo fade-out
+      }, 7500);
     } else {
       toast.error("Errore durante l'invio.");
     }
   };
+  
 
   const inviaFollowUp = async () => {
     if (!followUp.trim()) return;
@@ -249,11 +257,12 @@ export default function Spiegazione() {
           🔎 Chiedi supporto all’Agente Fox 🦊
         </button>
         {inviatoAFox && (
-  <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded mt-4">
+  <div className={`bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded mt-4 text-sm transition-all duration-500 ease-in-out ${fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
     <strong>🦊 L’Agente Fox sta elaborando la tua richiesta.</strong><br />
     Potrai visualizzare la risposta appena disponibile nella sezione <span className="font-medium">“Le mie richieste Agente Fox”</span>.
   </div>
 )}
+
 
       </div>
 
