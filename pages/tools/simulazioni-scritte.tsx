@@ -13,6 +13,7 @@ export default function SimulazioniScrittePage() {
   const [argomentiDisponibili, setArgomentiDisponibili] = useState<string[]>([]);
   const [tipologieDisponibili, setTipologieDisponibili] = useState<string[]>([]);
   const [simulazione, setSimulazione] = useState<any>(null);
+  const [risposteMultiple, setRisposteMultiple] = useState<Record<number, string>>({});
   const [risposteUtente, setRisposteUtente] = useState("");
   const [correzione, setCorrezione] = useState("");
   const [successo, setSuccesso] = useState(false);
@@ -133,7 +134,7 @@ export default function SimulazioniScrittePage() {
   };
 
   const correggiRisposte = async () => {
-    if (!simulazione || !risposteUtente) {
+    if (!simulazione || (!risposteUtente && Object.keys(risposteMultiple).length === 0)) {
       setErrore("Compila la simulazione prima di correggerla.");
       return;
     }
@@ -156,7 +157,7 @@ export default function SimulazioniScrittePage() {
         materia: simulazione.materia,
         argomento: simulazione.argomento,
         tipo: simulazione.tipo,
-        risposte_utente: risposteUtente,
+        risposte_utente: tipoSimulazione === "multiple" ? JSON.stringify(risposteMultiple) : risposteUtente,
         voto,
         lode: lode,
         correzione: simulazione.soluzione_esempio,
@@ -165,9 +166,9 @@ export default function SimulazioniScrittePage() {
       if (error) throw new Error("Errore nel salvataggio della simulazione.");
   
       setCorrezione(simulazione.soluzione_esempio);
-      setSuccesso(true); // ✅ Mostriamo il messaggio di successo
-      // Reset campi
+      setSuccesso(true);
       setRisposteUtente("");
+      setRisposteMultiple({});
       setVoto(0);
       setLode(false);
     } catch (err: any) {
@@ -176,6 +177,7 @@ export default function SimulazioniScrittePage() {
       setLoading(false);
     }
   };
+  
   
 
   if (!user) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
@@ -264,46 +266,114 @@ export default function SimulazioniScrittePage() {
       {successo && <p className="text-green-600 mt-4">✅ Simulazione salvata con successo!</p>}
 
 
-      {simulazione && (
-        <div className="mt-8 bg-gray-50 p-6 rounded border">
-          <h2 className="text-lg font-semibold mb-4">📝 Simulazione</h2>
-          <p className="whitespace-pre-line">{simulazione.contenuto_simulazione}</p>
+     
 
-          <textarea
-            value={risposteUtente}
-            onChange={(e) => setRisposteUtente(e.target.value)}
-            className="w-full border p-3 mt-6 rounded h-40"
-            placeholder="Scrivi qui le tue risposte..."
-          />
+{simulazione && (
+  <div className="mt-8 bg-gray-50 p-6 rounded border">
+    <h2 className="text-lg font-semibold mb-4">📝 Simulazione</h2>
 
-          <div className="mt-6">
-            <label className="font-medium block mb-2">🎯 Assegna il tuo voto:</label>
-            <input
-              type="number"
-              min={0}
-              max={categoria === "università" ? 30 : 10}
-              value={voto}
-              onChange={(e) => setVoto(Number(e.target.value))}
-              className="w-full border rounded p-2 mb-2"
-            />
-            {categoria === "università" && (
-              <div className="flex items-center gap-2">
-                <input type="checkbox" checked={lode} onChange={(e) => setLode(e.target.checked)} />
-                <span>Con Lode</span>
+    {simulazione.testo_base && (
+      <div className="mb-6 p-4 bg-gray-100 rounded-lg">
+        <h2 className="text-lg font-bold mb-2">📖 Testo da Analizzare</h2>
+        <p className="whitespace-pre-line">{simulazione.testo_base}</p>
+      </div>
+    )}
+
+    <div className="space-y-4">
+      {Array.isArray(simulazione.contenuto_simulazione) &&
+        simulazione.contenuto_simulazione.map((item: any, index: number) => (
+          <div key={index} className="mb-4">
+            <p className="font-medium mb-1">
+              <b>{index + 1}.</b> {item.domanda}
+            </p>
+
+            {item.opzioni && Array.isArray(item.opzioni) ? (
+              <div className="space-y-1">
+                {item.opzioni.map((opzione: string, opIndex: number) => (
+                  <label key={opIndex} className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name={`domanda-${index}`}
+                      value={opzione}
+                      checked={risposteMultiple[index] === opzione}
+                      onChange={(e) =>
+                        setRisposteMultiple((prev) => ({
+                          ...prev,
+                          [index]: e.target.value,
+                        }))
+                      }
+                    />
+                    {opzione}
+                  </label>
+                ))}
               </div>
+            ) : (
+              <textarea
+                value={risposteUtente}
+                onChange={(e) => setRisposteUtente(e.target.value)}
+                className="w-full border rounded p-2 mt-2"
+                rows={3}
+                placeholder="Scrivi la tua risposta qui..."
+              />
             )}
           </div>
+        ))}
+    </div>
 
-          <button onClick={correggiRisposte} disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-blue-700 hover:scale-105">
-            {loading ? "Salvataggio..." : "Correggi e Salva"}
-          </button>
+    <div className="mt-6">
+      <label className="font-medium block mb-2">🎯 Assegna il tuo voto:</label>
+      <input
+        type="number"
+        min={0}
+        max={categoria === "università" ? 30 : 10}
+        value={voto}
+        onChange={(e) => setVoto(Number(e.target.value))}
+        className="w-full border rounded p-2 mb-2"
+      />
+      {categoria === "università" && (
+        <div className="flex items-center gap-2">
+          <input type="checkbox" checked={lode} onChange={(e) => setLode(e.target.checked)} />
+          <span>Con Lode</span>
         </div>
       )}
+    </div>
+
+    <button
+      onClick={correggiRisposte}
+      disabled={loading}
+      className="bg-blue-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-blue-700 hover:scale-105 mt-4"
+    >
+      {loading ? "Salvataggio..." : "Correggi e Salva"}
+    </button>
+  </div>
+)}
+
+{correzione && (
+  <div className="mt-8 bg-green-50 p-6 rounded border">
+    <h2 className="text-lg font-semibold mb-4">✅ Soluzione Ideale:</h2>
+    <div className="space-y-2">
+      {Array.isArray(correzione) &&
+        correzione.map((item: any, index: number) => (
+          <p key={index} className="whitespace-pre-line">
+            <b>{index + 1}.</b> {item.soluzione}
+          </p>
+        ))}
+    </div>
+  </div>
+)}
+
 
       {correzione && (
         <div className="mt-8 bg-green-50 p-6 rounded border">
           <h2 className="text-lg font-semibold mb-4">✅ Soluzione Ideale:</h2>
-          <p className="whitespace-pre-line">{correzione}</p>
+          <div className="space-y-2">
+  {Array.isArray(correzione) && correzione.map((item: any, index: number) => (
+    <p key={index} className="whitespace-pre-line">
+      <b>{index + 1}.</b> {item.soluzione}
+    </p>
+  ))}
+</div>
+
         </div>
       )}
     </DashboardLayout>
