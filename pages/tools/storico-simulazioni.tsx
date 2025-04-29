@@ -184,6 +184,13 @@ export default function StoricoSimulazioniPage() {
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="bg-white rounded-lg p-6 max-w-2xl w-full space-y-4">
+          <button
+  onClick={() => setSelectedSimulazione(null)}
+  className="absolute top-3 right-4 text-gray-500 hover:text-gray-800 text-2xl"
+>
+  &times;
+</button>
+
             <Dialog.Title className="text-lg font-bold">Dettaglio Simulazione</Dialog.Title>
             {selectedSimulazione && (
               <>
@@ -202,13 +209,41 @@ export default function StoricoSimulazioniPage() {
                 </div>
 
                 <div className="mt-4">
-                  <h3 className="font-semibold mb-2">✍️ Risposte date:</h3>
-                  <p className="bg-gray-100 p-3 rounded whitespace-pre-line">{selectedSimulazione.risposte_utente}</p>
-                </div>
+  <h3 className="font-semibold mb-2">✍️ Risposte date:</h3>
+  <div className="bg-gray-100 p-3 rounded space-y-2">
+    {(() => {
+      try {
+        const parsed = JSON.parse(selectedSimulazione.risposte_utente);
+        if (typeof parsed === "object" && parsed !== null) {
+          return Object.entries(parsed).map(([key, value]: any) => (
+            <p key={key}>
+              <b>{Number(key) + 1}.</b> {value}
+            </p>
+          ));
+        }
+        return <p className="whitespace-pre-line">{selectedSimulazione.risposte_utente}</p>;
+      } catch (e) {
+        return <p className="whitespace-pre-line">{selectedSimulazione.risposte_utente}</p>;
+      }
+    })()}
+  </div>
+</div>
+
 
                 <div className="mt-4">
                   <h3 className="font-semibold mb-2">✅ Soluzione ideale:</h3>
-                  <p className="bg-green-100 p-3 rounded whitespace-pre-line">{selectedSimulazione.correzione}</p>
+                  <div className="bg-green-100 p-3 rounded space-y-2">
+  {Array.isArray(selectedSimulazione.correzione) ? (
+    selectedSimulazione.correzione.map((item: any, index: number) => (
+      <p key={index} className="whitespace-pre-line">
+        <b>{index + 1}.</b> {item.soluzione}
+      </p>
+    ))
+  ) : (
+    <p className="whitespace-pre-line">{selectedSimulazione.correzione}</p> // fallback in caso vecchie risposte TEXT
+  )}
+</div>
+
                 </div>
 
                 <button
@@ -227,3 +262,4 @@ export default function StoricoSimulazioniPage() {
 }
 
 StoricoSimulazioniPage.requireAuth = true;
+
