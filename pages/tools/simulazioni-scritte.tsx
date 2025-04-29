@@ -362,20 +362,6 @@ export default function SimulazioniScrittePage() {
   </div>
 )}
 
-
-      {correzione && (
-        <div className="mt-8 bg-green-50 p-6 rounded border">
-          <h2 className="text-lg font-semibold mb-4">✅ Soluzione Ideale:</h2>
-          <div className="space-y-2">
-  {Array.isArray(correzione) && correzione.map((item: any, index: number) => (
-    <p key={index} className="whitespace-pre-line">
-      <b>{index + 1}.</b> {item.soluzione}
-    </p>
-  ))}
-</div>
-
-        </div>
-      )}
     </DashboardLayout>
   );
 }
