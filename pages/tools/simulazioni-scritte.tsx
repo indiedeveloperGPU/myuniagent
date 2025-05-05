@@ -6,6 +6,7 @@ import Link from "next/link";
 export default function SimulazioniScrittePage() {
   const [categoria, setCategoria] = useState("superiori");
   const [indirizzo, setIndirizzo] = useState("");
+  const [facolta, setFacolta] = useState("");
   const [materia, setMateria] = useState("");
   const [argomento, setArgomento] = useState("");
   const [tipoSimulazione, setTipoSimulazione] = useState("");
@@ -34,12 +35,15 @@ export default function SimulazioniScrittePage() {
 
   useEffect(() => {
     const fetchMaterie = async () => {
-      if (categoria && indirizzo) {
+      const filtro = categoria === "superiori"
+        ? { categoria, indirizzo }
+        : { categoria, facolta };
+
+      if ((categoria === "superiori" && indirizzo) || (categoria === "università" && facolta)) {
         const { data, error } = await supabase
           .from("simulazioni_scritti_dataset")
           .select("materia")
-          .eq("categoria", categoria)
-          .eq("indirizzo", indirizzo)
+          .match(filtro)
           .neq("materia", null);
 
         if (!error && data) {
@@ -54,7 +58,7 @@ export default function SimulazioniScrittePage() {
       setArgomentiDisponibili([]);
     };
     fetchMaterie();
-  }, [categoria, indirizzo]);
+  }, [categoria, indirizzo, facolta]);
 
   useEffect(() => {
     const fetchArgomenti = async () => {
@@ -85,7 +89,7 @@ export default function SimulazioniScrittePage() {
           .select("tipo")
           .eq("materia", materia)
           .eq("argomento", argomento);
-  
+
         if (!error && data) {
           const tipiUnici = [...new Set(data.map((d) => d.tipo))];
           setTipologieDisponibili(tipiUnici);
@@ -101,7 +105,7 @@ export default function SimulazioniScrittePage() {
   }, [materia, argomento]);
 
   const generaSimulazione = async () => {
-    if (!categoria || !indirizzo || !materia || !argomento || !tipoSimulazione) {
+    if (!categoria || (!indirizzo && !facolta) || !materia || !argomento || !tipoSimulazione) {
       setErrore("Inserisci tutti i campi richiesti.");
       return;
     }
@@ -113,14 +117,21 @@ export default function SimulazioniScrittePage() {
     setCorrezione("");
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("simulazioni_scritti_dataset")
         .select("*")
         .eq("categoria", categoria)
-        .eq("indirizzo", indirizzo)
         .eq("materia", materia)
         .eq("argomento", argomento)
         .eq("tipo", tipoSimulazione);
+
+      if (categoria === "superiori") {
+        query = query.eq("indirizzo", indirizzo);
+      } else {
+        query = query.eq("facolta", facolta);
+      }
+
+      const { data, error } = await query;
 
       if (error || !data || data.length === 0) throw new Error("Simulazione non trovata.");
 
@@ -134,30 +145,29 @@ export default function SimulazioniScrittePage() {
   };
 
   const correggiRisposte = async () => {
-    const risposteFinali = tipoSimulazione === "multiple"
-      ? risposteMultiple
-      : risposteAperte;
-  
+    const risposteFinali = tipoSimulazione === "multiple" ? risposteMultiple : risposteAperte;
+
     if (!simulazione || Object.keys(risposteFinali).length === 0) {
       setErrore("Compila la simulazione prima di correggerla.");
       return;
     }
-  
+
     if (!voto && voto !== 0) {
       setErrore("Assegna un voto prima di correggere.");
       return;
     }
-  
+
     setLoading(true);
     setErrore("");
     setSuccesso(false);
-  
+
     try {
       const { error } = await supabase.from("simulazioni_scritti_risposte").insert({
         user_id: user.id,
         simulazione_id: simulazione.id,
         categoria,
         indirizzo,
+        facolta,
         materia: simulazione.materia,
         argomento: simulazione.argomento,
         tipo: simulazione.tipo,
@@ -166,9 +176,9 @@ export default function SimulazioniScrittePage() {
         lode,
         correzione: simulazione.soluzione_esempio,
       });
-  
+
       if (error) throw new Error("Errore nel salvataggio della simulazione.");
-  
+
       setCorrezione(simulazione.soluzione_esempio);
       setSuccesso(true);
       setRisposteAperte({});
@@ -181,8 +191,6 @@ export default function SimulazioniScrittePage() {
       setLoading(false);
     }
   };
-  
-  
 
   if (!user) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
 
@@ -198,69 +206,132 @@ export default function SimulazioniScrittePage() {
       <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm mb-6 text-gray-700 text-sm animate-fadein">
         <div className="flex items-center gap-2">
           <span className="text-green-500 text-lg">📝</span>
-          <p><strong>Info:</strong> Scegli categoria, indirizzo, materia e argomento per generare una simulazione. Dopo aver risposto, assegna il tuo voto e salva il risultato per visualizzarlo nello storico.</p>
+          <p>
+  <strong>Info:</strong> Scegli {categoria === "superiori" ? "categoria, indirizzo" : "categoria, facoltà"}, materia e argomento per generare una simulazione.
+</p>
+
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div>
-          <label className="font-medium">Categoria</label>
-          <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className="w-full border rounded p-2">
-            <option value="superiori">🏫 Scuola Superiore</option>
-            <option value="università">🎓 Università</option>
-          </select>
-        </div>
+  {/* Categoria */}
+  <div>
+    <label className="font-medium">Categoria</label>
+    <select
+      value={categoria}
+      onChange={(e) => {
+        setCategoria(e.target.value);
+        setIndirizzo("");
+        setFacolta("");
+        setMateria("");
+        setArgomento("");
+        setTipologieDisponibili([]);
+        setMaterieDisponibili([]);
+        setArgomentiDisponibili([]);
+      }}
+      className="w-full border rounded p-2"
+    >
+      <option value="superiori">🏫 Scuola Superiore</option>
+      <option value="università">🎓 Università</option>
+    </select>
+  </div>
 
-        <div>
-          <label className="font-medium">Indirizzo</label>
-          <select value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} className="w-full border rounded p-2">
-            <option value="">-- Seleziona Indirizzo --</option>
-            <option value="scientifico">🔬 Liceo Scientifico</option>
-            <option value="classico">📚 Liceo Classico</option>
-            <option value="linguistico">🌎 Liceo Linguistico</option>
-            <option value="scienze-umane">🧠 Liceo Scienze Umane</option>
-            <option value="artistico">🎨 Liceo Artistico</option>
-            <option value="musicale-coreutico">🎵 Liceo Musicale/Coreutico</option>
-            <option value="istituto-tecnico-economico">💼 Tecnico Economico</option>
-            <option value="istituto-tecnico-tecnologico">⚙️ Tecnico Tecnologico</option>
-            <option value="istituto-professionale">🔧 Istituto Professionale</option>
-          </select>
-        </div>
+  {/* Indirizzo (solo se superiori) */}
+  {categoria === "superiori" && (
+    <div>
+      <label className="font-medium">Indirizzo</label>
+      <select
+        value={indirizzo}
+        onChange={(e) => setIndirizzo(e.target.value)}
+        className="w-full border rounded p-2"
+      >
+        <option value="">-- Seleziona Indirizzo --</option>
+        <option value="scientifico">🔬 Liceo Scientifico</option>
+        <option value="classico">📚 Liceo Classico</option>
+        <option value="linguistico">🌎 Liceo Linguistico</option>
+        <option value="scienze-umane">🧠 Liceo Scienze Umane</option>
+        <option value="artistico">🎨 Liceo Artistico</option>
+        <option value="musicale-coreutico">🎵 Liceo Musicale/Coreutico</option>
+        <option value="istituto-tecnico-economico">💼 Tecnico Economico</option>
+        <option value="istituto-tecnico-tecnologico">⚙️ Tecnico Tecnologico</option>
+        <option value="istituto-professionale">🔧 Istituto Professionale</option>
+      </select>
+    </div>
+  )}
 
-        <div>
-          <label className="font-medium">Materia</label>
-          <select value={materia} onChange={(e) => setMateria(e.target.value)} className="w-full border rounded p-2">
-            <option value="">-- Seleziona Materia --</option>
-            {materieDisponibili.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-        </div>
+  {/* Facoltà (solo se università) */}
+  {categoria === "università" && (
+    <div>
+      <label className="font-medium">Facoltà</label>
+      <select
+        value={facolta}
+        onChange={(e) => setFacolta(e.target.value)}
+        className="w-full border rounded p-2"
+      >
+        <option value="">-- Seleziona Facoltà --</option>
+        <option value="giurisprudenza">⚖️ Giurisprudenza</option>
+        <option value="medicina">🧬 Medicina</option>
+        <option value="ingegneria">🔧 Ingegneria</option>
+        <option value="psicologia">🧠 Psicologia</option>
+        <option value="economia">💼 Economia</option>
+        <option value="lettere">📚 Lettere</option>
+        <option value="lingue">🌍 Lingue</option>
+        <option value="scienze-politiche">🏛️ Scienze Politiche</option>
+        <option value="architettura">🏗️ Architettura</option>
+      </select>
+    </div>
+  )}
 
-        <div>
-          <label className="font-medium">Argomento</label>
-          <select value={argomento} onChange={(e) => setArgomento(e.target.value)} className="w-full border rounded p-2">
-            <option value="">-- Seleziona Argomento --</option>
-            {argomentiDisponibili.map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
-        </div>
+  {/* Materia */}
+  <div>
+    <label className="font-medium">Materia</label>
+    <select
+      value={materia}
+      onChange={(e) => setMateria(e.target.value)}
+      className="w-full border rounded p-2"
+    >
+      <option value="">-- Seleziona Materia --</option>
+      {materieDisponibili.map((m) => (
+        <option key={m} value={m}>{m}</option>
+      ))}
+    </select>
+  </div>
 
-        <div>
-          <label className="font-medium">Tipo Simulazione</label>
-          <select value={tipoSimulazione} onChange={(e) => setTipoSimulazione(e.target.value)} className="w-full border rounded p-2">
-            <option value="">-- Seleziona Tipo --</option>
-            {tipologieDisponibili.map((tipo) => (
-              <option key={tipo} value={tipo}>
-                {tipo === "aperte" && "📄 Domande Aperte"}
-                {tipo === "multiple" && "✅ Risposte Multiple"}
-                {tipo === "misto" && "🔀 Misto"}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+  {/* Argomento */}
+  <div>
+    <label className="font-medium">Argomento</label>
+    <select
+      value={argomento}
+      onChange={(e) => setArgomento(e.target.value)}
+      className="w-full border rounded p-2"
+    >
+      <option value="">-- Seleziona Argomento --</option>
+      {argomentiDisponibili.map((a) => (
+        <option key={a} value={a}>{a}</option>
+      ))}
+    </select>
+  </div>
+
+  {/* Tipo simulazione */}
+  <div>
+    <label className="font-medium">Tipo Simulazione</label>
+    <select
+      value={tipoSimulazione}
+      onChange={(e) => setTipoSimulazione(e.target.value)}
+      className="w-full border rounded p-2"
+    >
+      <option value="">-- Seleziona Tipo --</option>
+      {tipologieDisponibili.map((tipo) => (
+        <option key={tipo} value={tipo}>
+          {tipo === "aperte" && "📄 Domande Aperte"}
+          {tipo === "multiple" && "✅ Risposte Multiple"}
+          {tipo === "misto" && "🔀 Misto"}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
+
 
       <button onClick={generaSimulazione} disabled={loading} className="bg-green-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-green-700 hover:scale-105">
         {loading ? "Caricamento..." : "Genera Simulazione"}
