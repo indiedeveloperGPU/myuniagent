@@ -14,7 +14,7 @@ export default function SimulazioniScrittePage() {
   const [tipologieDisponibili, setTipologieDisponibili] = useState<string[]>([]);
   const [simulazione, setSimulazione] = useState<any>(null);
   const [risposteMultiple, setRisposteMultiple] = useState<Record<number, string>>({});
-  const [risposteUtente, setRisposteUtente] = useState("");
+  const [risposteAperte, setRisposteAperte] = useState<Record<number, string>>({});
   const [correzione, setCorrezione] = useState("");
   const [successo, setSuccesso] = useState(false);
   const [voto, setVoto] = useState(0);
@@ -108,7 +108,7 @@ export default function SimulazioniScrittePage() {
 
     setLoading(true);
     setSimulazione(null);
-    setRisposteUtente("");
+    setRisposteAperte("");
     setErrore("");
     setCorrezione("");
 
@@ -134,7 +134,11 @@ export default function SimulazioniScrittePage() {
   };
 
   const correggiRisposte = async () => {
-    if (!simulazione || (!risposteUtente && Object.keys(risposteMultiple).length === 0)) {
+    const risposteFinali = tipoSimulazione === "multiple"
+      ? risposteMultiple
+      : risposteAperte;
+  
+    if (!simulazione || Object.keys(risposteFinali).length === 0) {
       setErrore("Compila la simulazione prima di correggerla.");
       return;
     }
@@ -157,9 +161,9 @@ export default function SimulazioniScrittePage() {
         materia: simulazione.materia,
         argomento: simulazione.argomento,
         tipo: simulazione.tipo,
-        risposte_utente: tipoSimulazione === "multiple" ? JSON.stringify(risposteMultiple) : risposteUtente,
+        risposte_utente: JSON.stringify(risposteFinali),
         voto,
-        lode: lode,
+        lode,
         correzione: simulazione.soluzione_esempio,
       });
   
@@ -167,7 +171,7 @@ export default function SimulazioniScrittePage() {
   
       setCorrezione(simulazione.soluzione_esempio);
       setSuccesso(true);
-      setRisposteUtente("");
+      setRisposteAperte({});
       setRisposteMultiple({});
       setVoto(0);
       setLode(false);
@@ -309,12 +313,18 @@ export default function SimulazioniScrittePage() {
               </div>
             ) : (
               <textarea
-                value={risposteUtente}
-                onChange={(e) => setRisposteUtente(e.target.value)}
-                className="w-full border rounded p-2 mt-2"
-                rows={3}
-                placeholder="Scrivi la tua risposta qui..."
-              />
+  value={risposteAperte[index] || ""}
+  onChange={(e) =>
+    setRisposteAperte((prev) => ({
+      ...prev,
+      [index]: e.target.value,
+    }))
+  }
+  className="w-full border rounded p-2 mt-2"
+  rows={3}
+  placeholder="Scrivi la tua risposta qui..."
+/>
+
             )}
           </div>
         ))}
