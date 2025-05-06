@@ -210,7 +210,7 @@ export default function StoricoSimulazioniPage() {
       <Dialog open={!!selectedSimulazione} onClose={() => setSelectedSimulazione(null)} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <Dialog.Panel className="bg-white rounded-lg p-6 max-w-2xl w-full space-y-4">
+        <Dialog.Panel className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto scrolling-touch overscroll-contain space-y-4 relative">
           <button
   onClick={() => setSelectedSimulazione(null)}
   className="absolute top-3 right-4 text-gray-500 hover:text-gray-800 text-2xl"
