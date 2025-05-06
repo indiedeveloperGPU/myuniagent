@@ -18,6 +18,7 @@ export default function SimulazioniScrittePage() {
   const [risposteAperte, setRisposteAperte] = useState<Record<number, string>>({});
   const [correzione, setCorrezione] = useState("");
   const [successo, setSuccesso] = useState(false);
+  const [erroriDomande, setErroriDomande] = useState<number[]>([]);
   const [voto, setVoto] = useState(0);
   const [lode, setLode] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -59,6 +60,21 @@ export default function SimulazioniScrittePage() {
     };
     fetchMaterie();
   }, [categoria, indirizzo, facolta]);
+
+  useEffect(() => {
+    if (errore) {
+      const timer = setTimeout(() => setErrore(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errore]);
+  
+  useEffect(() => {
+    if (successo) {
+      const timer = setTimeout(() => setSuccesso(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successo]);
+  
 
   useEffect(() => {
     const fetchArgomenti = async () => {
@@ -144,23 +160,77 @@ export default function SimulazioniScrittePage() {
     }
   };
 
+  const RiepilogoScelte = () => (
+    <>
+      <h3 className="text-sm font-semibold mb-1 text-gray-600">📎 Riepilogo scelte</h3>
+      <div className="mb-4 text-sm text-gray-700 bg-gray-100 p-3 rounded-lg border border-gray-200">
+        <p className="flex flex-wrap gap-2 items-center">
+          {categoria === "superiori" ? "🏫 Scuola Superiore" : "🎓 Università"}
+          {categoria === "superiori" && indirizzo && <>· 🎒 {indirizzo}</>}
+          {categoria === "università" && facolta && <>· 🏛️ {facolta}</>}
+          {materia && <>· 📘 {materia}</>}
+          {argomento && <>· 📂 {argomento}</>}
+          {tipoSimulazione && (
+            <>
+              · 🧪{" "}
+              {tipoSimulazione === "multiple"
+                ? "Risposte Multiple"
+                : tipoSimulazione === "aperte"
+                ? "Domande Aperte"
+                : "Misto"}
+            </>
+          )}
+        </p>
+      </div>
+    </>
+  );
+  
+
   const correggiRisposte = async () => {
     const risposteFinali = tipoSimulazione === "multiple" ? risposteMultiple : risposteAperte;
-
-    if (!simulazione || Object.keys(risposteFinali).length === 0) {
-      setErrore("Compila la simulazione prima di correggerla.");
+  
+    if (!simulazione) {
+      setErrore("Simulazione non trovata.");
       return;
     }
-
+  
+    const totaleDomande = simulazione.contenuto_simulazione?.length || 0;
+    const errori: number[] = [];
+  
+    // Validazione per multiple
+    if (tipoSimulazione === "multiple") {
+      for (let i = 0; i < totaleDomande; i++) {
+        if (!risposteMultiple[i]) errori.push(i);
+      }
+    }
+  
+    // Validazione per aperte
+    if (tipoSimulazione === "aperte") {
+      for (let i = 0; i < totaleDomande; i++) {
+        const risposta = risposteAperte[i];
+        if (!risposta || risposta.trim().length < 10) errori.push(i);
+      }
+    }
+  
+    if (errori.length > 0) {
+      setErrore("Compila correttamente tutte le domande prima di correggere.");
+      setErroriDomande(errori);
+      const el = document.getElementById(`domanda-${errori[0]}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+  
+    setErroriDomande([]); // reset
+  
     if (!voto && voto !== 0) {
       setErrore("Assegna un voto prima di correggere.");
       return;
     }
-
+  
     setLoading(true);
     setErrore("");
     setSuccesso(false);
-
+  
     try {
       const { error } = await supabase.from("simulazioni_scritti_risposte").insert({
         user_id: user.id,
@@ -176,9 +246,9 @@ export default function SimulazioniScrittePage() {
         lode,
         correzione: simulazione.soluzione_esempio,
       });
-
+  
       if (error) throw new Error("Errore nel salvataggio della simulazione.");
-
+  
       setCorrezione(simulazione.soluzione_esempio);
       setSuccesso(true);
       setRisposteAperte({});
@@ -191,6 +261,7 @@ export default function SimulazioniScrittePage() {
       setLoading(false);
     }
   };
+  
 
   if (!user) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
 
@@ -332,20 +403,89 @@ export default function SimulazioniScrittePage() {
   </div>
 </div>
 
+{!simulazione && categoria && (materia || argomento || tipoSimulazione) && (
+  <>
+    <h3 className="text-sm font-semibold mb-1 text-gray-600">📎 Riepilogo scelte</h3>
+    <div className="mb-4 text-sm text-gray-700 bg-gray-100 p-3 rounded-lg border border-gray-200">
+      <p className="flex flex-wrap gap-2 items-center">
+        {categoria === "superiori" ? "🏫 Scuola Superiore" : "🎓 Università"}
+        {categoria === "superiori" && indirizzo && <>· 🎒 {indirizzo}</>}
+        {categoria === "università" && facolta && <>· 🏛️ {facolta}</>}
+        {materia && <>· 📘 {materia}</>}
+        {argomento && <>· 📂 {argomento}</>}
+        {tipoSimulazione && (
+          <>
+            · 🧪{" "}
+            {tipoSimulazione === "multiple"
+              ? "Risposte Multiple"
+              : tipoSimulazione === "aperte"
+              ? "Domande Aperte"
+              : "Misto"}
+          </>
+        )}
+      </p>
+    </div>
+  </>
+)}
 
-      <button onClick={generaSimulazione} disabled={loading} className="bg-green-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-green-700 hover:scale-105">
-        {loading ? "Caricamento..." : "Genera Simulazione"}
-      </button>
 
-      {errore && <p className="text-red-600 mt-4">{errore}</p>}
-      {successo && <p className="text-green-600 mt-4">✅ Simulazione salvata con successo!</p>}
+
+
+
+<button
+  onClick={generaSimulazione}
+  disabled={loading}
+  className="bg-green-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-green-700 hover:scale-105 flex items-center gap-2"
+>
+  {loading ? (
+    <>
+      <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+        <circle
+          className="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          strokeWidth="4"
+          fill="none"
+        />
+        <path
+          className="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+        />
+      </svg>
+      Caricamento...
+    </>
+  ) : (
+    "Genera Simulazione"
+  )}
+</button>
+
+
+      {errore && (
+  <div className="mt-4 p-3 rounded-lg bg-red-100 text-red-700 border border-red-300 flex items-start gap-2 text-sm">
+    <span className="text-lg">❌</span>
+    <span>{errore}</span>
+  </div>
+)}
+
+{successo && (
+  <div className="mt-4 p-3 rounded-lg bg-green-100 text-green-700 border border-green-300 flex items-start gap-2 text-sm">
+    <span className="text-lg">✅</span>
+    <span>Simulazione salvata con successo! Puoi visualizzarla nello storico.</span>
+  </div>
+)}
+
 
 
      
 
-{simulazione && (
+      {simulazione && ( 
   <div className="mt-8 bg-gray-50 p-6 rounded border">
+    <RiepilogoScelte />
     <h2 className="text-lg font-semibold mb-4">📝 Simulazione</h2>
+
 
     {simulazione.testo_base && (
       <div className="mb-6 p-4 bg-gray-100 rounded-lg">
@@ -357,46 +497,81 @@ export default function SimulazioniScrittePage() {
     <div className="space-y-4">
       {Array.isArray(simulazione.contenuto_simulazione) &&
         simulazione.contenuto_simulazione.map((item: any, index: number) => (
-          <div key={index} className="mb-4">
-            <p className="font-medium mb-1">
-              <b>{index + 1}.</b> {item.domanda}
-            </p>
+          <div
+  key={index}
+  id={`domanda-${index}`}
+  className={`mb-4 p-2 rounded ${
+    erroriDomande.includes(index) ? "border border-red-500 bg-red-50" : "border border-transparent"
+  }`}
+>
 
-            {item.opzioni && Array.isArray(item.opzioni) ? (
-              <div className="space-y-1">
-                {item.opzioni.map((opzione: string, opIndex: number) => (
-                  <label key={opIndex} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name={`domanda-${index}`}
-                      value={opzione}
-                      checked={risposteMultiple[index] === opzione}
-                      onChange={(e) =>
-                        setRisposteMultiple((prev) => ({
-                          ...prev,
-                          [index]: e.target.value,
-                        }))
-                      }
-                    />
-                    {opzione}
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <textarea
-  value={risposteAperte[index] || ""}
-  onChange={(e) =>
-    setRisposteAperte((prev) => ({
-      ...prev,
-      [index]: e.target.value,
-    }))
-  }
-  className="w-full border rounded p-2 mt-2"
-  rows={3}
-  placeholder="Scrivi la tua risposta qui..."
-/>
+<p className="font-medium mb-1 flex items-center gap-2">
+  <b>{index + 1}.</b> {item.domanda}
+  {!erroriDomande.includes(index) && (
+    <span className="text-green-600 text-sm">✅</span>
+  )}
+</p>
 
-            )}
+
+{item.opzioni && Array.isArray(item.opzioni) ? (
+  <div className="space-y-1">
+    {item.opzioni.map((opzione: string, opIndex: number) => {
+      const rispostaUtente = risposteMultiple[index];
+      const rispostaCorretta = item.risposta_corretta;
+      const isCorretto = rispostaUtente === rispostaCorretta;
+      const isSelezionata = rispostaUtente === opzione;
+      const èRispostaCorretta = opzione === rispostaCorretta;
+
+      const showCorretto = correzione && isSelezionata && isCorretto;
+      const showSbagliato = correzione && isSelezionata && !isCorretto;
+      const showCorrettaNonScelta = correzione && !isSelezionata && èRispostaCorretta && !isCorretto;
+
+      return (
+        <label
+          key={opIndex}
+          className={`flex items-center gap-2 p-2 rounded cursor-pointer
+            ${showCorretto ? "bg-green-100 border border-green-400" : ""}
+            ${showSbagliato ? "bg-red-100 border border-red-400" : ""}
+            ${showCorrettaNonScelta ? "bg-green-50 border border-green-300" : ""}
+          `}
+        >
+          <input
+            type="radio"
+            name={`domanda-${index}`}
+            value={opzione}
+            disabled={!!correzione}
+            checked={isSelezionata}
+            onChange={(e) =>
+              setRisposteMultiple((prev) => ({
+                ...prev,
+                [index]: e.target.value,
+              }))
+            }
+          />
+          <span>{opzione}</span>
+
+          {showCorretto && <span className="text-green-600 text-sm">✅ Corretta</span>}
+          {showSbagliato && <span className="text-red-600 text-sm">❌ Sbagliata</span>}
+          {showCorrettaNonScelta && <span className="text-green-600 text-sm">✔️ Corretta</span>}
+        </label>
+      );
+    })}
+  </div>
+) : (
+  <textarea
+    value={risposteAperte[index] || ""}
+    onChange={(e) =>
+      setRisposteAperte((prev) => ({
+        ...prev,
+        [index]: e.target.value,
+      }))
+    }
+    className="w-full border rounded p-2 mt-2"
+    rows={3}
+    placeholder="Scrivi la tua risposta qui..."
+  />
+)}
+
           </div>
         ))}
     </div>
@@ -420,12 +595,34 @@ export default function SimulazioniScrittePage() {
     </div>
 
     <button
-      onClick={correggiRisposte}
-      disabled={loading}
-      className="bg-blue-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-blue-700 hover:scale-105 mt-4"
-    >
-      {loading ? "Salvataggio..." : "Correggi e Salva"}
-    </button>
+  onClick={correggiRisposte}
+  disabled={loading}
+  className="bg-blue-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-blue-700 hover:scale-105 flex items-center gap-2 mt-4"
+>
+  {loading ? (
+    <>
+      <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+        <circle
+          className="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          strokeWidth="4"
+          fill="none"
+        />
+        <path
+          className="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+        />
+      </svg>
+      Salvataggio...
+    </>
+  ) : (
+    "Correggi e Salva"
+  )}
+</button>
   </div>
 )}
 
@@ -448,4 +645,3 @@ export default function SimulazioniScrittePage() {
 }
 
 SimulazioniScrittePage.requireAuth = true;
-
