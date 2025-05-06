@@ -32,7 +32,7 @@ export default function StoricoSimulazioniPage() {
       try {
         const [superioriRes, universitaRes] = await Promise.all([
           supabase
-            .from("simulazioni_scritti_risposte")
+            .from("simulazioni_scritti_risposte_superiori")
             .select("*")
             .eq("user_id", data.user.id),
           supabase
