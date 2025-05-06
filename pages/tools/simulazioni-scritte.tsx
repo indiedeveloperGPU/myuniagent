@@ -307,16 +307,11 @@ export default function SimulazioniScrittePage() {
     voto,
     correzione: simulazione.soluzione_esempio,
     lode: categoria === "università" ? lode : null,
-    ...(categoria === "superiori" && { indirizzo }),
-    ...(categoria === "università" && { facolta, corso }),
-    ...(simulazione.versione && { versione: simulazione.versione })
+    ...(categoria === "superiori" && { indirizzo, categoria }),
+    ...(categoria === "università" && { facolta, corso, versione: simulazione.versione })
   };
   
-  
-  
   const { error } = await supabase.from(tabellaRisposte).insert(datiRisposta);
-  
-  
   
       if (error) throw new Error("Errore nel salvataggio della simulazione.");
   
