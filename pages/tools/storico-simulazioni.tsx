@@ -15,7 +15,7 @@ export default function StoricoSimulazioniPage() {
 
   // Filtri
   const [filtroMateria, setFiltroMateria] = useState<string>("");
-  const [filtroCategoria, setFiltroCategoria] = useState<string>("");
+  const [categoriaAttiva, setCategoriaAttiva] = useState<string>(""); // "" = tutte
   const [filtroVotoMinimo, setFiltroVotoMinimo] = useState<number>(0);
   const [filtroData, setFiltroData] = useState<string>("");
 
@@ -27,37 +27,48 @@ export default function StoricoSimulazioniPage() {
         return;
       }
       setUser(data.user);
-
+  
       setLoading(true);
       try {
-        const { data: simulazioni, error } = await supabase
-          .from("simulazioni_scritti_risposte")
-          .select("*")
-          .eq("user_id", data.user.id)
-          .order("completata_il", { ascending: false });
-
-        if (error) throw new Error(error.message);
-
-        setStorico(simulazioni || []);
-        setFiltrato(simulazioni || []);
+        const [superioriRes, universitaRes] = await Promise.all([
+          supabase
+            .from("simulazioni_scritti_risposte")
+            .select("*")
+            .eq("user_id", data.user.id),
+          supabase
+            .from("simulazioni_scritti_risposte_universita")
+            .select("*")
+            .eq("user_id", data.user.id)
+        ]);
+  
+        if (superioriRes.error || universitaRes.error)
+          throw new Error(superioriRes.error?.message || universitaRes.error?.message);
+  
+        const tutte = [...(superioriRes.data || []), ...(universitaRes.data || [])]
+          .sort((a, b) => new Date(b.creato_il || b.completata_il).getTime() - new Date(a.creato_il || a.completata_il).getTime());
+  
+        setStorico(tutte);
+        setFiltrato(tutte);
       } catch (err: any) {
         setErrore(err.message || "Errore durante il caricamento dello storico.");
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchUserAndStorico();
   }, []);
+  
 
   useEffect(() => {
     let filtrato = [...storico];
     if (filtroMateria) filtrato = filtrato.filter(sim => sim.materia === filtroMateria);
-    if (filtroCategoria) filtrato = filtrato.filter(sim => sim.categoria === filtroCategoria);
+    if (categoriaAttiva) filtrato = filtrato.filter(sim => sim.categoria === categoriaAttiva);
     if (filtroVotoMinimo) filtrato = filtrato.filter(sim => sim.voto >= filtroVotoMinimo);
-    if (filtroData) filtrato = filtrato.filter(sim => new Date(sim.completata_il) >= new Date(filtroData));
+    if (filtroData) filtrato = filtrato.filter(sim => new Date(sim.completata_il || sim.creato_il) >= new Date(filtroData));
     setFiltrato(filtrato);
-  }, [filtroMateria, filtroCategoria, filtroVotoMinimo, filtroData, storico]);
+  }, [filtroMateria, categoriaAttiva, filtroVotoMinimo, filtroData, storico]);
+  
 
   const materieDisponibili = [...new Set(storico.map(sim => sim.materia))];
 
@@ -117,13 +128,29 @@ export default function StoricoSimulazioniPage() {
           </select>
         </div>
         <div>
-          <label className="text-sm font-medium">Categoria</label>
-          <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} className="w-full border rounded p-2">
-            <option value="">Tutte</option>
-            <option value="superiori">Superiori</option>
-            <option value="università">Università</option>
-          </select>
-        </div>
+  <label className="text-sm font-medium block mb-1">Categoria</label>
+  <div className="flex gap-2">
+    <button
+      onClick={() => setCategoriaAttiva("")}
+      className={`px-3 py-1 rounded border ${categoriaAttiva === "" ? "bg-blue-600 text-white" : "bg-white text-gray-700"}`}
+    >
+      Tutte
+    </button>
+    <button
+      onClick={() => setCategoriaAttiva("superiori")}
+      className={`px-3 py-1 rounded border ${categoriaAttiva === "superiori" ? "bg-blue-600 text-white" : "bg-white text-gray-700"}`}
+    >
+      Superiori
+    </button>
+    <button
+      onClick={() => setCategoriaAttiva("università")}
+      className={`px-3 py-1 rounded border ${categoriaAttiva === "università" ? "bg-blue-600 text-white" : "bg-white text-gray-700"}`}
+    >
+      Università
+    </button>
+  </div>
+</div>
+
         <div>
           <label className="text-sm font-medium">Voto minimo</label>
           <input type="number" value={filtroVotoMinimo} onChange={(e) => setFiltroVotoMinimo(Number(e.target.value))} className="w-full border rounded p-2" />
