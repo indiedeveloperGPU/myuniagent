@@ -130,7 +130,14 @@ export default function SimulazioniScrittePage() {
   }, [materia, argomento]);
 
   const generaSimulazione = async () => {
-    if (!categoria || (!indirizzo && !facolta) || (categoria === "università" && !corso) || !materia || !argomento || !tipoSimulazione) {
+    if (
+      !categoria ||
+      (!indirizzo && !facolta) ||
+      (categoria === "università" && !corso) ||
+      !materia ||
+      !argomento ||
+      !tipoSimulazione
+    ) {
       setErrore("Inserisci tutti i campi richiesti.");
       return;
     }
@@ -147,25 +154,33 @@ export default function SimulazioniScrittePage() {
         : "simulazioni_scritti_risposte_universita";
   
       // Recupera versioni già svolte
-      const { data: svolte, error: erroreSvolte } = await supabase
+      let queryRisposte = supabase
         .from(tabellaRisposte)
-        .select("versione, facolta, indirizzo")
+        .select(
+          categoria === "superiori"
+            ? "versione, indirizzo"
+            : "versione, facolta, corso"
+        )
         .eq("user_id", user.id)
         .eq("materia", materia)
         .eq("argomento", argomento)
         .eq("tipo", tipoSimulazione);
   
+      const { data: svolteRaw, error: erroreSvolte } = await queryRisposte;
+  
       let versioniSvolte: string[] = [];
   
-      if (svolte && svolte.length > 0) {
-        versioniSvolte = svolte
-          .filter((r) =>
+      if (erroreSvolte) {
+        console.error("Errore recupero versioni svolte:", erroreSvolte.message);
+      } else if (Array.isArray(svolteRaw)) {
+        versioniSvolte = svolteRaw
+          .filter((r: any) =>
             categoria === "superiori"
               ? r.indirizzo === indirizzo
-              : r.facolta === facolta
+              : r.facolta === facolta && r.corso === corso
           )
-          .map((r) => r.versione)
-          .filter(Boolean); // Rimuove eventuali null/undefined
+          .map((r: any) => r.versione)
+          .filter(Boolean);
       }
   
       // Query simulazioni escluse quelle già fatte
@@ -179,8 +194,7 @@ export default function SimulazioniScrittePage() {
       if (categoria === "superiori") {
         query = query.eq("indirizzo", indirizzo);
       } else {
-        query = query.eq("facolta", facolta);
-        query = query.eq("corso", corso);
+        query = query.eq("facolta", facolta).eq("corso", corso);
       }
   
       if (versioniSvolte.length > 0) {
@@ -201,6 +215,8 @@ export default function SimulazioniScrittePage() {
       setLoading(false);
     }
   };
+  
+  
   
   
 
@@ -281,22 +297,22 @@ export default function SimulazioniScrittePage() {
   ? "simulazioni_scritti_risposte_superiori" 
   : "simulazioni_scritti_risposte_universita";
 
-  const datiRisposta = {
+  const datiRisposta: any = {
     user_id: user.id,
     simulazione_id: simulazione.id,
-    categoria,
-    indirizzo: categoria === "superiori" ? indirizzo : null,
-    facolta: categoria === "università" ? facolta : null,
-    corso: categoria === "università" ? corso : null,
     materia: simulazione.materia,
     argomento: simulazione.argomento,
     tipo: simulazione.tipo,
     risposte_utente: JSON.stringify(risposteFinali),
     voto,
-    lode: categoria === "università" ? lode : null,
     correzione: simulazione.soluzione_esempio,
-    ...(simulazione.versione && { versione: simulazione.versione }) 
+    lode: categoria === "università" ? lode : null,
+    ...(categoria === "superiori" && { indirizzo }),
+    ...(categoria === "università" && { facolta, corso }),
+    ...(simulazione.versione && { versione: simulazione.versione })
   };
+  
+  
   
   const { error } = await supabase.from(tabellaRisposte).insert(datiRisposta);
   
