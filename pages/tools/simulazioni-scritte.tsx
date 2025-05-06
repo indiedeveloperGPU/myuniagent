@@ -18,6 +18,7 @@ export default function SimulazioniScrittePage() {
   const [risposteAperte, setRisposteAperte] = useState<Record<number, string>>({});
   const [correzione, setCorrezione] = useState("");
   const [successo, setSuccesso] = useState(false);
+  const [corso, setCorso] = useState("");
   const [erroriDomande, setErroriDomande] = useState<number[]>([]);
   const [voto, setVoto] = useState(0);
   const [lode, setLode] = useState(false);
@@ -44,8 +45,9 @@ export default function SimulazioniScrittePage() {
   useEffect(() => {
     const fetchMaterie = async () => {
       const filtro = categoria === "superiori"
-        ? { categoria, indirizzo }
-        : { categoria, facolta };
+          ? { categoria, indirizzo }
+          : { facolta };
+
 
       if ((categoria === "superiori" && indirizzo) || (categoria === "università" && facolta)) {
         const { data, error } = await supabase
@@ -128,7 +130,7 @@ export default function SimulazioniScrittePage() {
   }, [materia, argomento]);
 
   const generaSimulazione = async () => {
-    if (!categoria || (!indirizzo && !facolta) || !materia || !argomento || !tipoSimulazione) {
+    if (!categoria || (!indirizzo && !facolta) || (categoria === "università" && !corso) || !materia || !argomento || !tipoSimulazione) {
       setErrore("Inserisci tutti i campi richiesti.");
       return;
     }
@@ -141,7 +143,7 @@ export default function SimulazioniScrittePage() {
   
     try {
       const tabellaRisposte = categoria === "superiori"
-        ? "simulazioni_scritti_risposte"
+        ? "simulazioni_scritti_risposte_superiori"
         : "simulazioni_scritti_risposte_universita";
   
       // Recupera versioni già svolte
@@ -178,6 +180,7 @@ export default function SimulazioniScrittePage() {
         query = query.eq("indirizzo", indirizzo);
       } else {
         query = query.eq("facolta", facolta);
+        query = query.eq("corso", corso);
       }
   
       if (versioniSvolte.length > 0) {
@@ -209,6 +212,7 @@ export default function SimulazioniScrittePage() {
           {categoria === "superiori" ? "🏫 Scuola Superiore" : "🎓 Università"}
           {categoria === "superiori" && indirizzo && <>· 🎒 {indirizzo}</>}
           {categoria === "università" && facolta && <>· 🏛️ {facolta}</>}
+          {categoria === "università" && corso && <>· 🎓 {corso}</>}
           {materia && <>· 📘 {materia}</>}
           {argomento && <>· 📂 {argomento}</>}
           {tipoSimulazione && (
@@ -274,7 +278,7 @@ export default function SimulazioniScrittePage() {
   
     try {
       const tabellaRisposte = categoria === "superiori"
-  ? "simulazioni_scritti_risposte" // superiori
+  ? "simulazioni_scritti_risposte_superiori" 
   : "simulazioni_scritti_risposte_universita";
 
   const datiRisposta = {
@@ -283,6 +287,7 @@ export default function SimulazioniScrittePage() {
     categoria,
     indirizzo: categoria === "superiori" ? indirizzo : null,
     facolta: categoria === "università" ? facolta : null,
+    corso: categoria === "università" ? corso : null,
     materia: simulazione.materia,
     argomento: simulazione.argomento,
     tipo: simulazione.tipo,
@@ -398,10 +403,44 @@ export default function SimulazioniScrittePage() {
         <option value="lettere">📚 Lettere</option>
         <option value="lingue">🌍 Lingue</option>
         <option value="scienze-politiche">🏛️ Scienze Politiche</option>
+        <option value="scienze-della-comunicazione">🏛️ Scienze Della Comunicazione</option>
         <option value="architettura">🏗️ Architettura</option>
       </select>
     </div>
   )}
+
+{categoria === "università" && (
+  <div>
+    <label className="font-medium">Corso di Laurea</label>
+    <select
+      value={corso}
+      onChange={(e) => setCorso(e.target.value)}
+      className="w-full border rounded p-2"
+    >
+      <option value="">-- Seleziona Corso --</option>
+      {facolta === "economia" && (
+        <>
+          <option value="Economia e Management">📊 Economia e Management</option>
+          <option value="Economia Aziendale">📈 Economia Aziendale</option>
+        </>
+      )}
+      {facolta === "scienze-della-comunicazione" && (
+        <>
+          <option value="Media e Comunicazione Digitale">Media e Comunicazione Digitale</option>
+          <option value="Comunicazione Istituzionale e d’Impresa">Comunicazione Istituzionale e d’Impresa</option>
+        </>
+      )}
+      {facolta === "giurisprudenza" && (
+        <>
+          <option value="Diritto Privato">⚖️ Diritto Privato</option>
+          <option value="Diritto Penale">🚓 Diritto Penale</option>
+        </>
+      )}
+      {/* Aggiungi altri corsi per le altre facoltà */}
+    </select>
+  </div>
+)}
+
 
   {/* Materia */}
   <div>
