@@ -25,6 +25,13 @@ export default function SimulazioniScrittePage() {
   const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState("");
 
+  const getTabellaSimulazioni = () => {
+    return categoria === "superiori"
+      ? "simulazioni_scritti_superiori"
+      : "simulazioni_scritti_universita";
+  };
+  
+
   useEffect(() => {
     const fetchUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -42,7 +49,7 @@ export default function SimulazioniScrittePage() {
 
       if ((categoria === "superiori" && indirizzo) || (categoria === "università" && facolta)) {
         const { data, error } = await supabase
-          .from("simulazioni_scritti_dataset")
+        .from(getTabellaSimulazioni())
           .select("materia")
           .match(filtro)
           .neq("materia", null);
@@ -80,7 +87,7 @@ export default function SimulazioniScrittePage() {
     const fetchArgomenti = async () => {
       if (materia) {
         const { data, error } = await supabase
-          .from("simulazioni_scritti_dataset")
+        .from(getTabellaSimulazioni())
           .select("argomento")
           .eq("materia", materia)
           .neq("argomento", null);
@@ -101,7 +108,7 @@ export default function SimulazioniScrittePage() {
     const fetchTipologie = async () => {
       if (materia && argomento) {
         const { data, error } = await supabase
-          .from("simulazioni_scritti_dataset")
+        .from(getTabellaSimulazioni())
           .select("tipo")
           .eq("materia", materia)
           .eq("argomento", argomento);
@@ -125,32 +132,64 @@ export default function SimulazioniScrittePage() {
       setErrore("Inserisci tutti i campi richiesti.");
       return;
     }
-
+  
     setLoading(true);
     setSimulazione(null);
     setRisposteAperte("");
     setErrore("");
     setCorrezione("");
-
+  
     try {
-      let query = supabase
-        .from("simulazioni_scritti_dataset")
-        .select("*")
-        .eq("categoria", categoria)
+      const tabellaRisposte = categoria === "superiori"
+        ? "simulazioni_scritti_risposte"
+        : "simulazioni_scritti_risposte_universita";
+  
+      // Recupera versioni già svolte
+      const { data: svolte, error: erroreSvolte } = await supabase
+        .from(tabellaRisposte)
+        .select("versione, facolta, indirizzo")
+        .eq("user_id", user.id)
         .eq("materia", materia)
         .eq("argomento", argomento)
         .eq("tipo", tipoSimulazione);
-
+  
+      let versioniSvolte: string[] = [];
+  
+      if (svolte && svolte.length > 0) {
+        versioniSvolte = svolte
+          .filter((r) =>
+            categoria === "superiori"
+              ? r.indirizzo === indirizzo
+              : r.facolta === facolta
+          )
+          .map((r) => r.versione)
+          .filter(Boolean); // Rimuove eventuali null/undefined
+      }
+  
+      // Query simulazioni escluse quelle già fatte
+      let query = supabase
+        .from(getTabellaSimulazioni())
+        .select("*")
+        .eq("materia", materia)
+        .eq("argomento", argomento)
+        .eq("tipo", tipoSimulazione);
+  
       if (categoria === "superiori") {
         query = query.eq("indirizzo", indirizzo);
       } else {
         query = query.eq("facolta", facolta);
       }
-
+  
+      if (versioniSvolte.length > 0) {
+        query = query.not("versione", "in", `(${versioniSvolte.map((v) => `'${v}'`).join(",")})`);
+      }
+  
       const { data, error } = await query;
-
-      if (error || !data || data.length === 0) throw new Error("Simulazione non trovata.");
-
+  
+      if (error || !data || data.length === 0) {
+        throw new Error("Hai già svolto tutte le simulazioni disponibili per questo argomento.");
+      }
+  
       const randomSimulazione = data[Math.floor(Math.random() * data.length)];
       setSimulazione(randomSimulazione);
     } catch (err: any) {
@@ -159,6 +198,8 @@ export default function SimulazioniScrittePage() {
       setLoading(false);
     }
   };
+  
+  
 
   const RiepilogoScelte = () => (
     <>
@@ -232,20 +273,29 @@ export default function SimulazioniScrittePage() {
     setSuccesso(false);
   
     try {
-      const { error } = await supabase.from("simulazioni_scritti_risposte").insert({
-        user_id: user.id,
-        simulazione_id: simulazione.id,
-        categoria,
-        indirizzo,
-        facolta,
-        materia: simulazione.materia,
-        argomento: simulazione.argomento,
-        tipo: simulazione.tipo,
-        risposte_utente: JSON.stringify(risposteFinali),
-        voto,
-        lode,
-        correzione: simulazione.soluzione_esempio,
-      });
+      const tabellaRisposte = categoria === "superiori"
+  ? "simulazioni_scritti_risposte" // superiori
+  : "simulazioni_scritti_risposte_universita";
+
+  const datiRisposta = {
+    user_id: user.id,
+    simulazione_id: simulazione.id,
+    categoria,
+    indirizzo: categoria === "superiori" ? indirizzo : null,
+    facolta: categoria === "università" ? facolta : null,
+    materia: simulazione.materia,
+    argomento: simulazione.argomento,
+    tipo: simulazione.tipo,
+    risposte_utente: JSON.stringify(risposteFinali),
+    voto,
+    lode: categoria === "università" ? lode : null,
+    correzione: simulazione.soluzione_esempio,
+    ...(simulazione.versione && { versione: simulazione.versione }) 
+  };
+  
+  const { error } = await supabase.from(tabellaRisposte).insert(datiRisposta);
+  
+  
   
       if (error) throw new Error("Errore nel salvataggio della simulazione.");
   
