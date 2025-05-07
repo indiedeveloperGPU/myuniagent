@@ -19,7 +19,6 @@ export default function SimulazioniScrittePage() {
   const [correzione, setCorrezione] = useState("");
   const [successo, setSuccesso] = useState(false);
   const [corso, setCorso] = useState("");
-  const [initFromStorage, setInitFromStorage] = useState(false);
   const [erroriDomande, setErroriDomande] = useState<number[]>([]);
   const [voto, setVoto] = useState(0);
   const [lode, setLode] = useState(false);
@@ -32,39 +31,6 @@ export default function SimulazioniScrittePage() {
       ? "simulazioni_scritti_superiori"
       : "simulazioni_scritti_universita";
   };
-
-  useEffect(() => {
-    const statoCorrente = {
-      categoria,
-      indirizzo,
-      facolta,
-      corso,
-      materia,
-      argomento,
-      tipoSimulazione
-    };
-    localStorage.setItem("simulazioniScrittiStato", JSON.stringify(statoCorrente));
-  }, [categoria, indirizzo, facolta, corso, materia, argomento, tipoSimulazione]);
-
-  
-  useEffect(() => {
-    const statoSalvato = localStorage.getItem("simulazioniScrittiStato");
-    if (statoSalvato) {
-      try {
-        const parsed = JSON.parse(statoSalvato);
-        setCategoria(parsed.categoria || "superiori");
-        setIndirizzo(parsed.indirizzo || "");
-        setFacolta(parsed.facolta || "");
-        setCorso(parsed.corso || "");
-        setMateria(parsed.materia || "");
-        setArgomento(parsed.argomento || "");
-        setTipoSimulazione(parsed.tipoSimulazione || "");
-      } catch (e) {
-        console.error("Errore parsing localStorage", e);
-      }
-    }
-    setInitFromStorage(true); // sblocca gli altri effetti
-  }, []);
   
   
 
@@ -78,19 +44,19 @@ export default function SimulazioniScrittePage() {
   }, []);
 
   useEffect(() => {
-    if (!initFromStorage) return;
     const fetchMaterie = async () => {
       const filtro = categoria === "superiori"
-        ? { categoria, indirizzo }
-        : { facolta };
-  
+          ? { categoria, indirizzo }
+          : { facolta };
+
+
       if ((categoria === "superiori" && indirizzo) || (categoria === "università" && facolta)) {
         const { data, error } = await supabase
-          .from(getTabellaSimulazioni())
+        .from(getTabellaSimulazioni())
           .select("materia")
           .match(filtro)
           .neq("materia", null);
-  
+
         if (!error && data) {
           const uniche = [...new Set(data.map((d) => d.materia))];
           setMaterieDisponibili(uniche);
@@ -103,8 +69,7 @@ export default function SimulazioniScrittePage() {
       setArgomentiDisponibili([]);
     };
     fetchMaterie();
-  }, [categoria, indirizzo, facolta, initFromStorage]);
-  
+  }, [categoria, indirizzo, facolta]);
 
   useEffect(() => {
     if (errore) {
@@ -122,15 +87,14 @@ export default function SimulazioniScrittePage() {
   
 
   useEffect(() => {
-    if (!initFromStorage) return;
     const fetchArgomenti = async () => {
       if (materia) {
         const { data, error } = await supabase
-          .from(getTabellaSimulazioni())
+        .from(getTabellaSimulazioni())
           .select("argomento")
           .eq("materia", materia)
           .neq("argomento", null);
-  
+
         if (!error && data) {
           const unici = [...new Set(data.map((d) => d.argomento))];
           setArgomentiDisponibili(unici);
@@ -141,19 +105,17 @@ export default function SimulazioniScrittePage() {
       setArgomento("");
     };
     fetchArgomenti();
-  }, [materia, initFromStorage]);
-  
+  }, [materia]);
 
   useEffect(() => {
-    if (!initFromStorage) return;
     const fetchTipologie = async () => {
       if (materia && argomento) {
         const { data, error } = await supabase
-          .from(getTabellaSimulazioni())
+        .from(getTabellaSimulazioni())
           .select("tipo")
           .eq("materia", materia)
           .eq("argomento", argomento);
-  
+
         if (!error && data) {
           const tipiUnici = [...new Set(data.map((d) => d.tipo))];
           setTipologieDisponibili(tipiUnici);
@@ -166,8 +128,7 @@ export default function SimulazioniScrittePage() {
       }
     };
     fetchTipologie();
-  }, [materia, argomento, initFromStorage]);
-  
+  }, [materia, argomento]);
 
   const generaSimulazione = async () => {
     if (
@@ -785,3 +746,4 @@ export default function SimulazioniScrittePage() {
 }
 
 SimulazioniScrittePage.requireAuth = true;
+
