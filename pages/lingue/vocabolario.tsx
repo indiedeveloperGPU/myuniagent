@@ -135,18 +135,40 @@ export default function Vocabolario() {
           </select>
 
           <ul className="space-y-2">
-            {vocabolario.map((v, i) => (
-              <li key={v.id}>
-                <button
-                  onClick={() => setSelezionato(v.id)}
-                  className={`w-full text-left px-3 py-2 rounded-md border flex items-center justify-between ${selezionato === v.id ? 'bg-blue-100 font-semibold' : 'bg-white hover:bg-gray-100'}`}
-                >
-                  <span>📌 {i + 1}. {v.tema}</span>
-                  {completati.has(v.id) && <span className="text-green-600">✔️</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
+  {Object.values(
+    vocabolario.reduce((acc, curr) => {
+      const key = curr.tema;
+      const isCompletato = completati.has(curr.id);
+
+      if (!acc[key]) acc[key] = [];
+      acc[key].push({ ...curr, completato: isCompletato });
+      return acc;
+    }, {} as Record<string, Array<VocabolarioItem & { completato: boolean }>>)
+  )
+    .map((moduli) => {
+      const ordinati = [...moduli].sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0));
+      const prossimo = ordinati.find((m) => !m.completato);
+      return prossimo;
+    })
+    .filter((v): v is VocabolarioItem & { completato: boolean } => v !== undefined)
+    .map((v) => {
+      const variantiTotali = vocabolario.filter(m => m.tema === v.tema).length;
+      return (
+        <li key={v.id}>
+          <button
+            onClick={() => setSelezionato(v.id)}
+            className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
+              selezionato === v.id ? 'bg-blue-100 font-semibold' : 'bg-white hover:bg-gray-100'
+            }`}
+          >
+            <span className="text-sm font-medium">📌 {v.tema}</span>
+            <span className="text-xs text-gray-600">Variante {v.ordine} di {variantiTotali}</span>
+          </button>
+        </li>
+      );
+    })}
+</ul>
+
         </div>
 
         {/* Contenuto vocabolario selezionato */}
