@@ -241,13 +241,16 @@ export default function StoricoSimulazioniPage() {
     {(() => {
       try {
         const parsed = JSON.parse(selectedSimulazione.risposte_utente);
-        if (typeof parsed === "object" && parsed !== null) {
-          return Object.entries(parsed).map(([key, value]: any) => (
-            <p key={key}>
-              <b>{Number(key) + 1}.</b> {value}
-            </p>
-          ));
-        }
+if (typeof parsed === "object" && parsed !== null) {
+  return Object.keys(parsed)
+    .sort((a, b) => Number(a) - Number(b)) // ordine numerico
+    .map((key) => (
+      <p key={key}>
+        <b>{Number(key) + 1}.</b> {parsed[key]}
+      </p>
+    ));
+}
+
         return <p className="whitespace-pre-line">{selectedSimulazione.risposte_utente}</p>;
       } catch (e) {
         return <p className="whitespace-pre-line">{selectedSimulazione.risposte_utente}</p>;
