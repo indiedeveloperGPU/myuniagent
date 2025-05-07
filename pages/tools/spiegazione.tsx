@@ -218,7 +218,14 @@ export default function Spiegazione() {
     setFollowUpLoading(false);
   };
 
-  const handleSubmit = () => caricaChatOGenera(input);
+  const handleSubmit = () => {
+    if (!input.trim()) {
+      toast.error("Inserisci un concetto prima di generare la spiegazione.");
+      return;
+    }
+    caricaChatOGenera(input);
+  };
+  
 
   if (!userChecked) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
 
@@ -250,7 +257,11 @@ export default function Spiegazione() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
-        <button onClick={handleSubmit} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <button
+  onClick={handleSubmit}
+  disabled={!input.trim() || loading}
+  className={`px-4 py-2 rounded text-white ${!input.trim() || loading ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+>
           {loading ? "Caricamento..." : "Genera spiegazione"}
         </button>
         <button onClick={inviaAgenteFox} className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
@@ -312,4 +323,6 @@ export default function Spiegazione() {
   );
 }
 
+
 Spiegazione.requireAuth = true;
+
