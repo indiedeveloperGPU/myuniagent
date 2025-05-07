@@ -151,18 +151,46 @@ export default function TeoriaGrammaticale() {
           </select>
 
           <ul className="space-y-2">
-            {contenuti.map((c, i) => (
-              <li key={c.id}>
-                <button
-                  onClick={() => setSelezionato(c.id)}
-                  className={`w-full text-left px-3 py-2 rounded-md border flex items-center justify-between ${selezionato === c.id ? 'bg-blue-100 font-semibold' : 'bg-white hover:bg-gray-100'}`}
-                >
-                  <span>📘 {i + 1}. {c.argomento}</span>
-                  {completati.has(c.id) && <span className="text-green-600">✔️</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
+  {Object.values(
+    contenuti.reduce((acc, curr) => {
+      const key = curr.argomento;
+      const isCompletato = completati.has(curr.id);
+
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+
+      acc[key].push({
+        ...curr,
+        completato: isCompletato,
+      });
+
+      return acc;
+    }, {} as Record<string, Array<Contenuto & { completato: boolean }>>)
+  )
+    .map((moduli) => {
+      const ordinati = [...moduli].sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0));
+      const prossimo = ordinati.find((m) => !m.completato);
+      return prossimo;
+    })
+    .filter((c): c is Contenuto & { completato: boolean } => c !== undefined)
+    .map((c) => {
+      const moduliTotali = contenuti.filter(m => m.argomento === c.argomento).length;
+      return (
+        <li key={c.id}>
+          <button
+            onClick={() => setSelezionato(c.id)}
+            className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
+              selezionato === c.id ? 'bg-blue-100 font-semibold' : 'bg-white hover:bg-gray-100'
+            }`}
+          >
+            <span className="text-sm font-medium">📘 {c.argomento}</span>
+            <span className="text-xs text-gray-600">Modulo {c.ordine} di {moduliTotali}</span>
+          </button>
+        </li>
+      );
+    })}   
+</ul>
         </div>
 
         {/* Contenuto modulo selezionato */}
@@ -242,3 +270,4 @@ export default function TeoriaGrammaticale() {
     </DashboardLayout>
   );
 }
+TeoriaGrammaticale.requireAuth = true
