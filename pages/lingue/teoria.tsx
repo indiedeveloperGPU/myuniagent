@@ -5,6 +5,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
+import remarkGfm from "remark-gfm";
+
 
 interface Contenuto {
   id: string;
@@ -208,9 +210,13 @@ export default function TeoriaGrammaticale() {
                   <h2 className="text-xl font-bold mb-3">📘 {item.argomento}</h2>
 
                   <div className="prose max-w-none mb-6">
-                    <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>
-                      {item.contenuto}
-                    </ReactMarkdown>
+                  <ReactMarkdown
+  rehypePlugins={[rehypeRaw, rehypeSanitize]}
+  remarkPlugins={[remarkGfm]}
+>
+  {item.contenuto}
+</ReactMarkdown>
+
                   </div>
 
                   {Array.isArray(item.quiz) && item.quiz.length > 0 && (
