@@ -31,6 +31,35 @@ export default function SimulazioniScrittePage() {
       ? "simulazioni_scritti_superiori"
       : "simulazioni_scritti_universita";
   };
+
+  useEffect(() => {
+    const statoCorrente = {
+      categoria,
+      indirizzo,
+      facolta,
+      corso,
+      materia,
+      argomento,
+      tipoSimulazione
+    };
+    localStorage.setItem("simulazioniScrittiStato", JSON.stringify(statoCorrente));
+  }, [categoria, indirizzo, facolta, corso, materia, argomento, tipoSimulazione]);
+
+  
+  useEffect(() => {
+    const statoSalvato = localStorage.getItem("simulazioniScrittiStato");
+    if (statoSalvato) {
+      const parsed = JSON.parse(statoSalvato);
+      setCategoria(parsed.categoria || "superiori");
+      setIndirizzo(parsed.indirizzo || "");
+      setFacolta(parsed.facolta || "");
+      setCorso(parsed.corso || "");
+      setMateria(parsed.materia || "");
+      setArgomento(parsed.argomento || "");
+      setTipoSimulazione(parsed.tipoSimulazione || "");
+    }
+  }, []);
+  
   
 
   useEffect(() => {
