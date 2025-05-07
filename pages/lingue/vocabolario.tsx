@@ -232,4 +232,6 @@ export default function Vocabolario() {
   );
 }
 
+Vocabolario.requireAuth = true
+
 
