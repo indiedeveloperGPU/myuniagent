@@ -18,3 +18,26 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.markdown-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.95rem;
+}
+
+.markdown-table th,
+.markdown-table td {
+  border: 1px solid #e5e7eb; /* gray-200 */
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.markdown-table th {
+  background-color: #f3f4f6; /* gray-100 */
+  font-weight: 600;
+}
+
+.markdown-table tr:nth-child(even) {
+  background-color: #f9fafb; /* gray-50 */
+}
