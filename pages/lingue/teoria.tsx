@@ -210,12 +210,15 @@ export default function TeoriaGrammaticale() {
                   <h2 className="text-xl font-bold mb-3">📘 {item.argomento}</h2>
 
                   <div className="prose max-w-none mb-6">
-                  <ReactMarkdown
-  rehypePlugins={[rehypeRaw, rehypeSanitize]}
-  remarkPlugins={[remarkGfm]}
->
-  {item.contenuto}
-</ReactMarkdown>
+                  <div className="prose markdown-table max-w-none">
+  <ReactMarkdown
+    rehypePlugins={[rehypeRaw, rehypeSanitize]}
+    remarkPlugins={[remarkGfm]}
+  >
+    {item.contenuto}
+  </ReactMarkdown>
+</div>
+
 
                   </div>
 
