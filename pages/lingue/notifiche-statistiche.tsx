@@ -289,3 +289,4 @@ export default function UlterioriPage() {
     </DashboardLayout>
   );
 }
+UlterioriPage.requireAuth = true
