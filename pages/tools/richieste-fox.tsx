@@ -83,22 +83,22 @@ export default function LeMieRichiesteFox() {
 
   return (
     <DashboardLayout>
-      <h1 className="text-2xl font-bold mb-4">🦊 Le mie richieste ad Agente Fox</h1>
+      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">🦊 Le mie richieste ad Agente Fox</h1>
+<div className="flex flex-wrap gap-2 mb-4"><button onClick={() => setFiltro("tutte")}className={`px-3 py-1 rounded ${filtro === "tutte" ? "bg-blue-600 text-white": "bg-gray-200 dark:bg-gray-800 dark:text-gray-100"}`}>Tutte</button>
+  <button onClick={() => setFiltro("in_attesa")}className={`px-3 py-1 rounded ${filtro === "in_attesa"? "bg-blue-600 text-white": "bg-gray-200 dark:bg-gray-800 dark:text-gray-100"}`}>In attesa</button>
+  <button onClick={() => setFiltro("in_lavorazione")}className={`px-3 py-1 rounded ${filtro === "in_lavorazione"? "bg-blue-600 text-white": "bg-gray-200 dark:bg-gray-800 dark:text-gray-100"}`}>In lavorazione</button>
+  <button onClick={() => setFiltro("completato")}className={`px-3 py-1 rounded ${filtro === "completato" ? "bg-blue-600 text-white": "bg-gray-200 dark:bg-gray-800 dark:text-gray-100"}`}>Completato</button>
+</div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        <button onClick={() => setFiltro("tutte")} className={`px-3 py-1 rounded ${filtro === "tutte" ? "bg-blue-600 text-white" : "bg-gray-200"}`}>Tutte</button>
-        <button onClick={() => setFiltro("in_attesa")} className={`px-3 py-1 rounded ${filtro === "in_attesa" ? "bg-blue-600 text-white" : "bg-gray-200"}`}>In attesa</button>
-        <button onClick={() => setFiltro("in_lavorazione")} className={`px-3 py-1 rounded ${filtro === "in_lavorazione" ? "bg-blue-600 text-white" : "bg-gray-200"}`}>In lavorazione</button>
-        <button onClick={() => setFiltro("completato")} className={`px-3 py-1 rounded ${filtro === "completato" ? "bg-blue-600 text-white" : "bg-gray-200"}`}>Completato</button>
-      </div>
 
       <input
-        type="text"
-        placeholder="Cerca tra le tue richieste..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="w-full p-2 border border-gray-300 rounded mb-6"
-      />
+  type="text"
+  placeholder="Cerca tra le tue richieste..."
+  value={query}
+  onChange={(e) => setQuery(e.target.value)}
+  className="w-full p-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 mb-6 rounded"
+/>
+
 
       {caricamento ? (
         <p>Caricamento richieste...</p>
@@ -106,41 +106,47 @@ export default function LeMieRichiesteFox() {
         <p>Non hai ancora inviato richieste ad Agente Fox.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border border-gray-200">
-            <thead>
-              <tr>
-                <th className="p-3 border-b text-left">Data invio</th>
-                <th className="p-3 border-b text-left">Domanda</th>
-                <th className="p-3 border-b text-left">Stato</th>
-                <th className="p-3 border-b text-left">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {richiesteFiltrate.map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="p-3 border-b">{new Date(r.inviata_il).toLocaleDateString()}</td>
-                  <td className="p-3 border-b">{r.domanda.length > 50 ? r.domanda.slice(0, 50) + "..." : r.domanda}</td>
-                  <td className="p-3 border-b">
-                    <span className={`text-xs px-2 py-1 rounded font-semibold ${
-                      r.stato === "in_attesa" ? "bg-yellow-200 text-yellow-800" :
-                      r.stato === "in_lavorazione" ? "bg-blue-200 text-blue-800" :
-                      "bg-green-200 text-green-800"
-                    }`}>
-                      {r.stato.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className="p-3 border-b">
-                    <button
-                      onClick={() => setSelectedRichiesta(r)}
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      🔍 Visualizza
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <table className="min-w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm">
+  <thead className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+    <tr>
+      <th className="p-3 border-b border-gray-300 dark:border-gray-600 text-left">Data invio</th>
+      <th className="p-3 border-b border-gray-300 dark:border-gray-600 text-left">Domanda</th>
+      <th className="p-3 border-b border-gray-300 dark:border-gray-600 text-left">Stato</th>
+      <th className="p-3 border-b border-gray-300 dark:border-gray-600 text-left">Azioni</th>
+    </tr>
+  </thead>
+  <tbody>
+    {richiesteFiltrate.map((r) => (
+      <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+        <td className="p-3 border-b border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100">
+          {new Date(r.inviata_il).toLocaleDateString()}
+        </td>
+        <td className="p-3 border-b border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100">
+          {r.domanda.length > 50 ? r.domanda.slice(0, 50) + "..." : r.domanda}
+        </td>
+        <td className="p-3 border-b border-gray-300 dark:border-gray-600">
+          <span className={`text-xs px-2 py-1 rounded font-semibold ${
+            r.stato === "in_attesa"
+              ? "bg-yellow-200 text-yellow-800 dark:bg-yellow-300 dark:text-yellow-900"
+              : r.stato === "in_lavorazione"
+              ? "bg-blue-200 text-blue-800 dark:bg-blue-300 dark:text-blue-900"
+              : "bg-green-200 text-green-800 dark:bg-green-300 dark:text-green-900"
+          }`}>
+            {r.stato.replace("_", " ")}
+          </span>
+        </td>
+        <td className="p-3 border-b border-gray-300 dark:border-gray-600">
+          <button
+            onClick={() => setSelectedRichiesta(r)}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            🔍 Visualizza
+          </button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
         </div>
       )}
 
@@ -208,4 +214,5 @@ export default function LeMieRichiesteFox() {
 }
 
 LeMieRichiesteFox.requireAuth = true;
+
 
