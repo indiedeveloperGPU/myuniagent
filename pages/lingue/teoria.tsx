@@ -132,7 +132,7 @@ export default function TeoriaGrammaticale() {
         <div className="w-1/4 border-r pr-4">
           <button
             onClick={() => router.back()}
-            className="mb-4 inline-flex items-center gap-2 bg-white text-blue-700 border border-blue-300 rounded-full px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-50 transition"
+            className="mb-4 inline-flex items-center gap-2 bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-200 border border-blue-300 dark:border-gray-700 rounded-full px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-50 dark:hover:bg-gray-800 transition"
           >
             🔙 Torna alla pagina Lingue
           </button>
@@ -183,7 +183,9 @@ export default function TeoriaGrammaticale() {
           <button
             onClick={() => setSelezionato(c.id)}
             className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
-              selezionato === c.id ? 'bg-blue-100 font-semibold' : 'bg-white hover:bg-gray-100'
+              selezionato === c.id
+                ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
+                : 'bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
           >
             <span className="text-sm font-medium">📘 {c.argomento}</span>
@@ -204,13 +206,14 @@ export default function TeoriaGrammaticale() {
           )}
 
           {!loading && contenuti.length > 0 && selezionato && (
-            <div className="bg-white p-6 rounded shadow">
+            <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6 rounded shadow">
               {contenuti.filter((c) => c.id === selezionato).map((item) => (
                 <div key={item.id}>
                   <h2 className="text-xl font-bold mb-3">📘 {item.argomento}</h2>
 
                   <div className="prose max-w-none mb-6">
-                  <div className="prose markdown-table max-w-none">
+                  {/* 🌞 Modalità chiara con stile base */}
+<div className="prose markdown-table max-w-none block dark:hidden">
   <ReactMarkdown
     rehypePlugins={[rehypeRaw, rehypeSanitize]}
     remarkPlugins={[remarkGfm]}
@@ -220,6 +223,18 @@ export default function TeoriaGrammaticale() {
 </div>
 
 
+{/* 🌙 Modalità scura */}
+<div className="prose markdown-table max-w-none hidden dark:block dark:prose-invert">
+  <ReactMarkdown
+    rehypePlugins={[rehypeRaw, rehypeSanitize]}
+    remarkPlugins={[remarkGfm]}
+  >
+    {item.contenuto}
+  </ReactMarkdown>
+</div>
+
+
+
                   </div>
 
                   {Array.isArray(item.quiz) && item.quiz.length > 0 && (
@@ -227,7 +242,7 @@ export default function TeoriaGrammaticale() {
                       <h3 className="font-semibold mb-2">📝 Quiz</h3>
                       <div className="space-y-4">
                         {item.quiz.map((q: any, idx: number) => (
-                          <div key={idx} className="border p-3 rounded">
+                          <div key={idx} className="border p-3 rounded bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700">
                             <p className="text-sm font-medium mb-1">{q.domanda}</p>
                             {q.tipo === "multipla" ? (
                               <div className="space-y-1">
@@ -248,7 +263,7 @@ export default function TeoriaGrammaticale() {
                             ) : (
                               <textarea
                                 rows={2}
-                                className="w-full border mt-1 p-2 rounded"
+                                className="w-full border mt-1 p-2 rounded bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                                 placeholder="Scrivi la tua risposta"
                                 value={risposte[item.id]?.[idx] || ""}
                                 onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
