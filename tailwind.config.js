@@ -1,6 +1,6 @@
 // tailwind.config.js
 module.exports = {
-  darkMode: 'class', // <--- AGGIUNGI QUESTO
+  darkMode: 'class',
   content: [
     "./pages/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
@@ -19,6 +19,12 @@ module.exports = {
     },
   },
   plugins: [require('@tailwindcss/typography')],
+  future: {
+    hoverOnlyWhenSupported: true, // ← migliora compatibilità CSS vecchi
+  },
+  experimental: {
+    optimizeUniversalDefaults: true, // ← evita colori moderni tipo oklch()
+  },
 }
 
 
