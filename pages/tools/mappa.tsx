@@ -17,6 +17,8 @@ import "reactflow/dist/style.css";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { saveAs } from "file-saver";
+import * as htmlToImage from 'html-to-image';
+import jsPDF from 'jspdf';
 import { supabase } from "@/lib/supabaseClient";
 
 type CustomData = {
@@ -196,25 +198,94 @@ export default function MappaConcettuale() {
   };
 
   const handleExportPDF = async () => {
-    const html2canvas = (await import("html2canvas")).default;
-    const jsPDF = (await import("jspdf")).jsPDF;
-
-    const flowElement = document.querySelector(".react-flow") as HTMLElement;
-    if (!flowElement) return;
-
-    const canvas = await html2canvas(flowElement, {
-      scale: 2,
-      useCORS: true,
-    });
-
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF("landscape", "px", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`${titoloMappa || "mappa"}.pdf`);
+    const flowWrapper = document.getElementById('reactflow-wrapper');
+  
+    if (!flowWrapper) {
+      alert("Errore: Impossibile trovare l'area della mappa per l'esportazione.");
+      return;
+    }
+  
+    setLoading(true); // Loading state
+  
+    try {
+      const dataUrl = await htmlToImage.toPng(flowWrapper, { pixelRatio: 2 }); // pixelRatio a 2 per una buona qualità nel PDF
+  
+      const pdf = new jsPDF({
+        orientation: 'landscape', // o 'portrait'
+        unit: 'px', // unità di misura
+        // format: 'a4' // Puoi specificare un formato, o lasciare che si adatti all'immagine
+      });
+  
+      // Per determinare le dimensioni dell'immagine e adattare il PDF:
+      const imgProps = await new Promise<{width: number, height: number}>(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          resolve({width: img.width, height: img.height});
+        };
+        img.src = dataUrl;
+      });
+  
+      let pdfWidth = pdf.internal.pageSize.getWidth();
+      let pdfHeight = pdf.internal.pageSize.getHeight();
+  
+      // Calcola il rapporto per adattare l'immagine mantenendo le proporzioni
+      const imgRatio = imgProps.width / imgProps.height;
+      const pdfRatio = pdfWidth / pdfHeight;
+  
+      let finalImgWidth, finalImgHeight;
+  
+      if (imgRatio > pdfRatio) { // L'immagine è più "larga" del PDF
+          finalImgWidth = pdfWidth;
+          finalImgHeight = pdfWidth / imgRatio;
+      } else { // L'immagine è più "alta" o ha lo stesso rapporto del PDF
+          finalImgHeight = pdfHeight;
+          finalImgWidth = pdfHeight * imgRatio;
+      }
+  
+      // Centra l'immagine nella pagina (opzionale)
+      const xOffset = (pdfWidth - finalImgWidth) / 2;
+      const yOffset = (pdfHeight - finalImgHeight) / 2;
+  
+      pdf.addImage(dataUrl, 'PNG', xOffset, yOffset, finalImgWidth, finalImgHeight);
+      pdf.save(`${titoloMappa || "mappa-concettuale"}.pdf`);
+  
+    } catch (error) {
+      console.error("Errore durante la generazione del PDF:", error);
+      alert("Si è verificato un errore durante l'esportazione in PDF.");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleExportPNG = async () => {
+    const flowWrapper = document.getElementById('reactflow-wrapper'); // O l'elemento che hai scelto
+  
+    if (!flowWrapper) {
+      alert("Errore: Impossibile trovare l'area della mappa per l'esportazione.");
+      return;
+    }
+  
+    setLoading(true); // Potresti voler usare un loading state specifico per l'export
+  
+    try {
+      const dataUrl = await htmlToImage.toPng(flowWrapper, {
+        // Opzioni per migliorare la qualità, se necessario:
+        // quality: 0.98, // Qualità dell'immagine (per formati lossy come JPEG, meno rilevante per PNG)
+        // pixelRatio: 2, // Aumenta la risoluzione (utile per display retina)
+        // backgroundColor: '#ffffff', // Se vuoi forzare uno sfondo (es. se lo sfondo di ReactFlow è trasparente)
+                                    // Il tuo bg-white/dark:bg-gray-900 dovrebbe essere catturato automaticamente
+      });
+  
+      saveAs(dataUrl, `${titoloMappa || "mappa-concettuale"}.png`);
+  
+    } catch (error) {
+      console.error("Errore durante la generazione del PNG:", error);
+      alert("Si è verificato un errore durante l'esportazione in PNG.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleSave = async () => {
     if (!userId) return alert("Utente non loggato");
@@ -392,13 +463,14 @@ export default function MappaConcettuale() {
       <div className="mb-4 flex flex-wrap gap-2">
       <button
   onClick={addNewNode}className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">➕ Nodo</button><button
-  onClick={handleExportPDF}className="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">🧾 PDF</button><button
+  onClick={handleExportPNG}className="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">🖼️ PNG</button><button
   onClick={handleExportDocx}className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">📄 DOCX</button><button
   onClick={handleUndo}disabled={history.length === 0}className="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">↩️ Indietro</button><button
   onClick={handleRedo}disabled={future.length === 0}className="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">↪️ Avanti</button><button
   onClick={handleSave}className="bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-900 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">💾 Salva</button><button
   onClick={deleteSelectedNode}disabled={!selectedNodeId}className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">🗑️ Nodo</button><button
   onClick={deleteSelectedEdge}disabled={!selectedEdgeId}className="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">🗑️ Connessione</button>
+  <button onClick={handleExportPDF}className="bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">📄 PDF</button>
   </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -414,7 +486,7 @@ export default function MappaConcettuale() {
         ))}
       </div>
 
-      <div className="h-[70vh] w-full border rounded bg-white dark:bg-gray-900 shadow border-gray-300 dark:border-gray-700">
+      <div className="h-[70vh] w-full border rounded bg-white dark:bg-gray-900 shadow border-gray-300 dark:border-gray-700" id="reactflow-wrapper">
         <ReactFlow
           nodes={nodesWithEdit}
           edges={styledEdges}
@@ -436,6 +508,7 @@ export default function MappaConcettuale() {
 }
 
 MappaConcettuale.requireAuth = true
+
 
 
 
