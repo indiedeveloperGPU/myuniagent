@@ -31,7 +31,7 @@ function CustomNode({ data }: NodeProps<CustomData>) {
   return (
     <div
       onDoubleClick={data.onDoubleClick}
-      className="bg-blue-100 p-2 rounded shadow text-sm text-center min-w-[100px]"
+      className="bg-blue-100 dark:bg-blue-900 text-black dark:text-white p-2 rounded shadow text-sm text-center min-w-[100px]"
     >
       {data.isEditing ? (
         <input
@@ -39,7 +39,7 @@ function CustomNode({ data }: NodeProps<CustomData>) {
           autoFocus
           onChange={(e) => data.onChange(e.target.value)}
           onBlur={data.onBlur}
-          className="w-full p-1 text-sm"
+          className="w-full p-1 text-sm bg-white dark:bg-gray-800 text-black dark:text-white border border-gray-300 dark:border-gray-600 rounded"
         />
       ) : (
         <div>{data.label}</div>
@@ -341,7 +341,7 @@ export default function MappaConcettuale() {
       value={titoloMappa}
       onChange={(e) => setTitoloMappa(e.target.value)}
       placeholder="Titolo mappa"
-      className="border p-2 rounded w-full max-w-md"
+      className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 rounded w-full max-w-md"
     />
     <button
       onClick={() => setShowGuida(true)}
@@ -354,7 +354,7 @@ export default function MappaConcettuale() {
 </div>
 
 {showGuida && (
-  <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-900 p-4 rounded mb-4 relative max-w-2xl">
+  <div className="bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 dark:border-yellow-300 text-yellow-900 dark:text-yellow-100 p-4 rounded mb-4 relative max-w-2xl">
     <button
       onClick={() => setShowGuida(false)}
       className="absolute top-2 right-2 text-yellow-900 font-bold hover:text-red-500"
@@ -379,7 +379,7 @@ export default function MappaConcettuale() {
           placeholder="Argomento per mappa automatica"
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
-          className="border rounded px-3 py-2 w-full"
+          className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded px-3 py-2 w-full"
         />
         <button
           onClick={handleGeneraMappa}
@@ -390,19 +390,20 @@ export default function MappaConcettuale() {
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <button onClick={addNewNode} className="bg-green-600 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">➕ Nodo</button>
-        <button onClick={handleExportPDF} className="bg-red-500 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">🧾 PDF</button>
-        <button onClick={handleExportDocx} className="bg-purple-600 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">📄 DOCX</button>
-        <button onClick={handleUndo} disabled={history.length === 0} className="bg-gray-500 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">↩️ Indietro</button>
-        <button onClick={handleRedo} disabled={future.length === 0} className="bg-gray-500 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">↪️ Avanti</button>
-        <button onClick={handleSave} className="bg-gray-800 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">💾 Salva</button>
-        <button onClick={deleteSelectedNode} disabled={!selectedNodeId} className="bg-red-600 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">🗑️ Nodo</button>
-        <button onClick={deleteSelectedEdge} disabled={!selectedEdgeId} className="bg-red-500 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">🗑️ Connessione</button>
-      </div>
+      <button
+  onClick={addNewNode}className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">➕ Nodo</button><button
+  onClick={handleExportPDF}className="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">🧾 PDF</button><button
+  onClick={handleExportDocx}className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">📄 DOCX</button><button
+  onClick={handleUndo}disabled={history.length === 0}className="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">↩️ Indietro</button><button
+  onClick={handleRedo}disabled={future.length === 0}className="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">↪️ Avanti</button><button
+  onClick={handleSave}className="bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-900 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">💾 Salva</button><button
+  onClick={deleteSelectedNode}disabled={!selectedNodeId}className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">🗑️ Nodo</button><button
+  onClick={deleteSelectedEdge}disabled={!selectedEdgeId}className="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">🗑️ Connessione</button>
+  </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {mappeSalvate.map((mappa) => (
-          <div key={mappa.id} className="p-3 bg-white rounded shadow border">
+          <div key={mappa.id} className="p-3 bg-white dark:bg-gray-800 rounded shadow border border-gray-300 dark:border-gray-700">
             <p className="font-semibold">{mappa.titolo}</p>
             <div className="mt-2 flex gap-2 flex-wrap">
               <button onClick={() => handleLoad(mappa.id)} className="bg-blue-600 text-white px-2 py-1 rounded">Carica</button>
@@ -413,7 +414,7 @@ export default function MappaConcettuale() {
         ))}
       </div>
 
-      <div className="h-[70vh] w-full border rounded bg-white shadow">
+      <div className="h-[70vh] w-full border rounded bg-white dark:bg-gray-900 shadow border-gray-300 dark:border-gray-700">
         <ReactFlow
           nodes={nodesWithEdit}
           edges={styledEdges}
