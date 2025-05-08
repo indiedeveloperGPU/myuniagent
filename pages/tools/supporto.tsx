@@ -114,14 +114,14 @@ function SupportoPage() {
   return (
     <>
       <Toaster />
-      <h1 className="text-2xl font-bold mb-6">🎟️ Supporto Studente</h1>
+      <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">🎟️ Supporto Studente</h1>
 
       <div className="mb-4">
         <label className="block font-semibold mb-1">Tipo di richiesta</label>
         <select
           value={tipo}
           onChange={(e) => setTipo(e.target.value)}
-          className="w-full border rounded px-3 py-2"
+          className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
         >
           <option value="problema tecnico">Problema tecnico</option>
           <option value="generale">Generale</option>
@@ -135,7 +135,7 @@ function SupportoPage() {
           type="text"
           value={oggetto}
           onChange={(e) => setOggetto(e.target.value)}
-          className="w-full border rounded px-3 py-2"
+          className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
           placeholder="Es: Problema caricamento tesi"
         />
       </div>
@@ -146,14 +146,14 @@ function SupportoPage() {
           value={messaggio}
           onChange={(e) => setMessaggio(e.target.value)}
           rows={5}
-          className="w-full border rounded px-3 py-2"
+          className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
           placeholder="Descrivi il problema o la tua richiesta"
         />
       </div>
 
       <button
         onClick={handleInvio}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
       >
         Invia ticket
       </button>
@@ -163,10 +163,10 @@ function SupportoPage() {
         {loading ? (
           <p>Caricamento...</p>
         ) : storico.length === 0 ? (
-          <p className="text-gray-600">Nessun ticket inviato finora.</p>
+          <p className="text-gray-600 dark:text-gray-300">Nessun ticket inviato finora.</p>
         ) : (
-          <table className="w-full table-auto border border-gray-200">
-            <thead className="bg-gray-100">
+          <table className="w-full table-auto border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
+            <thead className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100">
               <tr>
                 <th className="text-left px-3 py-2">📝 Oggetto</th>
                 <th className="text-left px-3 py-2">📂 Tipo</th>
@@ -183,8 +183,10 @@ function SupportoPage() {
                   <td className="px-3 py-2">{new Date(ticket.creato_il).toLocaleDateString()}</td>
                   <td className="px-3 py-2">
                     <span
-                      className={`px-2 py-1 text-xs font-semibold rounded text-white ${
-                        ticket.stato === "aperto" ? "bg-green-600" : "bg-red-600"
+                      className={`px-2 py-1 text-xs font-semibold rounded ${
+                        ticket.stato === "aperto"
+                          ? "bg-green-600 text-white"
+                          : "bg-red-600 text-white"
                       }`}
                     >
                       {ticket.stato === "aperto" ? "Aperto" : "Chiuso"}
@@ -206,11 +208,11 @@ function SupportoPage() {
       </div>
 
       {selectedTicket && (
-        <div className="fixed inset-0 bg-white bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-white dark:bg-gray-900 bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded shadow-lg p-6 w-full max-w-xl relative">
             <button
               onClick={() => setSelectedTicket(null)}
-              className="absolute top-2 right-2 text-gray-600 hover:text-black"
+              className="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white"
             >
               ✖️
             </button>
@@ -221,7 +223,7 @@ function SupportoPage() {
             <p><strong>📅 Inviato il:</strong> {new Date(selectedTicket.creato_il).toLocaleString()}</p>
             <p className="mt-2"><strong>✉️ Messaggio:</strong> {selectedTicket.messaggio}</p>
             {selectedTicket.risposta && (
-              <div className="mt-2 bg-gray-100 p-3 rounded">
+              <div className="mt-2 bg-gray-100 dark:bg-gray-800 p-3 rounded text-gray-900 dark:text-gray-100">
                 <strong>📩 Risposta staff:</strong>
                 <p>{selectedTicket.risposta}</p>
               </div>
@@ -230,7 +232,7 @@ function SupportoPage() {
               <div className="mt-3">
                 <label className="block font-semibold mb-1">💬 Rispondi:</label>
                 <textarea
-                  className="w-full border rounded px-3 py-2"
+                  className="w-full border rounded px-3 py-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
                   rows={2}
                   value={newReply[selectedTicket.id] || ""}
                   onChange={(e) =>
