@@ -31,6 +31,12 @@ export default function App({ Component, pageProps }: CustomAppProps) {
     };
 
     checkAuth();
+    // 👉 DARK MODE
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [Component]);
 
   const getLayout = Component.getLayout || ((page) => page);
