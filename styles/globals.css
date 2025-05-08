@@ -65,3 +65,16 @@ body {
     background-color: #1e293b; /* Colore scuro alternato per righe tabella */
   }
 }
+/* 🌙 Dark mode per <select> e <option> */
+@media (prefers-color-scheme: dark) {
+  select {
+    background-color: #0f172a;  /* slate-900 */
+    color: #f8fafc;             /* slate-50 */
+    border-color: #334155;      /* slate-700 */
+  }
+
+  option {
+    background-color: #0f172a;  /* slate-900 */
+    color: #f8fafc;             /* slate-50 */
+  }
+}
