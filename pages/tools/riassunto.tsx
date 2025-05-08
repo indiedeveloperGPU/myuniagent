@@ -222,7 +222,7 @@ export default function RiassuntoPage() {
 
   return (
     <DashboardLayout>
-      <h1 className="text-2xl font-bold mb-4">🧠 Riassunto</h1>
+      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">🧠 Riassunto</h1>
 
       {modalitaFox === null && (
         <div className="mb-8">
@@ -236,37 +236,37 @@ export default function RiassuntoPage() {
 
       {modalitaFox !== null && (
         <>
-          <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-900 p-4 rounded mb-6">
+          <div className="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500 text-blue-900 dark:text-blue-100 p-4 rounded mb-6">
             <h2 className="font-semibold text-lg mb-1">ℹ️ Come funziona il riassunto</h2>
             <p className="text-sm mb-2">Questo strumento genera <strong>riassunti dettagliati</strong> partendo da testo o file. Max 3500 caratteri in modalità classica.</p>
             <p className="text-sm mb-2">🦊 Usa Fox per documenti lunghi!</p>
           </div>
 
-          <p className="text-sm text-gray-600 mb-4">✅ Modalità attiva: <strong>{modalitaFox ? "Riassunto avanzato con Agente Fox 🦊" : "Riassunto automatico 📝"}</strong></p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">✅ Modalità attiva: <strong>{modalitaFox ? "Riassunto avanzato con Agente Fox 🦊" : "Riassunto automatico 📝"}</strong></p>
 
-          <button onClick={() => { setModalitaFox(null); setText(""); setResults([]); setError(""); }} className="text-sm bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 mb-6">🔙 Torna alla scelta modalità</button>
+          <button onClick={() => { setModalitaFox(null); setText(""); setResults([]); setError(""); }} className="text-sm bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-100 px-3 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-700 mb-6">🔙 Torna alla scelta modalità</button>
 
           {modalitaFox === false && (
             <div className="mb-4">
-              <textarea className="w-full p-2 border rounded" rows={8} placeholder="Incolla il testo da riassumere..." value={text} onChange={(e) => setText(e.target.value)} />
+              <textarea className="w-full p-2 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" rows={8} placeholder="Incolla il testo da riassumere..." value={text} onChange={(e) => setText(e.target.value)} />
               <button onClick={handleSubmitGPT} className="bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-blue-700" disabled={!text}>📝 Riassumi</button>
             </div>
           )}
 
           {modalitaFox === true && (
             <div className="mb-4">
-              <textarea className="w-full p-2 border rounded" rows={6} placeholder="Commento per Agente Fox (opzionale)" value={text} onChange={(e) => setText(e.target.value)} />
+              <textarea className="w-full p-2 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" rows={6} placeholder="Commento per Agente Fox (opzionale)" value={text} onChange={(e) => setText(e.target.value)} />
               <button onClick={inviaAFox} className="bg-orange-600 text-white px-4 py-2 rounded mt-2 hover:bg-orange-700">🦊 Invia richiesta all’Agente Fox</button>
 
               {allegatoFox && (
-                <div className="mt-2 text-sm text-green-600 flex items-center gap-4">
+                <div className="mt-2 text-sm text-green-600 dark:text-green-400 flex items-center gap-4">
                   📎 File allegato pronto per l'invio.
                   <button onClick={handleRemoveFile} className="text-red-500 text-sm underline hover:text-red-700">❌ Rimuovi file</button>
                 </div>
               )}
 
               {inviatoAFox && (
-                <div className={`bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded mt-4 text-sm transition-all duration-500 ease-in-out ${fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
+                <div className={`bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 text-yellow-800 dark:text-yellow-100 p-4 rounded mt-4 text-sm transition-all duration-500 ease-in-out ${fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
                   <strong>🦊 L’Agente Fox sta elaborando la tua richiesta.</strong><br />
                   Potrai visualizzare la risposta nella sezione <span className="font-medium">“Le mie richieste Agente Fox”</span>.
                 </div>
@@ -276,11 +276,11 @@ export default function RiassuntoPage() {
 
           <div className="mb-6">
             <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" onChange={handleFileUpload} className="hidden" />
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-gray-100 border border-gray-300 px-4 py-2 rounded hover:bg-gray-200 text-sm">📁 Carica file</button>
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 px-4 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-100 transition">📁 Carica file</button>
           </div>
 
           {results.length > 0 && results.map((r, i) => (
-            <div key={i} className="bg-gray-100 p-4 rounded whitespace-pre-wrap border-l-4 border-blue-400 mb-4">
+            <div key={i} className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-4 rounded whitespace-pre-wrap border-l-4 border-blue-400">
               <h2 className="font-semibold mb-1">🧩 Blocco {i + 1}</h2>
               {loadingBlocks[i] ? <p className="italic text-gray-600">Generazione in corso...</p> : <p>{r}</p>}
             </div>
@@ -293,7 +293,7 @@ export default function RiassuntoPage() {
           )}
 
           {error && (
-            <p className="text-red-600 mt-4 font-medium">{error}</p>
+            <p className="text-red-600 dark:text-red-400 mt-4 font-medium">{error}</p>
           )}
         </>
       )}
