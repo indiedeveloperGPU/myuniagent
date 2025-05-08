@@ -234,7 +234,7 @@ export default function Spiegazione() {
       <h1 className="text-2xl font-bold mb-4">📘 Spiegazione completa</h1>
 
       {/* Box Aiuto */}
-<div className="bg-blue-100 border-l-4 border-blue-500 text-blue-900 p-4 rounded mb-6">
+      <div className="bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-500 dark:border-blue-400 text-blue-900 dark:text-blue-100 p-4 rounded mb-6">
   <h2 className="font-semibold text-lg mb-2">🎯 Come ottenere spiegazioni migliori</h2>
   <p className="text-sm mb-2">
     Per ricevere risposte più <strong>approfondite, chiare e tecniche</strong>, è importante formulare domande specifiche.
@@ -252,7 +252,7 @@ export default function Spiegazione() {
 
 
       <div className="flex flex-col gap-3 mb-4">
-        <textarea className="w-full border rounded p-2" rows={3}
+        <textarea className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
           placeholder="Inserisci il concetto da spiegare..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -260,15 +260,13 @@ export default function Spiegazione() {
         <button
   onClick={handleSubmit}
   disabled={!input.trim() || loading}
-  className={`px-4 py-2 rounded text-white ${!input.trim() || loading ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
->
-          {loading ? "Caricamento..." : "Genera spiegazione"}
+  className={`px-4 py-2 rounded text-white ${!input.trim() || loading? 'bg-blue-300 dark:bg-blue-700 cursor-not-allowed':'bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-800'}`}>{loading ? "Caricamento..." : "Genera spiegazione"}
         </button>
-        <button onClick={inviaAgenteFox} className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
+        <button onClick={inviaAgenteFox} className="bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800 text-white px-4 py-2 rounded">
           🔎 Chiedi supporto all’Agente Fox 🦊
         </button>
         {inviatoAFox && (
-  <div className={`bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded mt-4 text-sm transition-all duration-500 ease-in-out ${fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
+  <div className={`bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 dark:border-yellow-300 text-yellow-800 dark:text-yellow-100 p-4 rounded mt-4 text-sm transition-all duration-500 ease-in-out ${fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
     <strong>🦊 L’Agente Fox sta elaborando la tua richiesta.</strong><br />
     Potrai visualizzare la risposta appena disponibile nella sezione <span className="font-medium">“Le mie richieste Agente Fox”</span>.
   </div>
@@ -282,10 +280,10 @@ export default function Spiegazione() {
           <h2 className="text-lg font-semibold mb-2">🗂️ Le mie conversazioni salvate</h2>
           <div className="flex flex-col gap-2">
             {chatSalvate.map((c, i) => (
-              <div key={i} className="flex justify-between items-center bg-white border p-2 rounded">
+              <div key={i} className="flex justify-between items-center bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 p-2 rounded">
                 <div onClick={() => caricaChatOGenera(c.titolo)} className="cursor-pointer flex-1">
-                  <div className="font-medium text-blue-700">{c.titolo}</div>
-                  <div className="text-sm text-gray-500">Ultima modifica: {c.data}</div>
+                <div className="font-medium text-blue-700 dark:text-blue-300">{c.titolo}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">Ultima modifica: {c.data}</div>
                 </div>
                 <button onClick={() => eliminaConversazione(c.titolo)} className="text-red-500 hover:text-red-700 text-sm ml-4">
                   🗑
@@ -297,23 +295,30 @@ export default function Spiegazione() {
       )}
 
       {chat.length > 0 && (
-        <div className="bg-gray-100 p-4 rounded shadow whitespace-pre-wrap">
+        <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded shadow whitespace-pre-wrap">
           <h2 className="font-semibold mb-2">📄 Conversazione:</h2>
           <div className="flex flex-col gap-3 mb-4 max-h-[400px] overflow-y-auto">
             {chat.map((msg, i) => (
-              <div key={i} className={`p-2 rounded ${msg.role === "user" ? "bg-white text-right" : "bg-blue-50 text-left"}`}>
+              <div
+              key={i}
+              className={`p-2 rounded ${
+                msg.role === "user"
+                  ? "bg-white dark:bg-gray-700 text-right"
+                  : "bg-blue-50 dark:bg-gray-600 text-left"
+              }`}
+            >
                 <p><strong>{msg.role === "user" ? "Tu" : "MyUniAgent"}:</strong> {msg.content}</p>
               </div>
             ))}
           </div>
           <div className="flex gap-2 mt-2">
-            <input type="text" className="flex-1 border rounded p-2"
+            <input type="text" className="flex-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
               placeholder="Fai una domanda di approfondimento..."
               value={followUp}
               onChange={(e) => setFollowUp(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && inviaFollowUp()}
             />
-            <button onClick={inviaFollowUp} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+            <button onClick={inviaFollowUp} className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white px-4 py-2 rounded">
               {followUpLoading ? "Attendi..." : "Invia"}
             </button>
           </div>
