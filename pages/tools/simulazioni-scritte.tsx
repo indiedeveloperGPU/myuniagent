@@ -583,13 +583,13 @@ export default function SimulazioniScrittePage() {
      
 
       {simulazione && ( 
-  <div className="mt-8 bg-gray-50 p-6 rounded border">
+  <div className="mt-8 bg-gray-50 dark:bg-gray-900 p-6 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100">
     <RiepilogoScelte />
     <h2 className="text-lg font-semibold mb-4">📝 Simulazione</h2>
 
 
     {simulazione.testo_base && (
-      <div className="mb-6 p-4 bg-gray-100 rounded-lg">
+      <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg border border-gray-200 dark:border-gray-700">
         <h2 className="text-lg font-bold mb-2">📖 Testo da Analizzare</h2>
         <p className="whitespace-pre-line">{simulazione.testo_base}</p>
       </div>
@@ -601,10 +601,13 @@ export default function SimulazioniScrittePage() {
           <div
   key={index}
   id={`domanda-${index}`}
-  className={`mb-4 p-2 rounded ${
-    erroriDomande.includes(index) ? "border border-red-500 bg-red-50" : "border border-transparent"
-  }`}
+  className={`mb-4 p-4 rounded border ${
+    erroriDomande.includes(index)
+      ? "border-red-500 bg-red-50 dark:bg-red-900/30"
+      : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+  } text-gray-900 dark:text-gray-100`}
 >
+
 
 <p className="font-medium mb-1 flex items-center gap-2">
   <b>{index + 1}.</b> {item.domanda}
@@ -667,7 +670,7 @@ export default function SimulazioniScrittePage() {
         [index]: e.target.value,
       }))
     }
-    className="w-full border rounded p-2 mt-2"
+    className="w-full border rounded p-2 mt-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
     rows={3}
     placeholder="Scrivi la tua risposta qui..."
   />
@@ -685,7 +688,7 @@ export default function SimulazioniScrittePage() {
         max={categoria === "università" ? 30 : 10}
         value={voto}
         onChange={(e) => setVoto(Number(e.target.value))}
-        className="w-full border rounded p-2 mb-2"
+        className="w-full border rounded p-2 mb-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
       />
       {categoria === "università" && (
         <div className="flex items-center gap-2">
@@ -728,7 +731,7 @@ export default function SimulazioniScrittePage() {
 )}
 
 {correzione && (
-  <div className="mt-8 bg-green-50 p-6 rounded border">
+  <div className="mt-8 bg-green-50 dark:bg-green-900/30 p-6 rounded border border-green-300 dark:border-green-700 text-gray-900 dark:text-gray-100">
     <h2 className="text-lg font-semibold mb-4">✅ Soluzione Ideale:</h2>
     <div className="space-y-2">
       {Array.isArray(correzione) &&
