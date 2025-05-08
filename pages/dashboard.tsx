@@ -38,7 +38,7 @@ export default function DashboardPage() {
       {/* Benvenuto */}
       <div>
         <h1 className="text-3xl font-bold mb-2">👋 Benvenuto{name ? `, ${name}` : ""}!</h1>
-        <p className="text-gray-700">
+        <p className="text-gray-700 dark:text-gray-300">
           Hai effettuato correttamente l’accesso a <strong>MyUniAgent</strong>. Usa la barra laterale per accedere alle funzionalità.
         </p>
       </div>
@@ -82,8 +82,8 @@ export default function DashboardPage() {
             <li key={i} className="flex items-start gap-3">
               <div className="text-xl">{item.icon}</div>
               <div>
-                <p className="font-medium text-blue-700">{item.title}</p>
-                <p className="text-sm text-gray-600">{item.desc}</p>
+                <p className="font-medium text-blue-700 dark:text-blue-400">{item.title}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{item.desc}</p>
               </div>
             </li>
           ))}
@@ -114,7 +114,7 @@ export default function DashboardPage() {
             <li key={i} className="flex items-start gap-3">
               <div className="text-xl">{item.icon}</div>
               <div>
-                <p className="font-medium text-gray-800">{item.title}</p>
+              <p className="font-medium text-gray-800 dark:text-gray-200">{item.title}</p>
                 <p className="text-sm text-gray-600">{item.desc}</p>
               </div>
             </li>
@@ -126,7 +126,7 @@ export default function DashboardPage() {
       <div>
         <button
           onClick={handleLogout}
-          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white px-4 py-2 rounded"
         >
           🔓 Logout
         </button>
