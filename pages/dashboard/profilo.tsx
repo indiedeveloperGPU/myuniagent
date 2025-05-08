@@ -120,11 +120,11 @@ function ProfiloPage() {
 
   return (
     <DashboardLayout>
-      <h1 className="text-2xl font-bold mb-6">👤 Il tuo profilo</h1>
+      <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">👤 Il tuo profilo</h1>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Info profilo */}
-        <div className="p-4 bg-white rounded shadow space-y-4">
+        <div className="p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded shadow space-y-4 border border-gray-200 dark:border-gray-700">
           <p><strong>Email:</strong> {email}</p>
           <div>
             <label className="font-semibold block">Nome:</label>
@@ -132,7 +132,7 @@ function ProfiloPage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border p-2 rounded"
+              className="w-full border rounded p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
             />
           </div>
           <div>
@@ -141,7 +141,7 @@ function ProfiloPage() {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={3}
-              className="w-full border p-2 rounded"
+              className="w-full border rounded p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
             />
           </div>
           <button
@@ -153,13 +153,13 @@ function ProfiloPage() {
         </div>
 
         {/* Cambio password */}
-        <div className="p-4 bg-white rounded shadow space-y-4">
+        <div className="p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded shadow space-y-4 border border-gray-200 dark:border-gray-700">
           <h2 className="font-semibold text-lg">🔒 Cambio password</h2>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border p-2 rounded"
+            className="w-full border rounded p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
             placeholder="Nuova password"
           />
           <button
@@ -174,7 +174,7 @@ function ProfiloPage() {
       {/* Box classe e abbonamento */}
       <div className="mt-8 grid md:grid-cols-2 gap-6">
         {role !== "docente" && (
-          <div className="p-4 bg-white rounded shadow space-y-3">
+          <div className="p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded shadow space-y-3 border border-gray-200 dark:border-gray-700">
             <h2 className="font-semibold text-lg">🏫 Collegati a una classe</h2>
             <input
               type="text"
@@ -189,26 +189,26 @@ function ProfiloPage() {
             >
               ➕ Aggiungi classe
             </button>
-            {classeJoinMsg && <p className="text-sm mt-2">{classeJoinMsg}</p>}
+            {classeJoinMsg && <p className="text-sm mt-2 text-gray-700 dark:text-gray-300">{classeJoinMsg}</p>}
           </div>
         )}
 
-        <div className="p-4 bg-white rounded shadow">
-          <h2 className="font-semibold text-lg">💳 Abbonamento</h2>
-          <p className="text-green-700 mt-1">Attivo – Piano annuale (15€/anno)</p>
-          <p className="text-sm text-gray-500">Gestione disponibile a breve</p>
-        </div>
+        <div className="p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded shadow border border-gray-200 dark:border-gray-700">
+  <h2 className="font-semibold text-lg">💳 Abbonamento</h2>
+  <p className="text-green-700 dark:text-green-400 mt-1">Attivo – Piano annuale (15€/anno)</p>
+  <p className="text-sm text-gray-500 dark:text-gray-400">Gestione disponibile a breve</p>
+</div>
       </div>
 
       {/* Tesi caricate */}
-      <div className="mt-8 bg-white p-4 rounded shadow">
+      <div className="mt-8 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 rounded shadow border border-gray-200 dark:border-gray-700">
         <h2 className="text-lg font-semibold mb-3">📁 Tesi caricate</h2>
         {tesiCaricate.length === 0 ? (
           <p className="text-gray-600">Nessuna tesi caricata.</p>
         ) : (
           <ul className="space-y-2">
             {tesiCaricate.map((item) => (
-              <li key={item.id} className="bg-gray-100 rounded p-3">
+              <li key={item.id} className="bg-gray-100 rounded p-3 text-gray-800 dark:bg-gray-800 dark:text-gray-100">
                 <strong>{item.filename}</strong><br />
                 <span className="text-sm text-gray-500">
                   Caricata il: {new Date(item.created_at).toLocaleString()}
@@ -222,9 +222,9 @@ function ProfiloPage() {
 
       {/* Dashboard docente */}
       {role === "docente" && (
-        <div className="mt-8 bg-white p-4 rounded shadow">
+        <div className="mt-8 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-4 rounded shadow border border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold">🎓 Sei un docente</h2>
-          <p className="text-sm text-gray-600 mb-3">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
             Accedi alla tua dashboard per gestire classi, test, materiali.
           </p>
           <a
@@ -240,7 +240,7 @@ function ProfiloPage() {
       <div className="mt-10">
         <button
           onClick={handleLogout}
-          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
         >
           🔓 Logout
         </button>
