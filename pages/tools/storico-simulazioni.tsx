@@ -85,7 +85,7 @@ export default function StoricoSimulazioniPage() {
         </Link>
       </div>
 
-      <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm mb-6 text-gray-700 text-sm animate-fadein">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4 rounded-2xl shadow-sm mb-6 text-gray-700 dark:text-gray-100 text-sm animate-fadein">
   <div className="flex items-center gap-2">
     <span className="text-blue-500 text-lg">ℹ️</span>
     <p><strong>Info:</strong> Qui puoi consultare tutte le simulazioni che hai completato. Usa i filtri per analizzare i tuoi progressi e i grafici per visualizzare l'andamento dei voti.</p>
@@ -95,11 +95,11 @@ export default function StoricoSimulazioniPage() {
 
       {/* Statistiche */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg p-4 shadow text-center">
+      <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 shadow text-center border border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500">Media Voto</p>
           <p className="text-2xl font-bold">{mediaVoti}</p>
         </div>
-        <div className="bg-white rounded-lg p-4 shadow text-center">
+        <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 shadow text-center border border-gray-200 dark:border-gray-700">
           <p className="text-sm text-gray-500">Numero Simulazioni</p>
           <p className="text-2xl font-bold">{filtrato.length}</p>
         </div>
@@ -120,7 +120,7 @@ export default function StoricoSimulazioniPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div>
           <label className="text-sm font-medium">Materia</label>
-          <select value={filtroMateria} onChange={(e) => setFiltroMateria(e.target.value)} className="w-full border rounded p-2">
+          <select value={filtroMateria} onChange={(e) => setFiltroMateria(e.target.value)} className="w-full border rounded p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600">
             <option value="">Tutte</option>
             {materieDisponibili.map((mat) => (
               <option key={mat} value={mat}>{mat}</option>
@@ -131,21 +131,15 @@ export default function StoricoSimulazioniPage() {
   <label className="text-sm font-medium block mb-1">Categoria</label>
   <div className="flex gap-2">
     <button
-      onClick={() => setCategoriaAttiva("")}
-      className={`px-3 py-1 rounded border ${categoriaAttiva === "" ? "bg-blue-600 text-white" : "bg-white text-gray-700"}`}
-    >
+      onClick={() => setCategoriaAttiva("")}className={`px-3 py-1 rounded border ${categoriaAttiva === "" ? "bg-blue-600 text-white": "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600"}`}>
       Tutte
     </button>
     <button
-      onClick={() => setCategoriaAttiva("superiori")}
-      className={`px-3 py-1 rounded border ${categoriaAttiva === "superiori" ? "bg-blue-600 text-white" : "bg-white text-gray-700"}`}
-    >
+      onClick={() => setCategoriaAttiva("superiori")}className={`px-3 py-1 rounded border ${categoriaAttiva === "superiori" ? "bg-blue-600 text-white": "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600"}`}>
       Superiori
     </button>
     <button
-      onClick={() => setCategoriaAttiva("università")}
-      className={`px-3 py-1 rounded border ${categoriaAttiva === "università" ? "bg-blue-600 text-white" : "bg-white text-gray-700"}`}
-    >
+      onClick={() => setCategoriaAttiva("università")}className={`px-3 py-1 rounded border ${categoriaAttiva === "università"? "bg-blue-600 text-white": "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-100 border-gray-300 dark:border-gray-600"}`}>
       Università
     </button>
   </div>
@@ -153,11 +147,11 @@ export default function StoricoSimulazioniPage() {
 
         <div>
           <label className="text-sm font-medium">Voto minimo</label>
-          <input type="number" value={filtroVotoMinimo} onChange={(e) => setFiltroVotoMinimo(Number(e.target.value))} className="w-full border rounded p-2" />
+          <input type="number" value={filtroVotoMinimo} onChange={(e) => setFiltroVotoMinimo(Number(e.target.value))} className="w-full border rounded p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600" />
         </div>
         <div>
           <label className="text-sm font-medium">Data minima</label>
-          <input type="date" value={filtroData} onChange={(e) => setFiltroData(e.target.value)} className="w-full border rounded p-2" />
+          <input type="date"value={filtroData}onChange={(e) => setFiltroData(e.target.value)}className="w-full border rounded p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"/>
         </div>
       </div>
 
@@ -169,9 +163,9 @@ export default function StoricoSimulazioniPage() {
       ) : filtrato.length === 0 ? (
         <p>Non hai ancora svolto simulazioni.</p>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-lg shadow">
-          <table className="w-full text-sm text-gray-700">
-            <thead className="bg-gray-100">
+        <div className="overflow-x-auto bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <table className="w-full text-sm text-gray-700 dark:text-gray-100">
+          <thead className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
               <tr>
                 <th className="p-3 text-left">Materia</th>
                 <th className="p-3 text-left">Argomento</th>
@@ -185,7 +179,7 @@ export default function StoricoSimulazioniPage() {
               {filtrato.map((sim) => (
                 <tr
                   key={sim.id}
-                  className="border-t hover:bg-gray-50 cursor-pointer"
+                  className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer text-gray-800 dark:text-gray-100"
                   onClick={() => setSelectedSimulazione(sim)}
                 >
                   <td className="p-3">{sim.materia}</td>
@@ -210,10 +204,10 @@ export default function StoricoSimulazioniPage() {
       <Dialog open={!!selectedSimulazione} onClose={() => setSelectedSimulazione(null)} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto scrolling-touch overscroll-contain space-y-4 relative">
+        <Dialog.Panel className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
           <button
   onClick={() => setSelectedSimulazione(null)}
-  className="absolute top-3 right-4 text-gray-500 hover:text-gray-800 text-2xl"
+  className="absolute top-3 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white text-2xl"
 >
   &times;
 </button>
@@ -232,12 +226,12 @@ export default function StoricoSimulazioniPage() {
 
                 <div className="mt-4">
                   <h3 className="font-semibold mb-2">📝 Simulazione:</h3>
-                  <p className="bg-gray-100 p-3 rounded whitespace-pre-line">{selectedSimulazione.simulazione_id}</p>
+                  <p className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-3 rounded whitespace-pre-line">{selectedSimulazione.simulazione_id}</p>
                 </div>
 
                 <div className="mt-4">
   <h3 className="font-semibold mb-2">✍️ Risposte date:</h3>
-  <div className="bg-gray-100 p-3 rounded space-y-2">
+  <div className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-3 rounded space-y-2">
     {(() => {
       try {
         const parsed = JSON.parse(selectedSimulazione.risposte_utente);
@@ -262,7 +256,7 @@ if (typeof parsed === "object" && parsed !== null) {
 
                 <div className="mt-4">
                   <h3 className="font-semibold mb-2">✅ Soluzione ideale:</h3>
-                  <div className="bg-green-100 p-3 rounded space-y-2">
+                  <div className="bg-green-100 dark:bg-green-900/30 text-gray-900 dark:text-gray-100 p-3 rounded space-y-2">
   {Array.isArray(selectedSimulazione.correzione) ? (
     selectedSimulazione.correzione.map((item: any, index: number) => (
       <p key={index} className="whitespace-pre-line">
