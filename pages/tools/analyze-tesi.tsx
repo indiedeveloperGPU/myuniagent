@@ -138,18 +138,18 @@ function TesiPage() {
 
   return (
     <DashboardLayout>
-      <h1 className="text-2xl font-bold mb-6">📄 Analisi Tesi</h1>
+      <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">📄 Analisi Tesi</h1>
 
-      <input type="file" onChange={handleFileChange} className="mb-2" />
-      {selectedFile && <p className="text-sm text-gray-600 mb-2">File: {selectedFile.name}</p>}
-      <button onClick={handleUpload} className="bg-blue-600 text-white px-4 py-2 rounded mb-6">
+      <input type="file" onChange={handleFileChange} className="mb-2 text-gray-900 dark:text-gray-100" />
+      {selectedFile && <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">File: {selectedFile.name}</p>}
+      <button onClick={handleUpload} className="bg-blue-600 text-white px-4 py-2 rounded mb-6 hover:bg-blue-700 transition">
         {loading ? "Caricamento..." : "Carica"}
       </button>
 
       <div className="mb-4">
         <label className="block font-medium mb-2">Seleziona una tesi già caricata:</label>
         <select
-          className="w-full border rounded p-2"
+          className="w-full border rounded p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
           value={fileSelezionato?.id || ""}
           onChange={(e) => {
             const file = fileUtente.find((f) => f.id === e.target.value);
@@ -189,23 +189,23 @@ function TesiPage() {
         </button>
       </div>
 
-      {message && <p className="text-green-600 mb-4">{message}</p>}
-      {error && <p className="text-red-600 mb-4">{error}</p>}
+      {message && <p className="text-green-600 dark:text-green-400 mb-4">{message}</p>}
+      {error && <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>}
 
       <h2 className="text-xl font-semibold mb-2">📜 Storico richieste</h2>
       {richieste.length === 0 && <p className="text-gray-500">Nessuna richiesta ancora inviata.</p>}
       <ul className="space-y-4">
         {richieste.map((r) => (
-          <li key={r.id} className="border rounded p-4 bg-gray-50">
-            <p className="text-sm text-gray-600">🕒 {new Date(r.inviata_il).toLocaleString()}</p>
+          <li key={r.id} className="border rounded p-4 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-100">
+            <p className="text-sm text-gray-600 dark:text-gray-300">🕒 {new Date(r.inviata_il).toLocaleString()}</p>
             <p className="font-medium">📄 {r.domanda}</p>
-            <p className="text-sm text-blue-600">Stato: {r.stato}</p>
+            <p className="text-sm text-blue-600 dark:text-blue-400">Stato: {r.stato}</p>
             {r.risposta && (
               <>
                 <div className="mt-2 whitespace-pre-wrap border-t pt-2">🧾 {r.risposta}</div>
                 <button
                   onClick={() => handleDownloadPDF(r.risposta, r.tipo || "tesi")}
-                  className="mt-2 bg-green-600 text-white px-3 py-1 rounded"
+                  className="mt-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded transition"
                 >
                   ⬇️ Scarica risposta in PDF
                 </button>
