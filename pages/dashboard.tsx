@@ -37,7 +37,10 @@ export default function DashboardPage() {
     <div className="max-w-5xl mx-auto px-4 py-6 space-y-10">
       {/* Benvenuto */}
       <div>
-        <h1 className="text-3xl font-bold mb-2">👋 Benvenuto{name ? `, ${name}` : ""}!</h1>
+      <h1 className="text-3xl font-bold mb-2">
+  👋 Benvenuto
+  {name ? <span className="text-blue-700 dark:text-blue-400">, {name}</span> : ""}!
+</h1>
         <p className="text-gray-700 dark:text-gray-300">
           Hai effettuato correttamente l’accesso a <strong>MyUniAgent</strong>. Usa la barra laterale per accedere alle funzionalità.
         </p>
@@ -140,7 +143,6 @@ DashboardPage.requireAuth = true;
 DashboardPage.getLayout = function getLayout(page: React.ReactNode) {
   return <DashboardLayout>{page}</DashboardLayout>;
 };
-
 
 
 
