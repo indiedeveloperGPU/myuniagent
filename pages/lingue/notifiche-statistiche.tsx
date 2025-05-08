@@ -139,7 +139,7 @@ export default function UlterioriPage() {
         <div className="flex justify-end mb-6 relative">
           <button
             onClick={() => setMostraDropdown((prev) => !prev)}
-            className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white border shadow-sm hover:bg-blue-600 hover:text-white transition"
+            className="relative w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-sm hover:bg-blue-600 hover:text-white transition"
           >
             🔔
             {notificheNonLette > 0 && (
@@ -150,12 +150,13 @@ export default function UlterioriPage() {
           </button>
 
           {mostraDropdown && (
-            <div className="absolute right-0 mt-12 w-80 bg-white border rounded-lg shadow-xl z-50 p-3 space-y-2">
+            <div className="absolute right-0 mt-12 w-80 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 p-3 space-y-2">
+
               {notifiche.length === 0 ? (
                 <p className="text-sm text-gray-500">Nessuna notifica.</p>
               ) : (
                 notifiche.map((n) => (
-                  <div key={n.id} className="relative bg-gray-50 border p-3 rounded hover:bg-gray-100 transition">
+                  <div key={n.id} className="relative bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 p-3 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition">
                     <button
                       onClick={() => eliminaNotifica(n.id)}
                       className="absolute top-2 right-2 text-red-400 hover:text-red-600 text-xs"
@@ -180,7 +181,7 @@ export default function UlterioriPage() {
           ) : (
             <ul className="space-y-2">
               {statistiche.map((s, i) => (
-                <li key={i} className="border rounded p-3 text-sm">
+                <li key={i} className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded p-3 text-sm text-gray-900 dark:text-gray-100">
                   <p className="font-semibold capitalize">{s.lingua}</p>
                   <p className="text-gray-600">Teoria: {s.teoria}, Vocabolario: {s.vocabolario}, Certificazioni: {s.certificazioni}</p>
                 </li>
@@ -197,7 +198,7 @@ export default function UlterioriPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full border text-sm">
-                <thead className="bg-gray-100">
+              <thead className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                   <tr>
                     <th className="text-left px-4 py-2">Tipo</th>
                     <th className="text-left px-4 py-2">Lingua</th>
@@ -209,7 +210,7 @@ export default function UlterioriPage() {
                 </thead>
                 <tbody>
                   {testValutati.map((t) => (
-                    <tr key={t.id} className="border-b">
+                    <tr key={t.id} className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
                       <td className="px-4 py-2">{t.tipo}</td>
                       <td className="px-4 py-2 capitalize">{t.lingua}</td>
                       <td className="px-4 py-2">{t.livello}</td>
@@ -233,7 +234,7 @@ export default function UlterioriPage() {
 
         {/* Modale test */}
         {aperto && (
-          <div className="fixed top-0 right-0 w-full md:w-[500px] h-full bg-white border-l shadow-xl p-6 z-50 overflow-y-auto">
+          <div className="fixed top-0 right-0 w-full md:w-[500px] h-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-xl p-6 z-50 overflow-y-auto text-gray-900 dark:text-gray-100">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">📋 Test {aperto.tipo} ({aperto.lingua.toUpperCase()})</h2>
               <button onClick={() => { setAperto(null); setDomandeTest([]); }} className="text-gray-600 hover:text-black">✕</button>
@@ -241,7 +242,7 @@ export default function UlterioriPage() {
             <p className="text-sm text-gray-500 mb-1">Livello: {aperto.livello}</p>
             <p className="text-sm text-gray-500 mb-4">Data correzione: {new Date(aperto.corretto_il).toLocaleDateString()}</p>
             <p className="text-sm font-semibold text-green-700 mb-2">Voto: {aperto.voto}/10</p>
-            <p className="text-sm mb-4 whitespace-pre-wrap text-gray-800">💬 Commento: {aperto.commento}</p>
+            <p className="text-sm mb-4 whitespace-pre-wrap text-gray-800 dark:text-gray-100">💬 Commento: {aperto.commento}</p>
 
             {domandeTest.length > 0 && (
   <div className="mt-4">
@@ -261,7 +262,7 @@ export default function UlterioriPage() {
     const corretta = rispostaUtente === rispostaCorretta;
 
     return (
-      <li key={i} className="border p-3 rounded bg-gray-50">
+      <li key={i} className="border border-gray-200 dark:border-gray-700 p-3 rounded bg-gray-50 dark:bg-gray-800">
         <p className="font-semibold text-sm mb-2">❓ {d.domanda}</p>
         {tipo === "multipla" && opzioni.length > 0 && (
           <p className="text-sm text-gray-600 mb-1">Opzioni: {opzioni.join(", ")}</p>
@@ -289,4 +290,5 @@ export default function UlterioriPage() {
     </DashboardLayout>
   );
 }
+
 UlterioriPage.requireAuth = true
