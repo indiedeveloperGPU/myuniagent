@@ -115,10 +115,10 @@ export default function Vocabolario() {
     <DashboardLayout>
       <div className="flex gap-6">
         {/* Sidebar sinistra */}
-        <div className="w-1/4 border-r pr-4">
+        <div className="w-1/4 border-r pr-4 border-gray-200 dark:border-gray-700">
           <button
             onClick={() => router.back()}
-            className="mb-4 inline-flex items-center gap-2 bg-white text-blue-700 border border-blue-300 rounded-full px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-50 transition"
+            className="mb-4 inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-gray-600 rounded-full px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
           >
             🔙 Torna alla pagina Lingue
           </button>
@@ -127,7 +127,7 @@ export default function Vocabolario() {
           <select
             value={livello}
             onChange={(e) => setLivello(e.target.value)}
-            className="w-full border px-3 py-2 mb-4 rounded"
+            className="w-full border px-3 py-2 mb-4 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
           >
             {livelli.map((lvl) => (
               <option key={lvl} value={lvl}>{lvl}</option>
@@ -158,8 +158,11 @@ export default function Vocabolario() {
           <button
             onClick={() => setSelezionato(v.id)}
             className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
-              selezionato === v.id ? 'bg-blue-100 font-semibold' : 'bg-white hover:bg-gray-100'
-            }`}
+              selezionato === v.id
+                ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+            } border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100`}
+            
           >
             <span className="text-sm font-medium">📌 {v.tema}</span>
             <span className="text-xs text-gray-600">Variante {v.ordine} di {variantiTotali}</span>
@@ -180,7 +183,7 @@ export default function Vocabolario() {
           )}
 
           {!loading && vocabolario.length > 0 && selezionato && (
-            <div className="bg-white p-6 rounded shadow">
+            <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6 rounded shadow">
               {vocabolario.filter((v) => v.id === selezionato).map((item) => (
                 <div key={item.id}>
                   <h2 className="text-xl font-bold mb-1">📌 {item.tema}</h2>
@@ -201,34 +204,38 @@ export default function Vocabolario() {
                       <h3 className="font-medium mb-2">📝 Quiz</h3>
                       <div className="space-y-3">
                         {item.quiz.map((q: any, idx: number) => (
-                          <div key={idx}>
-                            <p className="text-sm font-medium">{q.domanda}</p>
-                            {q.tipo === "multipla" ? (
-                              <div className="mt-1 space-y-1">
-                                {q.opzioni.map((opt: string, oidx: number) => (
-                                  <label key={oidx} className="block text-sm">
-                                    <input
-                                      type="radio"
-                                      name={`quiz-${item.id}-${idx}`}
-                                      value={opt}
-                                      checked={risposte[item.id]?.[idx] === opt}
-                                      onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
-                                      className="mr-2"
-                                    />
-                                    {opt}
-                                  </label>
-                                ))}
-                              </div>
-                            ) : (
-                              <textarea
-                                rows={2}
-                                className="w-full border mt-1 p-2 rounded"
-                                placeholder="Scrivi la tua risposta"
-                                value={risposte[item.id]?.[idx] || ""}
-                                onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
-                              />
-                            )}
-                          </div>
+                          <div
+                          key={idx}
+                          className="border p-3 rounded bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700"
+                        >
+                          <p className="text-sm font-medium mb-1">{q.domanda}</p>
+                          {q.tipo === "multipla" ? (
+                            <div className="space-y-1">
+                              {q.opzioni.map((opt: string, oidx: number) => (
+                                <label key={oidx} className="block text-sm">
+                                  <input
+                                    type="radio"
+                                    name={`quiz-${item.id}-${idx}`}
+                                    value={opt}
+                                    checked={risposte[item.id]?.[idx] === opt}
+                                    onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
+                                    className="mr-2"
+                                  />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
+                          ) : (
+                            <textarea
+                              rows={2}
+                              className="w-full border mt-1 p-2 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
+                              placeholder="Scrivi la tua risposta"
+                              value={risposte[item.id]?.[idx] || ""}
+                              onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
+                            />
+                          )}
+                        </div>
+                        
                         ))}
                       </div>
 
