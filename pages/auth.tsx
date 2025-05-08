@@ -29,6 +29,14 @@ export default function AuthPage() {
         return;
       }
 
+      // 🔐 Imposta i cookie per rendere la sessione leggibile lato server
+      if (data?.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+
       const user = data.user;
       if (!user) {
         setError("Errore autenticazione.");
@@ -36,7 +44,6 @@ export default function AuthPage() {
         return;
       }
 
-      // Recupera ruolo
       const { data: profilo, error: profiloError } = await supabase
         .from("profiles")
         .select("ruolo")
@@ -49,7 +56,6 @@ export default function AuthPage() {
         return;
       }
 
-      // Verifica se lo staff ha spuntato l'accesso dedicato
       if (isStaff && profilo.ruolo === "staff") {
         router.push("/staff/dashboard");
       } else if (profilo.ruolo === "docente") {
@@ -60,7 +66,6 @@ export default function AuthPage() {
         setError("Ruolo non riconosciuto o accesso non consentito.");
       }
     } else {
-      // REGISTRAZIONE (solo studente/docente)
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -88,76 +93,78 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="max-w-md w-full bg-white p-6 shadow rounded">
-        <h1 className="text-2xl font-bold mb-4 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 py-12">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 p-6 md:p-8 rounded-lg shadow-md">
+      <h1 className="text-2xl md:text-3xl font-bold mb-6 text-center text-gray-800 dark:text-white">
           {isLogin ? "Accedi a MyUniAgent" : "Registrati su MyUniAgent"}
         </h1>
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border rounded px-3 py-2 mb-3"
-        />
+        <div className="space-y-4">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border rounded px-3 py-2 mb-4"
-        />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
 
-        {!isLogin && (
-          <div className="mb-4">
-            <label className="block font-semibold mb-1">Tipo account</label>
-            <select
-              value={ruolo}
-              onChange={(e) => setRuolo(e.target.value)}
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="studente">Studente</option>
-              <option value="docente">Docente</option>
-            </select>
-          </div>
-        )}
+          {!isLogin && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Tipo account</label>
+              <select
+                value={ruolo}
+                onChange={(e) => setRuolo(e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="studente">Studente</option>
+                <option value="docente">Docente</option>
+              </select>
+            </div>
+          )}
 
-        {isLogin && (
-          <div className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              id="isStaff"
-              checked={isStaff}
-              onChange={(e) => setIsStaff(e.target.checked)}
-              className="mr-2"
-            />
-            <label htmlFor="isStaff" className="text-sm font-medium text-gray-700">
-              Accedi come membro dello staff
-            </label>
-          </div>
-        )}
+          {isLogin && (
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isStaff"
+                checked={isStaff}
+                onChange={(e) => setIsStaff(e.target.checked)}
+                className="mr-2"
+              />
+              <label htmlFor="isStaff" className="text-sm text-gray-700 dark:text-gray-300">
+                Accedi come membro dello staff
+              </label>
+            </div>
+          )}
 
-        {error && <p className="text-red-600 mb-3 text-sm">{error}</p>}
+          {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
 
-        <button
-          onClick={handleAuth}
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-        >
-          {loading ? "Attendi..." : isLogin ? "Accedi" : "Registrati"}
-        </button>
-
-        <p className="text-sm mt-4 text-center">
-          {isLogin ? "Non hai un account?" : "Hai già un account?"}{" "}
-          <span
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-blue-600 hover:underline cursor-pointer"
+          <button
+            onClick={handleAuth}
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white font-semibold py-2 rounded text-sm transition-colors duration-200"
           >
-            {isLogin ? "Registrati" : "Accedi"}
-          </span>
-        </p>
+            {loading ? "Attendi..." : isLogin ? "Accedi" : "Registrati"}
+          </button>
+
+          <p className="text-sm text-center text-gray-600 dark:text-gray-400 mt-4">
+            {isLogin ? "Non hai un account?" : "Hai già un account?"}{" "}
+            <span
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-blue-600 hover:underline cursor-pointer font-medium"
+            >
+              {isLogin ? "Registrati" : "Accedi"}
+            </span>
+          </p>
+        </div>
       </div>
     </div>
   );
