@@ -122,7 +122,7 @@ export default function DashboardPage() {
     transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
   >
     <Image
-      src="/fox-wave.png"
+      src="/images/fox-wave.png"
       alt="Agente Fox che saluta"
       width={120}
       height={120}
