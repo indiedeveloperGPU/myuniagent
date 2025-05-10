@@ -12,7 +12,6 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
   const [ruolo, setRuolo] = useState("studente");
-  const [isStaff, setIsStaff] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -156,22 +155,6 @@ export default function AuthPage() {
               </select>
             </div>
           )}
-
-          {isLogin && (
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="isStaff"
-                checked={isStaff}
-                onChange={(e) => setIsStaff(e.target.checked)}
-                className="mr-2"
-              />
-              <label htmlFor="isStaff" className="text-sm text-gray-700 dark:text-gray-300">
-                Accedi come membro dello staff
-              </label>
-            </div>
-          )}
-
           {error && <p className="text-red-500 dark:text-red-400 text-sm">{error}</p>}
 
           <button
