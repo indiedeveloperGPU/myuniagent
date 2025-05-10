@@ -26,6 +26,13 @@ export default function App({ Component, pageProps }: CustomAppProps) {
       } else {
         setIsAuthenticated(!!user);
       }
+      if (user) {
+  await supabase
+    .from("profiles")
+    .update({ ultimo_accesso: new Date().toISOString() })
+    .eq("id", user.id);
+}
+
 
       setLoading(false);
     };
