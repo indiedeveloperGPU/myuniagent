@@ -217,10 +217,6 @@ export default function SimulazioniScrittePage() {
     }
   };
   
-  
-  
-  
-
   const RiepilogoScelte = () => (
     <>
       <h3 className="text-sm font-semibold mb-1 text-gray-600">📎 Riepilogo scelte</h3>
@@ -415,7 +411,8 @@ export default function SimulazioniScrittePage() {
         <option value="lettere">📚 Lettere</option>
         <option value="lingue">🌍 Lingue</option>
         <option value="scienze-politiche">🏛️ Scienze Politiche</option>
-        <option value="scienze-della-comunicazione">🏛️ Scienze Della Comunicazione</option>
+        <option value="scienze-della-comunicazione">🗣️ Scienze Della Comunicazione</option>
+        <option value="lingue-e-comunicazione">🌐 Lingue e Comunicazione</option>
         <option value="architettura">🏗️ Architettura</option>
       </select>
     </div>
@@ -440,6 +437,11 @@ export default function SimulazioniScrittePage() {
         <>
           <option value="Media e Comunicazione Digitale">Media e Comunicazione Digitale</option>
           <option value="Comunicazione Istituzionale e d’Impresa">Comunicazione Istituzionale e d’Impresa</option>
+        </>
+      )}
+      {facolta === "lingue-e-comunicazione" && (
+        <>
+          <option value="Comunicazione D'impresa e Relazioni Pubbliche">Comunicazione D'impresa e Relazioni Pubbliche</option>
         </>
       )}
       {facolta === "giurisprudenza" && (
