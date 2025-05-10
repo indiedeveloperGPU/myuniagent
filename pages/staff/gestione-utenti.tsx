@@ -134,7 +134,24 @@ function GestioneUtenti() {
             <tbody className="divide-y divide-gray-200">
               {utentiFiltrati.map((u, idx) => (
                 <tr key={u.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50`}>
-                  <td className="px-4 py-3 align-middle">{u.email}</td>
+                  <td className="px-4 py-3 align-middle">
+  <div className="flex items-center gap-2">
+    <span
+      className={`w-2 h-2 rounded-full ${
+        u.ultimo_accesso && Date.now() - new Date(u.ultimo_accesso).getTime() < 5 * 60 * 1000
+          ? "bg-green-500"
+          : "bg-gray-300"
+      }`}
+      title={
+        u.ultimo_accesso
+          ? `Ultimo accesso: ${new Date(u.ultimo_accesso).toLocaleString()}`
+          : "Mai effettuato"
+      }
+    ></span>
+    {u.email}
+  </div>
+</td>
+
                   <td className="text-center align-middle capitalize">{u.ruolo}</td>
                   <td className="text-center align-middle">{u.ruolo === "docente" ? (u.is_verified ? "✅" : "❌") : "—"}</td>
                   <td className="text-center align-middle">{u.abbonamento_attivo ? "✅" : "❌"}</td>
