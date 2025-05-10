@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabaseClient";
 import { motion } from "framer-motion";
 import { Mail, Lock } from "lucide-react";
+import Image from "next/image";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -101,6 +102,17 @@ export default function AuthPage() {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="w-full max-w-md bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl"
       >
+        <div className="flex justify-center mb-4">
+          <Image
+            src="/images/logo1.svg"
+            alt="Logo MyUniAgent"
+            width={80}
+            height={80}
+            className="rounded-full"
+            priority
+          />
+        </div>
+
         <h1 className="text-3xl font-bold mb-6 text-center text-gray-800 dark:text-white">
           {isLogin ? "Accedi a MyUniAgent" : "Registrati su MyUniAgent"}
         </h1>
@@ -198,4 +210,5 @@ export default function AuthPage() {
     </div>
   );
 }
+
 
