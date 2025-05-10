@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabaseClient";
+import { motion } from "framer-motion";
+import { Mail, Lock } from "lucide-react";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -29,7 +31,6 @@ export default function AuthPage() {
         return;
       }
 
-      // 🔐 Imposta i cookie per rendere la sessione leggibile lato server
       if (data?.session) {
         await supabase.auth.setSession({
           access_token: data.session.access_token,
@@ -93,32 +94,43 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 py-12">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 p-6 md:p-8 rounded-lg shadow-md">
-      <h1 className="text-2xl md:text-3xl font-bold mb-6 text-center text-gray-800 dark:text-white">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 px-4 py-12">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="w-full max-w-md bg-white dark:bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl"
+      >
+        <h1 className="text-3xl font-bold mb-6 text-center text-gray-800 dark:text-white">
           {isLogin ? "Accedi a MyUniAgent" : "Registrati su MyUniAgent"}
         </h1>
 
         <div className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="relative">
+            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full pl-10 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <div className="relative">
+            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full pl-10 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
           {!isLogin && (
             <div>
-              <label className="block text-sm font-medium mb-1">Tipo account</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Tipo account</label>
               <select
                 value={ruolo}
                 onChange={(e) => setRuolo(e.target.value)}
@@ -150,9 +162,26 @@ export default function AuthPage() {
           <button
             onClick={handleAuth}
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white font-semibold py-2 rounded text-sm transition-colors duration-200"
+            className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white font-semibold py-2 rounded text-sm transition-colors duration-200 flex items-center justify-center"
           >
-            {loading ? "Attendi..." : isLogin ? "Accedi" : "Registrati"}
+            {loading ? (
+              <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8z"
+                />
+              </svg>
+            ) : isLogin ? "Accedi" : "Registrati"}
           </button>
 
           <p className="text-sm text-center text-gray-600 dark:text-gray-400 mt-4">
@@ -165,7 +194,7 @@ export default function AuthPage() {
             </span>
           </p>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
