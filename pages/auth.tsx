@@ -58,15 +58,16 @@ export default function AuthPage() {
         return;
       }
 
-      if (isStaff && profilo.ruolo === "staff") {
-        router.push("/staff/dashboard");
-      } else if (profilo.ruolo === "docente") {
-        router.push("/docente/dashboard");
-      } else if (profilo.ruolo === "studente") {
-        router.push("/dashboard");
-      } else {
-        setError("Ruolo non riconosciuto o accesso non consentito.");
-      }
+      if (profilo.ruolo === "staff") {
+  router.push("/staff/dashboard");
+} else if (profilo.ruolo === "docente") {
+  router.push("/docente/dashboard");
+} else if (profilo.ruolo === "studente") {
+  router.push("/dashboard");
+} else {
+  setError("Ruolo non riconosciuto o accesso non consentito.");
+}
+
     } else {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
