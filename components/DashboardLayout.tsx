@@ -39,8 +39,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       
       {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-gray-950 shadow-lg border-r dark:border-gray-800">
-        <div className="p-6 text-lg font-bold text-center border-b dark:border-gray-800">
+      <aside className="w-64 bg-white dark:bg-gray-950 shadow-xl border-r border-gray-200 dark:border-gray-800">
+        <div className="p-6 text-xl font-extrabold text-center border-b dark:border-gray-800 text-gray-900 dark:text-white tracking-wide">
           🎓 MyUniAgent
         </div>
 
@@ -52,8 +52,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div
                   className={`flex items-center gap-3 p-2 rounded transition cursor-pointer
                     ${isActive
-                      ? "bg-blue-100 dark:bg-blue-900 font-semibold"
-                      : "hover:bg-blue-100 dark:hover:bg-gray-800"
+  ? "bg-blue-100 dark:bg-blue-900 font-semibold border-l-4 border-blue-600 dark:border-blue-400 pl-4"
+  : "hover:bg-blue-100 dark:hover:bg-gray-800 pl-4"}
                     }`}
                 >
                   <span>{label}</span>
@@ -65,10 +65,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-6 sm:px-8 sm:py-10 bg-gray-50 dark:bg-gray-900">
         {children}
       </main>
     </div>
   );
 }
-
