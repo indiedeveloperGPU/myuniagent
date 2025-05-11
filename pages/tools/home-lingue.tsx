@@ -113,7 +113,7 @@ export default function LingueHomePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link href="/lingue/teoria">
-          <div className="p-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg shadow hover:shadow-lg transition cursor-pointer">
+          <div className="p-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl shadow hover:shadow-lg transition cursor-pointer border border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-semibold mb-2">📘 Teoria Grammaticale</h2>
               <p className="text-gray-600 dark:text-gray-300 text-sm">
                 Studia la grammatica di {lingua} in modo chiaro e strutturato.
@@ -122,7 +122,7 @@ export default function LingueHomePage() {
           </Link>
 
           <Link href="/lingue/vocabolario">
-          <div className="p-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg shadow hover:shadow-lg transition cursor-pointer">
+          <div className="p-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl shadow hover:shadow-lg transition cursor-pointer border border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-semibold mb-2">🧠 Vocabolario Tematico</h2>
               <p className="text-gray-600 dark:text-gray-300 text-sm">
                 Espandi il tuo lessico con vocabolari tematici e quiz per ogni livello.
@@ -131,7 +131,7 @@ export default function LingueHomePage() {
           </Link>
 
           <Link href="/lingue/certificazioni">
-          <div className="p-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg shadow hover:shadow-lg transition cursor-pointer">
+          <div className="p-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl shadow hover:shadow-lg transition cursor-pointer border border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-semibold mb-2">🎓 Simulazioni Certificazioni</h2>
               <p className="text-gray-600 dark:text-gray-300 text-sm">
                 Allenati per certificazioni linguistiche con test reali creati da Agente Fox.
@@ -140,16 +140,18 @@ export default function LingueHomePage() {
           </Link>
 
           <div
-            onClick={showInDevelopment}
-            className="p-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg shadow hover:shadow-lg transition cursor-pointer">
-            <h2 className="text-xl font-semibold mb-2">💬 Conversazione</h2>
-            <p className="text-gray-600 dark:text-gray-300 text-sm">
-              La sezione è in fase di sviluppo finale. Presto potrai simulare dialoghi reali.
-            </p>
-          </div>
+  onClick={showInDevelopment}
+  className="p-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl shadow hover:shadow-lg transition cursor-pointer border border-gray-200 dark:border-gray-700"
+>
+  <h2 className="text-xl font-semibold mb-2">💬 Conversazione</h2>
+  <p className="text-gray-600 dark:text-gray-300 text-sm">
+    La sezione è in fase di sviluppo finale. Presto potrai simulare dialoghi reali.
+  </p>
+</div>
+
 
           <Link href="/lingue/notifiche-statistiche">
-          <div className="p-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg shadow hover:shadow-lg transition cursor-pointer">
+          <div className="p-6 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl shadow hover:shadow-lg transition cursor-pointer border border-gray-200 dark:border-gray-700">
               <h2 className="text-xl font-semibold mb-2">📚 Notifiche e Statistiche</h2>
               <p className="text-gray-600 dark:text-gray-300 text-sm">
                 Consulta le notifiche e i tuoi progressi generali in tutte le lingue.
