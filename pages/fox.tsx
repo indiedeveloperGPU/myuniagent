@@ -31,11 +31,11 @@ export default function FoxPage() {
           <Image src="/images/agente-fox-hero.png" alt="Agente Fox" width={400} height={400} className="rounded-xl shadow-2xl ring-1 ring-white/10" />
         </motion.div>
 
-        {/* Demo migliorata con animazioni */}
+        {/* Demo deluxe con animazioni e decorazioni */}
         <section className="relative z-10 mb-32">
           <h2 className="text-3xl font-bold text-center mb-10 tracking-tight">🧠 Esempio simulato di risposta di Agente Fox</h2>
 
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 max-w-3xl mx-auto">
+          <div className="relative rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,255,255,0.2)] hover:shadow-[0_0_50px_rgba(0,255,255,0.4)] transition-all duration-300 border border-white/10 max-w-3xl mx-auto">
             {/* Sfondo CGI interno */}
             <Image
               src="/images/background.png"
@@ -45,6 +45,11 @@ export default function FoxPage() {
               className="z-0 opacity-60 blur-[1px] brightness-110"
             />
             <div className="absolute inset-0 bg-black/25 z-10" />
+
+            {/* Badge in alto a destra */}
+            <div className="absolute top-2 right-4 text-xs text-cyan-300/60 uppercase tracking-widest z-30">
+              CoreFox v2.3 · Active
+            </div>
 
             {/* Contenuto */}
             <div className="relative z-20 p-6 text-sm text-gray-100 font-mono space-y-4">
