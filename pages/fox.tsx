@@ -33,7 +33,7 @@ export default function FoxPage() {
 
         {/* Demo deluxe con animazioni e decorazioni */}
         <section className="relative z-10 mb-32">
-          <h2 className="text-3xl font-bold text-center mb-10 tracking-tight">🧠 Esempio simulato di risposta di Agente Fox</h2>
+          <h2 className="text-3xl font-bold text-center mb-10 tracking-tight">🧠 Agente Speciale Fox Risponde</h2>
 
           <div className="relative rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(0,255,255,0.2)] hover:shadow-[0_0_50px_rgba(0,255,255,0.4)] transition-all duration-300 border border-white/10 max-w-3xl mx-auto">
             {/* Sfondo CGI interno */}
@@ -48,7 +48,7 @@ export default function FoxPage() {
 
             {/* Badge in alto a destra */}
             <div className="absolute top-2 right-4 text-xs text-cyan-300/60 uppercase tracking-widest z-30">
-              CoreFox v2.3 · Active
+              AgenteFox · Active
             </div>
 
             {/* Contenuto */}
