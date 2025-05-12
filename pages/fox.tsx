@@ -30,57 +30,58 @@ export default function FoxPage() {
           <Image src="/images/agente-fox-hero.png" alt="Agente Fox" width={400} height={400} className="rounded-xl shadow-2xl ring-1 ring-white/10" />
         </motion.div>
 
-        {/* Come funziona - Step */}
+        {/* Demo migliorata con sfondo interno */}
         <section className="relative z-10 mb-32">
-  {/* Background CGI solo per questa sezione */}
-  <div className="absolute inset-0 -z-10">
-    <Image
-      src="/images/background.png"
-      alt="Sfondo Futuristico"
-      layout="fill"
-      objectFit="cover"
-      className="opacity-40 blur-sm"
-    />
-    <div className="absolute inset-0 bg-black/60" />
-  </div>
+          <h2 className="text-3xl font-bold text-center mb-10 tracking-tight">🧠 Esempio simulato di risposta di Agente Fox</h2>
 
-  <h2 className="text-3xl font-bold text-center mb-10 tracking-tight">🧠 Esempio simulato di risposta di Agente Fox</h2>
-  <div className="relative bg-[#0f1123]/80 border border-white/10 backdrop-blur-md rounded-2xl shadow-2xl p-6 max-w-3xl mx-auto text-sm text-gray-100 font-mono space-y-4">
-    <div className="text-blue-400">🟢 DOMANDA:</div>
-    <p className="text-white">“Puoi spiegarmi il principio di legalità nel diritto penale?”</p>
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 max-w-3xl mx-auto">
+            {/* Sfondo CGI interno */}
+            <Image
+              src="/images/background.png"
+              alt="Futuristic Chat Background"
+              layout="fill"
+              objectFit="cover"
+              className="z-0 opacity-20 blur-sm"
+            />
+            <div className="absolute inset-0 bg-black/60 z-10" />
 
-    <div className="text-yellow-400">🦊 FOX STA ELABORANDO...</div>
+            {/* Contenuto */}
+            <div className="relative z-20 p-6 text-sm text-gray-100 font-mono space-y-4">
+              <div className="text-blue-400">🟢 DOMANDA:</div>
+              <p className="text-white">“Puoi spiegarmi il principio di legalità nel diritto penale?”</p>
 
-    <div className="border-t border-white/10 pt-4 space-y-3">
-      <p><span className="text-green-400">📘 Titolo:</span> Il principio di legalità</p>
-      <p><span className="text-green-400">📖 Definizione:</span> Nessuno può essere punito se non in forza di una legge entrata in vigore prima del fatto. Questo principio garantisce sicurezza giuridica e impedisce l’arbitrarietà.</p>
+              <div className="text-yellow-400">🦊 FOX STA ELABORANDO...</div>
 
-      <p className="text-green-400">🧩 Punti chiave:</p>
-      <ul className="list-disc pl-6 text-gray-100/90">
-        <li><strong>Riserva di legge</strong>: solo il Parlamento può legiferare in materia penale.</li>
-        <li><strong>Chiarezza e prevedibilità</strong>: le norme devono essere comprensibili.</li>
-        <li><strong>Irretroattività</strong>: nessuna norma può punire fatti precedenti alla sua entrata in vigore.</li>
-      </ul>
+              <div className="border-t border-white/10 pt-4 space-y-3">
+                <p><span className="text-green-400">📘 Titolo:</span> Il principio di legalità</p>
+                <p><span className="text-green-400">📖 Definizione:</span> Nessuno può essere punito se non in forza di una legge entrata in vigore prima del fatto. Questo principio garantisce sicurezza giuridica e impedisce l’arbitrarietà.</p>
 
-      <p><span className="text-green-400">⚖️ Implicazioni:</span> tutela del cittadino, garanzia dei diritti fondamentali, limitazione del potere giudiziario.</p>
-    </div>
+                <p className="text-green-400">🧩 Punti chiave:</p>
+                <ul className="list-disc pl-6 text-gray-100/90">
+                  <li><strong>Riserva di legge</strong>: solo il Parlamento può legiferare in materia penale.</li>
+                  <li><strong>Chiarezza e prevedibilità</strong>: le norme devono essere comprensibili.</li>
+                  <li><strong>Irretroattività</strong>: nessuna norma può punire fatti precedenti alla sua entrata in vigore.</li>
+                </ul>
 
-    <div className="pt-4">
-      <p className="text-white font-semibold mb-2">📎 Allegati generati:</p>
-      <ul className="list-disc pl-6 text-blue-400">
-        <li className="hover:underline cursor-pointer">📄 PDF – Schema riassuntivo</li>
-        <li className="hover:underline cursor-pointer">📝 DOCX – Approfondimento normativo</li>
-      </ul>
-    </div>
+                <p><span className="text-green-400">⚖️ Implicazioni:</span> tutela del cittadino, garanzia dei diritti fondamentali, limitazione del potere giudiziario.</p>
+              </div>
 
-    <div className="pt-4 text-right">
-      <button className="bg-blue-600 hover:bg-blue-700 transition text-white px-4 py-2 rounded-md text-sm shadow-lg ring-1 ring-white/10">
-        📥 Scarica risposta .txt
-      </button>
-    </div>
-  </div>
-</section>
+              <div className="pt-4">
+                <p className="text-white font-semibold mb-2">📎 Allegati generati:</p>
+                <ul className="list-disc pl-6 text-blue-400">
+                  <li className="hover:underline cursor-pointer">📄 PDF – Schema riassuntivo</li>
+                  <li className="hover:underline cursor-pointer">📝 DOCX – Approfondimento normativo</li>
+                </ul>
+              </div>
 
+              <div className="pt-4 text-right">
+                <button className="bg-blue-600 hover:bg-blue-700 transition text-white px-4 py-2 rounded-md text-sm shadow-lg ring-1 ring-white/10">
+                  📥 Scarica risposta .txt
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Testimonianze */}
         <section className="mb-28">
