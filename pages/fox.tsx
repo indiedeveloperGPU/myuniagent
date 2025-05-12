@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { Typewriter } from 'react-simple-typewriter';
 
 export default function FoxPage() {
   return (
@@ -30,54 +31,61 @@ export default function FoxPage() {
           <Image src="/images/agente-fox-hero.png" alt="Agente Fox" width={400} height={400} className="rounded-xl shadow-2xl ring-1 ring-white/10" />
         </motion.div>
 
-        {/* Demo migliorata con sfondo interno */}
+        {/* Demo migliorata con animazioni */}
         <section className="relative z-10 mb-32">
           <h2 className="text-3xl font-bold text-center mb-10 tracking-tight">🧠 Esempio simulato di risposta di Agente Fox</h2>
 
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 max-w-3xl mx-auto">
             {/* Sfondo CGI interno */}
             <Image
-               src="/images/background.png"
-               alt="Futuristic Chat Background"
-               layout="fill"
-               objectFit="cover"
-               className="z-0 opacity-60 blur-[1px] brightness-110"/>
-              <div className="absolute inset-0 bg-black/25 z-10" />
+              src="/images/background.png"
+              alt="Futuristic Chat Background"
+              layout="fill"
+              objectFit="cover"
+              className="z-0 opacity-60 blur-[1px] brightness-110"
+            />
+            <div className="absolute inset-0 bg-black/25 z-10" />
 
             {/* Contenuto */}
             <div className="relative z-20 p-6 text-sm text-gray-100 font-mono space-y-4">
-              <div className="text-blue-400">🟢 DOMANDA:</div>
-              <p className="text-white">“Puoi spiegarmi il principio di legalità nel diritto penale?”</p>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-blue-400">
+                🟢 DOMANDA:
+              </motion.div>
+              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-white">
+                “Puoi spiegarmi il principio di legalità nel diritto penale?”
+              </motion.p>
 
-              <div className="text-yellow-400">🦊 FOX STA ELABORANDO...</div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-yellow-400">
+                <Typewriter words={["🦊 FOX STA ELABORANDO..."]} loop={1} cursor cursorStyle="_" typeSpeed={40} deleteSpeed={50} delaySpeed={1000} />
+              </motion.div>
 
-              <div className="border-t border-white/10 pt-4 space-y-3">
-                <p><span className="text-green-400">📘 Titolo:</span> Il principio di legalità</p>
-                <p><span className="text-green-400">📖 Definizione:</span> Nessuno può essere punito se non in forza di una legge entrata in vigore prima del fatto. Questo principio garantisce sicurezza giuridica e impedisce l’arbitrarietà.</p>
+              <motion.div initial="hidden" animate="visible" variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.2 } } }} className="border-t border-white/10 pt-4 space-y-3">
+                <motion.p variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}><span className="text-green-400">📘 Titolo:</span> Il principio di legalità</motion.p>
+                <motion.p variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}><span className="text-green-400">📖 Definizione:</span> Nessuno può essere punito se non in forza di una legge entrata in vigore prima del fatto. Questo principio garantisce sicurezza giuridica e impedisce l’arbitrarietà.</motion.p>
 
-                <p className="text-green-400">🧩 Punti chiave:</p>
-                <ul className="list-disc pl-6 text-gray-100/90">
-                  <li><strong>Riserva di legge</strong>: solo il Parlamento può legiferare in materia penale.</li>
-                  <li><strong>Chiarezza e prevedibilità</strong>: le norme devono essere comprensibili.</li>
-                  <li><strong>Irretroattività</strong>: nessuna norma può punire fatti precedenti alla sua entrata in vigore.</li>
-                </ul>
+                <motion.p variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="text-green-400">🧩 Punti chiave:</motion.p>
+                <motion.ul variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }} className="list-disc pl-6 text-gray-100/90">
+                  <motion.li variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}><strong>Riserva di legge</strong>: solo il Parlamento può legiferare in materia penale.</motion.li>
+                  <motion.li variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}><strong>Chiarezza e prevedibilità</strong>: le norme devono essere comprensibili.</motion.li>
+                  <motion.li variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}><strong>Irretroattività</strong>: nessuna norma può punire fatti precedenti alla sua entrata in vigore.</motion.li>
+                </motion.ul>
 
-                <p><span className="text-green-400">⚖️ Implicazioni:</span> tutela del cittadino, garanzia dei diritti fondamentali, limitazione del potere giudiziario.</p>
-              </div>
+                <motion.p variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}><span className="text-green-400">⚖️ Implicazioni:</span> tutela del cittadino, garanzia dei diritti fondamentali, limitazione del potere giudiziario.</motion.p>
+              </motion.div>
 
-              <div className="pt-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="pt-4">
                 <p className="text-white font-semibold mb-2">📎 Allegati generati:</p>
                 <ul className="list-disc pl-6 text-blue-400">
                   <li className="hover:underline cursor-pointer">📄 PDF – Schema riassuntivo</li>
                   <li className="hover:underline cursor-pointer">📝 DOCX – Approfondimento normativo</li>
                 </ul>
-              </div>
+              </motion.div>
 
-              <div className="pt-4 text-right">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.4 }} className="pt-4 text-right">
                 <button className="bg-blue-600 hover:bg-blue-700 transition text-white px-4 py-2 rounded-md text-sm shadow-lg ring-1 ring-white/10">
                   📥 Scarica risposta .txt
                 </button>
-              </div>
+              </motion.div>
             </div>
           </div>
         </section>
