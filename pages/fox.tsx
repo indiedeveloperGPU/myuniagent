@@ -37,13 +37,12 @@ export default function FoxPage() {
           <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 max-w-3xl mx-auto">
             {/* Sfondo CGI interno */}
             <Image
-              src="/images/background.png"
-              alt="Futuristic Chat Background"
-              layout="fill"
-              objectFit="cover"
-              className="z-0 opacity-20 blur-sm"
-            />
-            <div className="absolute inset-0 bg-black/60 z-10" />
+             src="/images/background.png"
+             alt="Futuristic Chat Background"
+             layout="fill"
+             objectFit="cover"
+             className="z-0 opacity-40 blur-[2px]"/>
+           <div className="absolute inset-0 bg-black/40 z-10" />
 
             {/* Contenuto */}
             <div className="relative z-20 p-6 text-sm text-gray-100 font-mono space-y-4">
