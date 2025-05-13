@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { ReactNode } from "react";
+import { motion } from "framer-motion";
+
 
 const navItems = [
   { href: "/dashboard", label: "🏠 Home" },
@@ -59,17 +61,21 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
       {/* Main content */}
       <main className="flex-1 overflow-auto bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6">
         <div className="w-full max-w-6xl mx-auto">
-          <div className="bg-white dark:bg-gray-800 p-6 md:p-10 rounded-2xl shadow-2xl space-y-6">
-            {title && (
-              <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
-                {title}
-              </h1>
-            )}
-            {children}
-          </div>
+          <motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.4, ease: "easeOut" }}
+  className="bg-white dark:bg-gray-800 p-6 md:p-10 rounded-2xl shadow-2xl space-y-6"
+>
+  {title && (
+    <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
+      {title}
+    </h1>
+  )}
+  {children}
+</motion.div>
         </div>
       </main>
     </div>
   );
 }
-
