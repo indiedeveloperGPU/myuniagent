@@ -33,7 +33,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
     <div className="flex min-h-screen bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-gray-100">
       
       {/* Sidebar */}
-      <aside className="w-64 bg-white dark:bg-gray-900 shadow-2xl border-r border-gray-200 dark:border-gray-800">
+      <aside className="w-64 bg-gray-50 dark:bg-gray-900 shadow-md border-r border-gray-200 dark:border-gray-800">
         <div className="p-6 text-xl font-extrabold text-center border-b dark:border-gray-800 text-gray-900 dark:text-white tracking-wide">
           🎓 MyUniAgent
         </div>
