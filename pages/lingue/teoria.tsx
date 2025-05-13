@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import { useMemo } from "react";
 
 interface ContenutoLight {
   id: string;
@@ -108,6 +109,24 @@ export default function TeoriaGrammaticale() {
     }));
   };
 
+  const moduliDaVisualizzare = useMemo(() => {
+  return Object.values(
+    contenuti.reduce((acc, curr) => {
+      const key = curr.argomento;
+      const isCompletato = completati.has(curr.id);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push({ ...curr, completato: isCompletato });
+      return acc;
+    }, {} as Record<string, Array<ContenutoLight & { completato: boolean }>>)
+  )
+  .map((moduli) => {
+    const ordinati = [...moduli].sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0));
+    return ordinati.find((m) => !m.completato);
+  })
+  .filter((c): c is ContenutoLight & { completato: boolean } => c !== undefined);
+}, [contenuti, completati]);
+
+
   const inviaRisposte = async (contenuto: ContenutoCompleto) => {
     const { data: session } = await supabase.auth.getUser();
     if (!session.user) return;
@@ -170,48 +189,26 @@ export default function TeoriaGrammaticale() {
           </select>
 
           <ul className="space-y-2">
-            {Object.values(
-              contenuti.reduce((acc, curr) => {
-                const key = curr.argomento;
-                const isCompletato = completati.has(curr.id);
+  {moduliDaVisualizzare.map((c) => {
+    const moduliTotali = contenuti.filter(m => m.argomento === c.argomento).length;
+    return (
+      <li key={c.id}>
+        <button
+          onClick={() => selezionaModulo(c.id)}
+          className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
+            selezionato === c.id
+              ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
+              : 'bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800'
+          }`}
+        >
+          <span className="text-sm font-medium">📘 {c.argomento}</span>
+          <span className="text-xs text-gray-600">Modulo {c.ordine} di {moduliTotali}</span>
+        </button>
+      </li>
+    );
+  })}
+</ul>
 
-                if (!acc[key]) {
-                  acc[key] = [];
-                }
-
-                acc[key].push({
-                  ...curr,
-                  completato: isCompletato,
-                });
-
-                return acc;
-              }, {} as Record<string, Array<ContenutoLight & { completato: boolean }>>)
-            )
-              .map((moduli) => {
-                const ordinati = [...moduli].sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0));
-                const prossimo = ordinati.find((m) => !m.completato);
-                return prossimo;
-              })
-              .filter((c): c is ContenutoLight & { completato: boolean } => c !== undefined)
-              .map((c) => {
-                const moduliTotali = contenuti.filter(m => m.argomento === c.argomento).length;
-                return (
-                  <li key={c.id}>
-                    <button
-                      onClick={() => selezionaModulo(c.id)}
-                      className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
-                        selezionato === c.id
-                          ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
-                          : 'bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800'
-                      }`}
-                    >
-                      <span className="text-sm font-medium">📘 {c.argomento}</span>
-                      <span className="text-xs text-gray-600">Modulo {c.ordine} di {moduliTotali}</span>
-                    </button>
-                  </li>
-                );
-              })}
-          </ul>
         </div>
 
         {/* Contenuto modulo selezionato */}
