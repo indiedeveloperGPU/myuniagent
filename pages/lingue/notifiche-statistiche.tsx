@@ -62,19 +62,19 @@ export default function UlterioriPage() {
       const user = session?.user;
       if (!user) return;
 
-      const [notificheData, teoriaData, vocabData, certData, teoriaValutate, vocabolarioValutate, certValutate] = await Promise.all([
-        supabase.from("notifiche").select("id, titolo, messaggio, letto, data").eq("user_id", user.id).order("data", { ascending: false }),
-        supabase.from("teoria_quiz_risposte").select("lingua").eq("user_id", user.id),
-        supabase.from("vocabolario_risposte").select("lingua").eq("user_id", user.id),
-        supabase.from("certificazioni_risposte").select("lingua").eq("user_id", user.id),
-        supabase.from("teoria_quiz_risposte").select("id, lingua, livello, voto, feedback, updated_at").eq("user_id", user.id).eq("stato", "corretto"),
-        supabase.from("vocabolario_risposte").select("id, lingua, livello, voto, feedback, updated_at").eq("user_id", user.id).eq("stato", "corretto"),
-        supabase.from("certificazioni_risposte").select("id, lingua, livello, voto, feedback, updated_at").eq("user_id", user.id).eq("stato", "corretto")
-      ]);
+  const [notificheData, teoriaDataAll, vocabData, certData, vocabolarioValutate, certValutate] = await Promise.all([
+  supabase.from("notifiche").select("id, titolo, messaggio, letto, data").eq("user_id", user.id).order("data", { ascending: false }),
+  supabase.from("teoria_quiz_risposte").select("id, lingua, livello, voto, feedback, updated_at, stato").eq("user_id", user.id),
+  supabase.from("vocabolario_risposte").select("lingua").eq("user_id", user.id),
+  supabase.from("certificazioni_risposte").select("lingua").eq("user_id", user.id),
+  supabase.from("vocabolario_risposte").select("id, lingua, livello, voto, feedback, updated_at").eq("user_id", user.id).eq("stato", "corretto").limit(100),
+  supabase.from("certificazioni_risposte").select("id, lingua, livello, voto, feedback, updated_at").eq("user_id", user.id).eq("stato", "corretto").limit(100)
+]);
+
 
       const gruppi: Record<string, StatisticaLingua> = {};
 
-      teoriaData.data?.forEach((r) => {
+      teoriaDataAll.data?.forEach((r) => {
         if (!gruppi[r.lingua]) gruppi[r.lingua] = { lingua: r.lingua, teoria: 0, vocabolario: 0, certificazioni: 0 };
         gruppi[r.lingua].teoria++;
       });
@@ -93,10 +93,39 @@ export default function UlterioriPage() {
       setNotifiche(notificheData.data || []);
 
       setTestValutati([
-        ...((teoriaValutate.data || []).map((r) => ({ id: r.id, tipo: "Grammatica" as const, lingua: r.lingua, livello: r.livello, voto: r.voto, commento: r.feedback, corretto_il: r.updated_at }))),
-        ...((vocabolarioValutate.data || []).map((r) => ({ id: r.id, tipo: "Vocabolario" as const, lingua: r.lingua, livello: r.livello, voto: r.voto, commento: r.feedback, corretto_il: r.updated_at }))),
-        ...((certValutate.data || []).map((r) => ({ id: r.id, tipo: "Certificazione" as const, lingua: r.lingua, livello: r.livello, voto: r.voto, commento: r.feedback, corretto_il: r.updated_at })))
-      ]);
+  ...((teoriaDataAll.data || [])
+    .filter(r => r.stato === "corretto")
+    .slice(0, 100)
+    .map((r) => ({
+      id: r.id,
+      tipo: "Grammatica" as const,
+      lingua: r.lingua,
+      livello: r.livello,
+      voto: r.voto,
+      commento: r.feedback,
+      corretto_il: r.updated_at
+    }))
+  ),
+  ...((vocabolarioValutate.data || []).map((r) => ({
+    id: r.id,
+    tipo: "Vocabolario" as const,
+    lingua: r.lingua,
+    livello: r.livello,
+    voto: r.voto,
+    commento: r.feedback,
+    corretto_il: r.updated_at
+  }))),
+  ...((certValutate.data || []).map((r) => ({
+    id: r.id,
+    tipo: "Certificazione" as const,
+    lingua: r.lingua,
+    livello: r.livello,
+    voto: r.voto,
+    commento: r.feedback,
+    corretto_il: r.updated_at
+  })))
+]);
+
     };
 
     fetchData();
