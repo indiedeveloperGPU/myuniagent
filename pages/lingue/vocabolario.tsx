@@ -9,14 +9,18 @@ interface Parola {
   esempio: string;
 }
 
-interface VocabolarioItem {
+interface VocabolarioLight {
   id: string;
   tema: string;
-  introduzione?: string;
-  parole: Parola[];
-  quiz: any;
   ordine: number;
 }
+
+interface VocabolarioCompleto extends VocabolarioLight {
+  introduzione?: string;
+  parole: Parola[];
+  quiz: any[];
+}
+
 
 const livelli = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
@@ -24,12 +28,14 @@ export default function Vocabolario() {
   const router = useRouter();
   const [lingua, setLingua] = useState<string>("");
   const [livello, setLivello] = useState<string>("A1");
-  const [vocabolario, setVocabolario] = useState<VocabolarioItem[]>([]);
+  const [vocabolario, setVocabolario] = useState<VocabolarioLight[]>([]);
   const [completati, setCompletati] = useState<Set<string>>(new Set());
   const [selezionato, setSelezionato] = useState<string | null>(null);
   const [risposte, setRisposte] = useState<Record<string, Record<string, string>>>({});
+  const [vocabolarioSelezionato, setVocabolarioSelezionato] = useState<VocabolarioCompleto | null>(null);
   const [messaggi, setMessaggi] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingModulo, setLoadingModulo] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchLingua = async () => {
@@ -58,7 +64,7 @@ export default function Vocabolario() {
       const [{ data: vocabolarioData }, { data: completatiData }] = await Promise.all([
         supabase
           .from("vocabolario")
-          .select("id, tema, parole, quiz, introduzione, ordine")
+          .select("id, tema, ordine")
           .eq("lingua", lingua)
           .eq("livello", livello)
           .order("ordine", { ascending: true }),
@@ -90,7 +96,20 @@ export default function Vocabolario() {
     }));
   };
 
-  const inviaRisposte = async (item: VocabolarioItem) => {
+  const selezionaModulo = async (id: string) => {
+  setSelezionato(id);
+  setLoadingModulo(true);
+  const { data } = await supabase
+    .from("vocabolario")
+    .select("id, tema, ordine, introduzione, parole, quiz")
+    .eq("id", id)
+    .single();
+  if (data) setVocabolarioSelezionato(data);
+  setLoadingModulo(false);
+};
+
+
+  const inviaRisposte = async (item: VocabolarioLight) => {
     const { data: session } = await supabase.auth.getUser();
     if (!session.user) return;
 
@@ -143,20 +162,20 @@ export default function Vocabolario() {
       if (!acc[key]) acc[key] = [];
       acc[key].push({ ...curr, completato: isCompletato });
       return acc;
-    }, {} as Record<string, Array<VocabolarioItem & { completato: boolean }>>)
+    }, {} as Record<string, Array<VocabolarioLight & { completato: boolean }>>)
   )
     .map((moduli) => {
       const ordinati = [...moduli].sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0));
       const prossimo = ordinati.find((m) => !m.completato);
       return prossimo;
     })
-    .filter((v): v is VocabolarioItem & { completato: boolean } => v !== undefined)
+    .filter((v): v is VocabolarioLight & { completato: boolean } => v !== undefined)
     .map((v) => {
       const variantiTotali = vocabolario.filter(m => m.tema === v.tema).length;
       return (
         <li key={v.id}>
           <button
-            onClick={() => setSelezionato(v.id)}
+            onClick={() => selezionaModulo(v.id)}
             className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
               selezionato === v.id
                 ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
@@ -183,78 +202,76 @@ export default function Vocabolario() {
           )}
 
           {!loading && vocabolario.length > 0 && selezionato && (
-            <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6 rounded shadow">
-              {vocabolario.filter((v) => v.id === selezionato).map((item) => (
-                <div key={item.id}>
-                  <h2 className="text-xl font-bold mb-1">📌 {item.tema}</h2>
-                  {item.introduzione && (
-                    <p className="text-gray-600 text-sm italic mb-3">{item.introduzione}</p>
-                  )}
-                  <ul className="list-disc list-inside space-y-1 mb-4">
-                    {item.parole.map((p, idx) => (
-                      <li key={idx}>
-                        <strong>{p.parola}</strong> – {p.traduzione}<br />
-                        <em className="text-gray-600 text-sm">{p.esempio}</em>
-                      </li>
-                    ))}
-                  </ul>
+  <div className="...">
+    {loadingModulo && <p className="text-gray-500">⏳ Caricamento modulo...</p>}
+    {!loadingModulo && vocabolarioSelezionato && (
+      <div>
+        <h2 className="text-xl font-bold mb-1">📌 {vocabolarioSelezionato.tema}</h2>
+        {vocabolarioSelezionato.introduzione && (
+          <p className="text-gray-600 text-sm italic mb-3">{vocabolarioSelezionato.introduzione}</p>
+        )}
+        <ul className="list-disc list-inside space-y-1 mb-4">
+          {vocabolarioSelezionato.parole.map((p, idx) => (
+            <li key={idx}>
+              <strong>{p.parola}</strong> – {p.traduzione}<br />
+              <em className="text-gray-600 text-sm">{p.esempio}</em>
+            </li>
+          ))}
+        </ul>
 
-                  {item.quiz && (
-                    <div className="mt-4">
-                      <h3 className="font-medium mb-2">📝 Quiz</h3>
-                      <div className="space-y-3">
-                        {item.quiz.map((q: any, idx: number) => (
-                          <div
-                          key={idx}
-                          className="border p-3 rounded bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700"
-                        >
-                          <p className="text-sm font-medium mb-1">{q.domanda}</p>
-                          {q.tipo === "multipla" ? (
-                            <div className="space-y-1">
-                              {q.opzioni.map((opt: string, oidx: number) => (
-                                <label key={oidx} className="block text-sm">
-                                  <input
-                                    type="radio"
-                                    name={`quiz-${item.id}-${idx}`}
-                                    value={opt}
-                                    checked={risposte[item.id]?.[idx] === opt}
-                                    onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
-                                    className="mr-2"
-                                  />
-                                  {opt}
-                                </label>
-                              ))}
-                            </div>
-                          ) : (
-                            <textarea
-                              rows={2}
-                              className="w-full border mt-1 p-2 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
-                              placeholder="Scrivi la tua risposta"
-                              value={risposte[item.id]?.[idx] || ""}
-                              onChange={(e) => handleRispostaChange(item.id, idx, e.target.value)}
-                            />
-                          )}
-                        </div>
-                        
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={() => inviaRisposte(item)}
-                        className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                      >
-                        Invia risposte
-                      </button>
-
-                      {messaggi[item.id] && (
-                        <p className="text-green-600 text-sm mt-2">{messaggi[item.id]}</p>
-                      )}
+        {vocabolarioSelezionato.quiz && (
+          <div className="mt-4">
+            <h3 className="font-medium mb-2">📝 Quiz</h3>
+            <div className="space-y-3">
+              {vocabolarioSelezionato.quiz.map((q: any, idx: number) => (
+                <div key={idx} className="border p-3 rounded bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700">
+                  <p className="text-sm font-medium mb-1">{q.domanda}</p>
+                  {q.tipo === "multipla" ? (
+                    <div className="space-y-1">
+                      {q.opzioni.map((opt: string, oidx: number) => (
+                        <label key={oidx} className="block text-sm">
+                          <input
+                            type="radio"
+                            name={`quiz-${vocabolarioSelezionato.id}-${idx}`}
+                            value={opt}
+                            checked={risposte[vocabolarioSelezionato.id]?.[idx] === opt}
+                            onChange={(e) => handleRispostaChange(vocabolarioSelezionato.id, idx, e.target.value)}
+                            className="mr-2"
+                          />
+                          {opt}
+                        </label>
+                      ))}
                     </div>
+                  ) : (
+                    <textarea
+                      rows={2}
+                      className="w-full border mt-1 p-2 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
+                      placeholder="Scrivi la tua risposta"
+                      value={risposte[vocabolarioSelezionato.id]?.[idx] || ""}
+                      onChange={(e) => handleRispostaChange(vocabolarioSelezionato.id, idx, e.target.value)}
+                    />
                   )}
                 </div>
               ))}
             </div>
-          )}
+
+            <button
+              onClick={() => inviaRisposte(vocabolarioSelezionato)}
+              className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Invia risposte
+            </button>
+
+            {messaggi[vocabolarioSelezionato.id] && (
+              <p className="text-green-600 text-sm mt-2">{messaggi[vocabolarioSelezionato.id]}</p>
+            )}
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
+
         </div>
       </div>
     </DashboardLayout>
