@@ -304,7 +304,7 @@ export default function SimulazioniScrittePage() {
     voto,
     correzione: simulazione.soluzione_esempio,
     lode: categoria === "università" ? lode : null,
-    ...(categoria === "superiori" && { indirizzo, categoria }),
+    ...(categoria === "superiori" && { indirizzo, categoria, versione: simulazione.versione }),
     ...(categoria === "università" && { facolta, corso, versione: simulazione.versione })
   };
   
