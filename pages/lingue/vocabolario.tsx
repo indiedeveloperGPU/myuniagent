@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabaseClient";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useMemo } from "react";
 
 interface Parola {
   parola: string;
@@ -96,6 +97,23 @@ export default function Vocabolario() {
     }));
   };
 
+  const moduliDaVisualizzare = useMemo(() => {
+  return Object.values(
+    vocabolario.reduce((acc, curr) => {
+      const key = curr.tema;
+      const isCompletato = completati.has(curr.id);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push({ ...curr, completato: isCompletato });
+      return acc;
+    }, {} as Record<string, Array<VocabolarioLight & { completato: boolean }>>)
+  )
+  .map((moduli) => {
+    const ordinati = [...moduli].sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0));
+    return ordinati.find((m) => !m.completato);
+  })
+  .filter((v): v is VocabolarioLight & { completato: boolean } => v !== undefined);
+}, [vocabolario, completati]);
+
   const selezionaModulo = async (id: string) => {
   setSelezionato(id);
   setLoadingModulo(true);
@@ -154,43 +172,25 @@ export default function Vocabolario() {
           </select>
 
           <ul className="space-y-2">
-  {Object.values(
-    vocabolario.reduce((acc, curr) => {
-      const key = curr.tema;
-      const isCompletato = completati.has(curr.id);
-
-      if (!acc[key]) acc[key] = [];
-      acc[key].push({ ...curr, completato: isCompletato });
-      return acc;
-    }, {} as Record<string, Array<VocabolarioLight & { completato: boolean }>>)
-  )
-    .map((moduli) => {
-      const ordinati = [...moduli].sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0));
-      const prossimo = ordinati.find((m) => !m.completato);
-      return prossimo;
-    })
-    .filter((v): v is VocabolarioLight & { completato: boolean } => v !== undefined)
-    .map((v) => {
-      const variantiTotali = vocabolario.filter(m => m.tema === v.tema).length;
-      return (
-        <li key={v.id}>
-          <button
-            onClick={() => selezionaModulo(v.id)}
-            className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
-              selezionato === v.id
-                ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
-                : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-            } border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100`}
-            
-          >
-            <span className="text-sm font-medium">📌 {v.tema}</span>
-            <span className="text-xs text-gray-600">Variante {v.ordine} di {variantiTotali}</span>
-          </button>
-        </li>
-      );
-    })}
+  {moduliDaVisualizzare.map((v) => {
+    const variantiTotali = vocabolario.filter(m => m.tema === v.tema).length;
+    return (
+      <li key={v.id}>
+        <button
+          onClick={() => selezionaModulo(v.id)}
+          className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
+            selezionato === v.id
+              ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
+              : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+          } border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100`}
+        >
+          <span className="text-sm font-medium">📌 {v.tema}</span>
+          <span className="text-xs text-gray-600">Variante {v.ordine} di {variantiTotali}</span>
+        </button>
+      </li>
+    );
+  })}
 </ul>
-
         </div>
 
         {/* Contenuto vocabolario selezionato */}
