@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { motion } from "framer-motion";
 import { Mail, Lock } from "lucide-react";
 import Image from "next/image";
+import { useEffect } from "react";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -14,6 +15,33 @@ export default function AuthPage() {
   const [ruolo, setRuolo] = useState("studente");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  
+
+  useEffect(() => {
+  const checkSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      // recupera ruolo e redirige alla pagina corretta
+      const { data: profilo, error: profiloError } = await supabase
+        .from("profiles")
+        .select("ruolo")
+        .eq("id", session.user.id)
+        .single();
+
+      if (profilo && !profiloError) {
+        if (profilo.ruolo === "staff") {
+          router.replace("/staff/dashboard");
+        } else if (profilo.ruolo === "docente") {
+          router.replace("/docente/dashboard");
+        } else {
+          router.replace("/dashboard");
+        }
+      }
+    }
+  };
+
+  checkSession();
+}, []);
 
   const handleAuth = async () => {
     setLoading(true);
