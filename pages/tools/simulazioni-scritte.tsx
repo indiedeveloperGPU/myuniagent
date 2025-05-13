@@ -199,7 +199,7 @@ export default function SimulazioniScrittePage() {
       }
   
       if (versioniSvolte.length > 0) {
-        query = query.not("versione", "in", `(${versioniSvolte.map((v) => `'${v}'`).join(",")})`);
+        query = query.not("versione", "in", `(${versioniSvolte.join(",")})`);
       }
   
       const { data, error } = await query;
