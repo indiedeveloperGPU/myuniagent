@@ -185,7 +185,7 @@ export default function Vocabolario() {
           } border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100`}
         >
           <span className="text-sm font-medium">📌 {v.tema}</span>
-          <span className="text-xs text-gray-600">Variante {v.ordine} di {variantiTotali}</span>
+          <span className="text-xs text-gray-600">Modulo {v.ordine} di {variantiTotali}</span>
         </button>
       </li>
     );
