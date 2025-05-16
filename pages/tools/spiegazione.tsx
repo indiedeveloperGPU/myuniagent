@@ -15,6 +15,7 @@ export default function Spiegazione() {
   const [followUp, setFollowUp] = useState("");
   const [inviatoAFox, setInviatoAFox] = useState(false);
   const [fade, setFade] = useState(false); // 🔥 aggiunto per il fade
+  const [livello, setLivello] = useState("superiori"); // valore di default
   const [followUpLoading, setFollowUpLoading] = useState(false);
   const [chatSalvate, setChatSalvate] = useState<{ titolo: string; data: string }[]>([]);
 
@@ -154,11 +155,12 @@ export default function Spiegazione() {
     if (!testo) return;
     setLoading(true);
     const res = await fetch("/api/spiegazione", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ concetto: testo }),
-      credentials: "include",
-    });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ concetto: testo, livello }), // 👈 aggiunto livello
+  credentials: "include",
+});
+
 
     const data = await res.json();
     setRisposta(data.spiegazione);
@@ -207,11 +209,16 @@ export default function Spiegazione() {
     setFollowUp(""); setFollowUpLoading(true);
 
     const res = await fetch("/api/spiegazione", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ concetto: input, followUp: newChat }),
-      credentials: "include",
-    });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    concetto: input,
+    followUp: newChat,
+    livello: livello, // 👈 aggiunto il livello
+  }),
+  credentials: "include",
+});
+
 
     const data = await res.json();
     setChat([...newChat, { role: "assistant", content: data.spiegazione }]);
@@ -234,10 +241,20 @@ export default function Spiegazione() {
       <h1 className="text-2xl font-bold mb-4">📘 Spiegazione completa</h1>
 
       {/* Box Aiuto */}
-      <div className="bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-500 dark:border-blue-400 text-blue-900 dark:text-blue-100 p-4 rounded mb-6">
-  <h2 className="font-semibold text-lg mb-2">🎯 Come ottenere spiegazioni migliori</h2>
+<div className="bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-500 dark:border-blue-400 text-blue-900 dark:text-blue-100 p-4 rounded mb-6">
+  <h2 className="font-semibold text-lg mb-2">🎯 Come funziona la sezione "Spiegazione"</h2>
   <p className="text-sm mb-2">
-    Per ricevere risposte più <strong>approfondite, chiare e tecniche</strong>, è importante formulare domande specifiche.
+    In questa sezione puoi ricevere spiegazioni dettagliate e personalizzate su un concetto specifico.
+  </p>
+  <ul className="list-disc ml-5 text-sm mb-3">
+    <li>📝 Inserisci un <strong>concetto, argomento o domanda</strong> nel campo in alto.</li>
+    <li>🎓 <strong>Seleziona il tuo livello scolastico</strong> (Medie, Superiori, Università) per adattare il linguaggio e la profondità della spiegazione.</li>
+    <li>📘 Clicca su <em>“Genera spiegazione”</em> per ricevere una risposta completa.</li>
+    <li>🗨️ Puoi fare domande di approfondimento per continuare la conversazione con l’AI.</li>
+    <li>🦊 Se non sei soddisfatto o vuoi un approfondimento da un altro agente, puoi cliccare su <strong>“Chiedi supporto all’Agente Fox”</strong> (senza livello scolastico).</li>
+  </ul>
+  <p className="text-sm mb-2">
+    Per ottenere risultati di alta qualità, ti consigliamo di essere il più preciso possibile nella formulazione della tua richiesta:
   </p>
   <ul className="list-disc ml-5 text-sm mb-3">
     <li>❌ <span className="italic">Domanda generica:</span> “Spiegami il marketing”</li>
@@ -246,9 +263,10 @@ export default function Spiegazione() {
     <li>✅ <span className="italic">Domanda accademica:</span> “Qual è il ruolo della giurisprudenza nella dottrina penalistica?”</li>
   </ul>
   <p className="text-sm">
-    Più sei <strong>preciso e dettagliato</strong>, migliore sarà la qualità della spiegazione fornita.
+    Più la tua richiesta è <strong>chiara, specifica e contestualizzata</strong>, più la spiegazione sarà utile ed efficace.
   </p>
 </div>
+
 
 
       <div className="flex flex-col gap-3 mb-4">
@@ -257,6 +275,24 @@ export default function Spiegazione() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />
+
+        <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 items-start sm:items-center">
+  <label htmlFor="livello" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+    🎓 Seleziona il livello:
+  </label>
+  <select
+    id="livello"
+    value={livello}
+    onChange={(e) => setLivello(e.target.value)}
+    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
+  >
+    <option value="medie">Medie</option>
+    <option value="superiori">Superiori</option>
+    <option value="universita">Università</option>
+  </select>
+</div>
+
+
         <button
   onClick={handleSubmit}
   disabled={!input.trim() || loading}
@@ -294,6 +330,25 @@ export default function Spiegazione() {
         </div>
       )}
 
+
+<div className="mb-4">{loading && (
+  <div className="mb-4 transition-opacity duration-500 opacity-100">
+    <div className="flex items-center gap-3 bg-gray-100 dark:bg-gray-800 p-4 rounded shadow">
+      <svg className="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+      </svg>
+      <span className="text-sm text-gray-700 dark:text-gray-200">
+        Sto elaborando la spiegazione…
+      </span>
+    </div>
+  </div>
+)}
+</div>
+      
+
+
+
       {chat.length > 0 && (
         <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded shadow whitespace-pre-wrap">
           <h2 className="font-semibold mb-2">📄 Conversazione:</h2>
@@ -330,4 +385,3 @@ export default function Spiegazione() {
 
 
 Spiegazione.requireAuth = true;
-
