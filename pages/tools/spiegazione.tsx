@@ -157,9 +157,13 @@ export default function Spiegazione() {
     const res = await fetch("/api/spiegazione", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ concetto: testo, livello }), // 👈 aggiunto livello
+  body: JSON.stringify({
+    concetto: testo,
+    livelloStudente: livello, // ✅ CORRETTO
+  }),
   credentials: "include",
 });
+
 
 
     const data = await res.json();
@@ -214,7 +218,7 @@ export default function Spiegazione() {
   body: JSON.stringify({
     concetto: input,
     followUp: newChat,
-    livello: livello, // 👈 aggiunto il livello
+     livelloStudente: livello, // 👈 aggiunto il livello
   }),
   credentials: "include",
 });
@@ -385,3 +389,8 @@ export default function Spiegazione() {
 
 
 Spiegazione.requireAuth = true;
+
+
+
+
+
