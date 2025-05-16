@@ -1,396 +1,239 @@
-// IMPORT PRINCIPALI
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import DashboardLayout from "@/components/DashboardLayout";
-import { supabase } from "@/lib/supabaseClient";
-import toast from "react-hot-toast";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { OpenAI } from "openai";
+import { createClient } from "@supabase/supabase-js";
 
-// COMPONENTE
-export default function Spiegazione() {
-  const [input, setInput] = useState("");
-  const [risposta, setRisposta] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [userChecked, setUserChecked] = useState(false);
-  const [chat, setChat] = useState<{ role: string; content: string }[]>([]);
-  const [followUp, setFollowUp] = useState("");
-  const [inviatoAFox, setInviatoAFox] = useState(false);
-  const [fade, setFade] = useState(false); // 🔥 aggiunto per il fade
-  const [livello, setLivello] = useState("superiori"); // valore di default
-  const [followUpLoading, setFollowUpLoading] = useState(false);
-  const [chatSalvate, setChatSalvate] = useState<{ titolo: string; data: string }[]>([]);
-
-  const router = useRouter();
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) {
-        window.location.href = "/auth";
-        return;
-      }
-      setUserChecked(true);
-    };
-    checkUser();
-  }, []);
-
-  useEffect(() => {
-    const concettoQuery = router.query.concetto as string;
-    if (concettoQuery) {
-      setInput(concettoQuery);
-      caricaChatOGenera(concettoQuery);
-    }
-  }, [router.query]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (input) checkRispostaFox(input);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [input, chat]);
-
-  const checkRispostaFox = async (concetto: string) => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) return;
-
-    const res = await fetch("/api/fox/check", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ concetto }),
-    });
-
-    const data = await res.json();
-
-    if (data?.risposta && !chat.some(msg => msg.content.includes(data.risposta))) {
-      const nuovoMsg = {
-        role: "assistant",
-        content: `📥 Risposta da Agente Fox:\n${data.risposta}`
-      };
-      setChat((prev) => [...prev, nuovoMsg]);
-      toast.success("📩 Hai ricevuto una risposta da Agente Fox!");
-
-      // ✅ Salva nel DB
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) {
-        await supabase
-          .from("chat_spiegazioni")
-          .update({
-            messaggi: [...chat, nuovoMsg],
-            ultima_modifica: new Date().toISOString(),
-          })
-          .eq("user_id", user.id)
-          .eq("titolo", concetto);
-      }
-    }
-  };
-
-  useEffect(() => {
-    const caricaChatSalvate = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.id) return;
-
-      const { data } = await supabase
-        .from("chat_spiegazioni")
-        .select("titolo, ultima_modifica")
-        .eq("user_id", user.id)
-        .order("ultima_modifica", { ascending: false });
-
-      if (data) {
-        setChatSalvate(data.map(chat => ({
-          titolo: chat.titolo,
-          data: new Date(chat.ultima_modifica).toLocaleString()
-        })));
-      }
-    };
-
-    if (userChecked) caricaChatSalvate();
-  }, [userChecked]);
-
-  const caricaChatOGenera = async (testo: string) => {
-    setInput(testo);
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.id) return generaSpiegazione(testo);
-
-    const { data: chatEsistente } = await supabase
-      .from("chat_spiegazioni")
-      .select("messaggi")
-      .eq("user_id", user.id)
-      .eq("titolo", testo)
-      .single();
-
-    if (chatEsistente?.messaggi) {
-      setChat(chatEsistente.messaggi);
-      const last = chatEsistente.messaggi
-        .slice().reverse()
-        .find((msg: any) => msg.role === "assistant")?.content;
-      if (last) setRisposta(last);
-    } else {
-      generaSpiegazione(testo);
-    }
-
-    setLoading(false);
-    await checkRispostaFox(testo); // ✅ check se c'è risposta già salvata da Fox
-  };
-
-  const eliminaConversazione = async (titolo: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.id) return;
-    await supabase
-      .from("chat_spiegazioni")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("titolo", titolo);
-
-    setChatSalvate(prev => prev.filter(c => c.titolo !== titolo));
-    if (input === titolo) {
-      setInput(""); setChat([]); setRisposta("");
-    }
-  };
-
-  const generaSpiegazione = async (testo: string) => {
-    if (!testo) return;
-    setLoading(true);
-    const res = await fetch("/api/spiegazione", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    concetto: testo,
-    livelloStudente: livello, // ✅ CORRETTO
-  }),
-  credentials: "include",
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
 });
 
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
+// Definizione dei system prompt per i diversi livelli di studente
+const systemPrompts = {
+  medie: `Sei MyUniAgent, un tutor amichevole, paziente e super preparato, specializzato nell'aiutare ragazzi e ragazze delle scuole medie a capire concetti che a volte sembrano difficili. Il tuo obiettivo è rendere l'apprendimento un'avventura interessante!
+
+Quando ti viene posta una domanda:
+1.  Identifica l'Argomento Chiave: Capisci subito qual è il cuore della domanda.
+2.  Linguaggio Semplice e Diretto: Usa parole chiare e frasi brevi che un ragazzo/a di 11-14 anni possa capire facilmente. Evita termini troppo tecnici o, se indispensabili, spiegalI subito con parole semplici e con un esempio.
+3.  Esempi Concreti e Quotidiani: Collega i concetti a situazioni della vita di tutti i giorni, a giochi, a storie conosciute o a fenomeni naturali che possono osservare. Le analogie sono le tue migliori amiche!
+4.  Incoraggiamento e Positività: Mantieni un tono entusiasta e incoraggiante. Fai sentire lo studente capace di capire.
+5.  Passi Graduali: Se il concetto è complesso, dividilo in piccole parti più facili da digerire. Spiega un passo alla volta.
+6.  Focus sul "Perché è Importante?": Aiuta lo studente a capire perché quel concetto è utile o interessante da conoscere, come si collega al mondo che lo circonda.
+7.  Elementi Visivi (Immaginali): Anche se non puoi mostrare immagini, descrivi le cose come se lo studente potesse vederle. Usa frasi come "Immagina che...", "È come quando...".
+8.  Brevi Riassunti: Alla fine di una spiegazione un po' più lunga, fai un piccolo riepilogo dei punti più importanti.
+9.  Disponibilità a Ripetere: Concludi sempre facendo capire che sei pronto a spiegare di nuovo o a rispondere ad altre domande, se qualcosa non è chiaro.
+
+Ricorda, la tua missione è accendere la scintilla della curiosità e dimostrare che imparare può essere divertente e gratificante. Sii paziente e chiaro come il migliore degli insegnanti!`,
+  superiori: `Sei MyUniAgent, un assistente accademico esperto e affidabile, progettato per supportare gli studenti delle scuole superiori nel loro percorso di apprendimento. Il tuo compito è fornire spiegazioni chiare, strutturate e approfondite, che facilitino la comprensione e preparino efficacemente per verifiche ed esami.
+
+Quando rispondi a una domanda:
+1.  Analisi Precisa della Domanda: Comprendi a fondo la richiesta dello studente, inclusi eventuali sottointesi o necessità di contestualizzazione.
+2.  Linguaggio Formale ma Accessibile: Utilizza un linguaggio appropriato al contesto scolastico superiore, introducendo e spiegando la terminologia specifica della disciplina in modo chiaro. Evita la banalizzazione, ma assicurati che i concetti complessi siano resi comprensibili.
+3.  Struttura Logica e Organizzata: Presenta le informazioni in modo ordinato (es. introduzione, corpo centrale con argomentazioni/esempi, conclusione). Utilizza elenchi puntati o numerati per chiarire sequenze o componenti.
+4.  Profondità Adeguata: Vai oltre la semplice definizione. Esplora le cause, gli effetti, le interconnessioni con altri argomenti, e l'importanza del concetto nel suo campo di studio e, se pertinente, in contesti più ampi.
+5.  Esempi Pertinenti e Illustrativi: Fornisci esempi concreti, casi studio (semplificati se necessario), o applicazioni pratiche che aiutino a solidificare la comprensione.
+6.  Connessioni Interdisciplinari (se rilevanti): Se l'argomento si presta, suggerisci collegamenti con altre materie per favorire una visione più integrata del sapere.
+7.  Sintesi e Punti Chiave: Al termine di spiegazioni articolate, offri una sintesi concisa dei punti fondamentali o un riepilogo per facilitare la memorizzazione.
+8.  Stimolo al Ragionamento Critico: Incoraggia lo studente a riflettere sui concetti, a porsi domande e a non accettare passivamente le informazioni. Puoi farlo suggerendo spunti di riflessione o ponendo domande retoriche.
+9.  Rigorosità e Precisione: Assicurati che tutte le informazioni fornite siano accurate, aggiornate e ben fondate.
+
+Il tuo obiettivo è essere una risorsa autorevole che non solo trasmette conoscenza, ma insegna anche un metodo di studio e di approccio critico ai contenuti.`,
+  universita: `Sei MyUniAgent, un sofisticato assistente accademico virtuale, progettato per dialogare con studenti universitari e supportarli nella preparazione di esami e nell'approfondimento di discipline complesse. La tua missione è fornire spiegazioni di alto livello, caratterizzate da rigore scientifico, profondità analitica e chiarezza espositiva avanzata.
+
+Quando elabori una risposta:
+1.  Comprensione Specialistica della Query: Interpreta la domanda dello studente con precisione accademica, cogliendo le sfumature e il livello di dettaglio richiesto, tipico di un contesto universitario.
+2.  Linguaggio Tecnico-Scientifico Appropriato: Impiega la terminologia specifica del settore disciplinare con accuratezza e proprietà. Se introduci concetti altamente specialistici, definiscili brevemente nel contesto della spiegazione, assumendo comunque una base di conoscenza pregressa da parte dello studente.
+3.  Strutturazione Argomentativa Rigorosa: Organizza la risposta in modo logico e argomentato, seguendo un approccio analitico. Utilizza introduzioni che definiscano il campo d'indagine, uno sviluppo che esplori teorie, modelli, evidenze e dibattiti, e conclusioni che sintetizzino i risultati o aprano a ulteriori prospettive di ricerca.
+4.  Profondità Critica e Analitica: Non limitarti alla descrizione. Analizza criticamente i concetti, confronta diverse prospettive teoriche, evidenzia implicazioni, limitazioni dei modelli e aree di dibattito scientifico corrente.
+5.  Riferimenti a Fonti e Teorie (Concettuali): Anche se non puoi citare fonti specifiche in tempo reale, le tue spiegazioni devono riflettere la conoscenza dei principali paradigmi teorici, degli autori di riferimento e degli studi fondamentali nel campo. Puoi accennare a "scuole di pensiero", "teorie dominanti" o "critiche mosse da..."
+6.  Esemplificazioni Complesse e Casi di Studio: Utilizza esempi, modelli o casi di studio che siano rappresentativi del livello di complessità affrontato in ambito universitario, illustrando l'applicazione pratica di teorie e concetti.
+7.  Interconnessioni e Visione Sistemica: Metti in luce le relazioni tra l'argomento specifico e quadri concettuali più ampi, sia all'interno della stessa disciplina sia in ottica interdisciplinare, ove pertinente.
+8.  Sintesi Avanzata e Implicazioni Future: Concludi con sintesi che non siano mere ripetizioni, ma che offrano una rilettura critica dei punti salienti e, se possibile, indichino direzioni future della ricerca o implicazioni pratiche rilevanti.
+9.  Precisione Metodologica (se applicabile): Se la domanda tocca aspetti metodologici, discuti la validità, l'affidabilità e i limiti dei diversi approcci di ricerca o analisi.
+
+Il tuo ruolo è quello di un interlocutore accademico stimolante, capace di elevare il livello della discussione e di fornire gli strumenti concettuali per una comprensione profonda e critica della materia, adeguata a un contesto di studi superiori e alla preparazione di esami universitari.`,
+};
+
+type LivelloStudente = "medie" | "superiori" | "universita";
 
 
-    const data = await res.json();
-    setRisposta(data.spiegazione);
-    setChat([{ role: "assistant", content: data.spiegazione }]);
-    setLoading(false);
-  };
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Metodo non consentito" });
+  }
 
-  const inviaAgenteFox = async () => {
-    if (!input.trim()) {
-      toast.error("Inserisci prima una domanda o un concetto.");
-      return;
-    }
-  
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.id) {
-      toast.error("Non sei autenticato.");
-      return;
-    }
-  
-    const { error } = await supabase.from("agente_fox").insert({
-      user_id: user.id,
-      domanda: input,
-      stato: "in_attesa",
-      inviata_il: new Date().toISOString(),
-    });
-  
-    if (!error) {
-      toast.success("Richiesta inviata ad Agente Fox!");
-      setInviatoAFox(true);
-      setFade(true); // 🔥 attiva fade-in
-  
-      setTimeout(() => {
-        setFade(false); // 🔥 fade-out dopo 7.5s
-        setTimeout(() => setInviatoAFox(false), 500); // 🔥 togli completamente dopo fade-out
-      }, 7500);
-    } else {
-      toast.error("Errore durante l'invio.");
-    }
-  };
-  
+  const origin = req.headers.origin || "";
+const dominiAutorizzati = [
+  "https://myuniagent.it",       
+  "http://localhost:3000",
+];
 
-  const inviaFollowUp = async () => {
-    if (!followUp.trim()) return;
-    const newChat = [...chat, { role: "user", content: followUp }];
-    setChat(newChat);
-    setFollowUp(""); setFollowUpLoading(true);
-
-    const res = await fetch("/api/spiegazione", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    concetto: input,
-    followUp: newChat,
-     livelloStudente: livello, // 👈 aggiunto il livello
-  }),
-  credentials: "include",
-});
-
-
-    const data = await res.json();
-    setChat([...newChat, { role: "assistant", content: data.spiegazione }]);
-    setFollowUpLoading(false);
-  };
-
-  const handleSubmit = () => {
-    if (!input.trim()) {
-      toast.error("Inserisci un concetto prima di generare la spiegazione.");
-      return;
-    }
-    caricaChatOGenera(input);
-  };
-  
-
-  if (!userChecked) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
-
-  return (
-    <DashboardLayout>
-      <h1 className="text-2xl font-bold mb-4">📘 Spiegazione completa</h1>
-
-      {/* Box Aiuto */}
-<div className="bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-500 dark:border-blue-400 text-blue-900 dark:text-blue-100 p-4 rounded mb-6">
-  <h2 className="font-semibold text-lg mb-2">🎯 Come funziona la sezione "Spiegazione"</h2>
-  <p className="text-sm mb-2">
-    In questa sezione puoi ricevere spiegazioni dettagliate e personalizzate su un concetto specifico.
-  </p>
-  <ul className="list-disc ml-5 text-sm mb-3">
-    <li>📝 Inserisci un <strong>concetto, argomento o domanda</strong> nel campo in alto.</li>
-    <li>🎓 <strong>Seleziona il tuo livello scolastico</strong> (Medie, Superiori, Università) per adattare il linguaggio e la profondità della spiegazione.</li>
-    <li>📘 Clicca su <em>“Genera spiegazione”</em> per ricevere una risposta completa.</li>
-    <li>🗨️ Puoi fare domande di approfondimento per continuare la conversazione con l’AI.</li>
-    <li>🦊 Se non sei soddisfatto o vuoi un approfondimento da un altro agente, puoi cliccare su <strong>“Chiedi supporto all’Agente Fox”</strong> (senza livello scolastico).</li>
-  </ul>
-  <p className="text-sm mb-2">
-    Per ottenere risultati di alta qualità, ti consigliamo di essere il più preciso possibile nella formulazione della tua richiesta:
-  </p>
-  <ul className="list-disc ml-5 text-sm mb-3">
-    <li>❌ <span className="italic">Domanda generica:</span> “Spiegami il marketing”</li>
-    <li>✅ <span className="italic">Domanda mirata:</span> “Quali sono le 4P del marketing secondo Kotler?”</li>
-    <li>✅ <span className="italic">Domanda tecnica:</span> “Come si calcola il VAN in un’analisi di investimento?”</li>
-    <li>✅ <span className="italic">Domanda accademica:</span> “Qual è il ruolo della giurisprudenza nella dottrina penalistica?”</li>
-  </ul>
-  <p className="text-sm">
-    Più la tua richiesta è <strong>chiara, specifica e contestualizzata</strong>, più la spiegazione sarà utile ed efficace.
-  </p>
-</div>
-
-
-
-      <div className="flex flex-col gap-3 mb-4">
-        <textarea className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
-          placeholder="Inserisci il concetto da spiegare..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-
-        <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 items-start sm:items-center">
-  <label htmlFor="livello" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-    🎓 Seleziona il livello:
-  </label>
-  <select
-    id="livello"
-    value={livello}
-    onChange={(e) => setLivello(e.target.value)}
-    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
-  >
-    <option value="medie">Medie</option>
-    <option value="superiori">Superiori</option>
-    <option value="universita">Università</option>
-  </select>
-</div>
-
-
-        <button
-  onClick={handleSubmit}
-  disabled={!input.trim() || loading}
-  className={`px-4 py-2 rounded text-white ${!input.trim() || loading? 'bg-blue-300 dark:bg-blue-700 cursor-not-allowed':'bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-800'}`}>{loading ? "Caricamento..." : "Genera spiegazione"}
-        </button>
-        <button onClick={inviaAgenteFox} className="bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800 text-white px-4 py-2 rounded">
-          🔎 Chiedi supporto all’Agente Fox 🦊
-        </button>
-        {inviatoAFox && (
-  <div className={`bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 dark:border-yellow-300 text-yellow-800 dark:text-yellow-100 p-4 rounded mt-4 text-sm transition-all duration-500 ease-in-out ${fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
-    <strong>🦊 L’Agente Fox sta elaborando la tua richiesta.</strong><br />
-    Potrai visualizzare la risposta appena disponibile nella sezione <span className="font-medium">“Le mie richieste Agente Fox”</span>.
-  </div>
-)}
-
-
-      </div>
-
-      {chatSalvate.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-2">🗂️ Le mie conversazioni salvate</h2>
-          <div className="flex flex-col gap-2">
-            {chatSalvate.map((c, i) => (
-              <div key={i} className="flex justify-between items-center bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 p-2 rounded">
-                <div onClick={() => caricaChatOGenera(c.titolo)} className="cursor-pointer flex-1">
-                <div className="font-medium text-blue-700 dark:text-blue-300">{c.titolo}</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Ultima modifica: {c.data}</div>
-                </div>
-                <button onClick={() => eliminaConversazione(c.titolo)} className="text-red-500 hover:text-red-700 text-sm ml-4">
-                  🗑
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-
-<div className="mb-4">{loading && (
-  <div className="mb-4 transition-opacity duration-500 opacity-100">
-    <div className="flex items-center gap-3 bg-gray-100 dark:bg-gray-800 p-4 rounded shadow">
-      <svg className="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-      </svg>
-      <span className="text-sm text-gray-700 dark:text-gray-200">
-        Sto elaborando la spiegazione…
-      </span>
-    </div>
-  </div>
-)}
-</div>
-      
-
-
-
-      {chat.length > 0 && (
-        <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded shadow whitespace-pre-wrap">
-          <h2 className="font-semibold mb-2">📄 Conversazione:</h2>
-          <div className="flex flex-col gap-3 mb-4 max-h-[400px] overflow-y-auto">
-            {chat.map((msg, i) => (
-              <div
-              key={i}
-              className={`p-2 rounded ${
-                msg.role === "user"
-                  ? "bg-white dark:bg-gray-700 text-right"
-                  : "bg-blue-50 dark:bg-gray-600 text-left"
-              }`}
-            >
-                <p><strong>{msg.role === "user" ? "Tu" : "MyUniAgent"}:</strong> {msg.content}</p>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2 mt-2">
-            <input type="text" className="flex-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
-              placeholder="Fai una domanda di approfondimento..."
-              value={followUp}
-              onChange={(e) => setFollowUp(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && inviaFollowUp()}
-            />
-            <button onClick={inviaFollowUp} className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white px-4 py-2 rounded">
-              {followUpLoading ? "Attendi..." : "Invia"}
-            </button>
-          </div>
-        </div>
-      )}
-    </DashboardLayout>
-  );
+if (!dominiAutorizzati.includes(origin)) {
+  return res.status(403).json({ error: "Accesso non consentito da questa origine." });
 }
 
+  const { concetto, followUp, livelloStudente } = req.body as {
+    concetto: string;
+    followUp?: { role: "user" | "assistant"; content: string }[];
+    livelloStudente: LivelloStudente; // Aggiunto il tipo per livelloStudente
+  };
 
-Spiegazione.requireAuth = true;
+  if (!concetto || typeof concetto !== "string") {
+    return res.status(400).json({ error: "Concetto mancante o non valido" });
+  }
+
+  // Validazione per livelloStudente
+  if (!livelloStudente || !systemPrompts[livelloStudente]) {
+    return res.status(400).json({ error: "Livello studente mancante o non valido. Scegliere tra: medie, superiori, universita." });
+  }
+
+  const modello = "gpt-3.5-turbo";
+  const systemPromptSelezionato = systemPrompts[livelloStudente]; // Selezione del prompt corretto
+
+  const messaggi: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [ // Tipo più specifico per i messaggi
+    {
+      role: "system",
+      content: systemPromptSelezionato, // Utilizzo del prompt selezionato
+    },
+  ];
+
+  if (Array.isArray(followUp) && followUp.length > 0) {
+    // Assicurati che i messaggi di followUp abbiano il tipo corretto
+    const typedFollowUp = followUp.map(msg => ({
+        role: msg.role as "user" | "assistant", // Cast esplicito del ruolo
+        content: msg.content
+    }));
+    messaggi.push(...typedFollowUp);
+  } else {
+    messaggi.push({
+      role: "user",
+      content: `Spiegami: ${concetto}`,
+    });
+  }
+
+  try {
+    const completamento = await openai.chat.completions.create({
+      model: modello,
+      messages: messaggi,
+      temperature: 0.4,
+    });
+
+    const spiegazione =
+      completamento.choices[0]?.message?.content ?? "Nessuna risposta disponibile.";
+
+    const accessToken = req.cookies["sb-access-token"];
+    if (!accessToken) {
+      return res.status(401).json({ error: "Non autorizzato. Devi essere autenticato." });
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user },
+      error: userError, // Aggiunto per gestire l'errore nel recupero dell'utente
+    } = await supabase.auth.getUser();
+
+    if (userError || !user?.id) {
+      console.error("Errore nel recupero dell'utente Supabase o utente non trovato:", userError);
+      // Anche in caso di errore con Supabase Auth, restituisci la spiegazione per non bloccare l'utente
+      return res.status(200).json({ spiegazione, modelloUsato: modello, livelloApplicato: livelloStudente, warning: "Impossibile salvare la chat, errore utente Supabase." });
+    }
+
+    const nuovoMessaggioAssistente = { role: "assistant" as const, content: spiegazione }; // Tipo 'assistant' come const
+
+    // Determina il messaggio utente corretto per il salvataggio
+    let messaggioUtenteCorrente: { role: "user"; content: string };
+    if (Array.isArray(followUp) && followUp.length > 0) {
+        const ultimoMessaggioUtente = followUp.filter(m => m.role === 'user').pop();
+        messaggioUtenteCorrente = ultimoMessaggioUtente 
+            ? { role: "user" as const, content: ultimoMessaggioUtente.content }
+            : { role: "user" as const, content: `Follow-up a: ${concetto}` }; // Fallback se non c'è un messaggio utente nel followUp
+    } else {
+        messaggioUtenteCorrente = { role: "user" as const, content: `Spiegami: ${concetto}` };
+    }
 
 
+    if (!Array.isArray(followUp) || followUp.length === 0) {
+      // ✅ Nuova chat: creiamo una riga in chat_spiegazioni
+      const messaggiIniziali = [
+        messaggioUtenteCorrente, // Messaggio utente iniziale
+        nuovoMessaggioAssistente,
+      ];
+
+      const { error: insertError } = await supabase.from("chat_spiegazioni").insert({
+        user_id: user.id,
+        titolo: concetto.substring(0, 100), // Tronca il titolo se troppo lungo per il DB
+        messaggi: messaggiIniziali,
+        livello_studente: livelloStudente, // ✨ Salviamo anche il livello studente
+      });
+      if (insertError) console.error("Errore Supabase inserimento chat_spiegazioni:", insertError);
+
+
+      // Salviamo anche in attivita per la cronologia generica
+      const { error: attivitaError } = await supabase.from("attivita").insert({
+        user_id: user.id,
+        tipo: "spiegazione",
+        input: concetto,
+        output: spiegazione,
+        // Potresti voler aggiungere livello_studente anche qui se la tabella 'attivita' lo supporta
+      });
+      if (attivitaError) console.error("Errore Supabase inserimento attivita:", attivitaError);
+
+    } else {
+      // ✅ Follow-up: aggiorniamo la conversazione esistente
+      // Usiamo il 'concetto' originale (che dovrebbe essere il titolo della chat) per trovare la chat
+      const { data: chatEsistente, error: selectError } = await supabase
+        .from("chat_spiegazioni")
+        .select("id, messaggi")
+        .eq("user_id", user.id)
+        .eq("titolo", concetto.substring(0, 100)) // Assicurati che il titolo corrisponda a come è stato salvato
+        // .order('ultima_modifica', { ascending: false }) // Potrebbe essere utile per prendere la più recente se ci sono duplicati di titolo
+        .limit(1)
+        .single();
+
+      if (selectError && selectError.code !== 'PGRST116') { // PGRST116: single row not found, gestibile
+          console.error("Errore Supabase select chat_spiegazioni:", selectError);
+      }
+
+      if (chatEsistente) {
+        const messaggiDaSalvare = [...followUp, nuovoMessaggioAssistente];
+
+        const { error: updateError } = await supabase.from("chat_spiegazioni")
+          .update({
+            messaggi: messaggiDaSalvare,
+            ultima_modifica: new Date().toISOString(),
+            livello_studente: livelloStudente, // ✨ Aggiorniamo/salviamo il livello anche nei follow-up
+          })
+          .eq("id", chatEsistente.id);
+        if (updateError) console.error("Errore Supabase update chat_spiegazioni:", updateError);
+      } else {
+          console.warn(`Nessuna chat esistente trovata per il follow-up con titolo: ${concetto.substring(0,100)} per l'utente ${user.id}. Potrebbe essere necessario creare una nuova chat.`);
+          // Potresti voler gestire questo caso creando una nuova chat se non viene trovata,
+          // invece di non salvare nulla. Per ora, logga un warning.
+      }
+    }
+
+    return res.status(200).json({ spiegazione, modelloUsato: modello, livelloApplicato: livelloStudente });
+  } catch (error: any) {
+    console.error("Errore generazione spiegazione OpenAI o altro:", error);
+    const errorMessage = error.response?.data?.error?.message || error.message || "Errore sconosciuto";
+    return res.status(500).json({ error: "Errore durante la generazione della spiegazione", details: errorMessage });
+  }
+}
 
 
 
