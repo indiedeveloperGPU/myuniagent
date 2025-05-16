@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 text-white min-h-screen">
       {/* Navbar */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-[#0f0c29]/90 backdrop-blur border-b border-gray-800 shadow">
+      <header className="fixed top-0 left-0 w-full z-50 bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700/90 backdrop-blur border-b border-white/20 shadow">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
           <Link href="/">
             <span className="text-xl font-bold text-white">MyUniAgent</span>
@@ -58,7 +58,7 @@ export default function Home() {
               title: "🌍 Allenamento lingue & certificazioni",
               desc: "Studia inglese, francese e spagnolo con teoria, vocabolario e conversazione."
             }].map((item, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} viewport={{ once: true }} className="bg-[#1e1e2f] p-6 rounded-xl border border-gray-700 shadow hover:shadow-lg transition">
+              <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} viewport={{ once: true }} className="bg-white/5 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow hover:shadow-lg transition">
                 <h3 className="font-bold text-lg text-white mb-2">{item.title}</h3>
                 <p className="text-gray-300">{item.desc}</p>
               </motion.div>
@@ -67,7 +67,7 @@ export default function Home() {
         </section>
 
         {/* Agente Fox */}
-        <section id="fox" className="py-24 px-6 border-t border-gray-700 bg-[#1c1c2e]">
+        <section id="fox" className="py-24 px-6 border-t border-white/10 bg-black/10 backdrop-blur-md">
           <div className="max-w-4xl mx-auto text-center">
             <motion.h2 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-3xl font-bold mb-4">🦊 Agente Speciale Fox</motion.h2>
             <motion.p initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="text-gray-300 text-lg mb-6 max-w-2xl mx-auto">
@@ -87,7 +87,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-center py-6 text-sm text-gray-400">
+      <footer className="bg-black/30 backdrop-blur text-center py-6 text-sm text-gray-200">
         © {new Date().getFullYear()} MyUniAgent – Tutti i diritti riservati
       </footer>
     </div>
