@@ -5,7 +5,7 @@ import { Typewriter } from 'react-simple-typewriter';
 
 export default function FoxPage() {
   return (
-    <div className="bg-gradient-to-br from-[#0f0c29] via-[#1e1e2f] to-[#181826] text-white min-h-screen font-sans">
+    <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 text-white min-h-screen font-sans">
       <header className="py-6 border-b border-white/10 backdrop-blur-sm bg-[#0f0c29]/80 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 flex justify-between items-center">
           <Link href="/">
