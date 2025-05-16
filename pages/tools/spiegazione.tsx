@@ -16,6 +16,7 @@ export default function Spiegazione() {
   const [inviatoAFox, setInviatoAFox] = useState(false);
   const [fade, setFade] = useState(false); // 🔥 aggiunto per il fade
   const [livello, setLivello] = useState("superiori"); // valore di default
+  const concetto = chat[0]?.role === "user" ? chat[0].content : "Argomento della spiegazione";
   const [followUpLoading, setFollowUpLoading] = useState(false);
   const [chatSalvate, setChatSalvate] = useState<{ titolo: string; data: string }[]>([]);
 
@@ -213,21 +214,28 @@ export default function Spiegazione() {
   
 
   const inviaFollowUp = async () => {
-    if (!followUp.trim()) return;
-    const newChat = [...chat, { role: "user", content: followUp }];
-    setChat(newChat);
-    setFollowUp(""); setFollowUpLoading(true);
+  if (!input.trim()) return;
 
-    const res = await fetch("/api/spiegazione", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    concetto: input,
-    followUp: newChat,
-     livelloStudente: livello, // 👈 aggiunto il livello
-  }),
-  credentials: "include",
-});
+  setLoading(true);
+  const newChat = [...chat, { role: "user", content: input }];
+
+  // ✅ Recupera il token come in generaSpiegazione
+  const session = await supabase.auth.getSession();
+  const token = session.data.session?.access_token;
+
+  const res = await fetch("/api/spiegazione", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`, // 👈 aggiunto
+    },
+    body: JSON.stringify({
+      concetto,
+      followUp: newChat,
+      livelloStudente: livello, // 👈 se già corretto anche qui
+    }),
+  });
+
 
 
     const data = await res.json();
