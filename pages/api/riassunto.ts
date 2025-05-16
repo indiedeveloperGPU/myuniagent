@@ -1,50 +1,57 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { OpenAI } from 'openai';
+import type { NextApiRequest, NextApiResponse } from "next";
+import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const MAX_CHARS = 3500;
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Metodo non consentito' });
-
-  const { testo, avanzato } = req.body;
-
-  if (!testo || typeof testo !== 'string') {
-    return res.status(400).json({ error: 'Testo mancante o non valido' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Metodo non consentito" });
   }
 
-  if (testo.length > MAX_CHARS) {
-    return res.status(400).json({
-      error: `Il testo supera i ${MAX_CHARS} caratteri consentiti.`,
-    });
+  const { testo } = req.body;
+  if (!testo || typeof testo !== "string") {
+    return res.status(400).json({ error: "Testo mancante o non valido" });
   }
+
+  const prompt = `
+Sei MyUniAgent, un assistente AI accademico di nuova generazione, esperto nella comprensione e sintesi di testi scolastici e universitari.
+
+Il tuo compito è riassumere il testo fornito in modo **chiaro, preciso, completo e dettagliato**, mantenendo uno **stile universitario e un linguaggio professionale.**
+
+Assicurati di:
+- Mantenere la **coerenza logica** del testo originale.
+- Includere tutti i **concetti chiave, le argomentazioni principali e i dettagli rilevanti** necessari per una comprensione approfondita del testo. Non tralasciare informazioni importanti.
+- Utilizzare uno **stile accademico, preciso e professionale**, adatto a un contesto universitario. Il linguaggio deve essere formale e ben strutturato.
+- Strutturare il riassunto in **paragrafi logici**, se necessario, per migliorare la leggibilità e l'organizzazione delle idee.
+- Non inventare contenuti o fare deduzioni che non siano esplicitamente supportate dal testo originale.
+- Se il testo contiene termini tecnici specifici, assicurati che siano usati correttamente nel contesto del riassunto.
+
+Ora, leggi attentamente il seguente testo e fornisci un riassunto **accurato, completo, dettagliato e accademico**:
+
+"""
+${testo}
+"""
+  `;
 
   try {
-    // Prompt dinamico
-    const systemPrompt = avanzato
-      ? 'Sei un assistente accademico. Il tuo compito è riassumere testi complessi in modo chiaro, preciso e completo, mantenendo uno stile universitario e un linguaggio professionale.'
-      : 'Sei un assistente che crea riassunti dettagliati e accademici.';
-
-    const userPrompt = avanzato
-      ? `Leggi attentamente il seguente testo e forniscine un riassunto accurato e accademico:\n\n${testo}`
-      : `Fornisci un riassunto completo di questo testo:\n\n${testo}`;
-
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.5,
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo", // Puoi considerare "gpt-4" o altri modelli più recenti se disponibili e se cerchi maggiore profondità
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3, // Manteniamo una temperatura bilanciata
     });
 
-    const riassunto = response.choices[0]?.message?.content || 'Nessun riassunto disponibile';
+    const riassunto = completion.choices[0]?.message?.content?.trim();
 
-    // ✅ Niente salvataggio lato DB in locale
-    res.status(200).json({ riassunto, modello: 'gpt-3.5-turbo', avanzato });
-  } catch (error: any) {
-    console.error('Errore nel riassunto:', error);
-    res.status(500).json({ error: 'Errore durante la generazione del riassunto' });
+    if (!riassunto) {
+      throw new Error("Risposta vuota da OpenAI");
+    }
+
+    return res.status(200).json({ riassunto });
+  } catch (err: any) {
+    console.error("Errore API GPT:", err);
+    return res.status(500).json({ error: "Errore durante la generazione del riassunto" });
   }
 }
 
