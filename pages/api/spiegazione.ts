@@ -125,10 +125,13 @@ if (!dominiAutorizzati.includes(origin)) {
     const spiegazione =
       completamento.choices[0]?.message?.content ?? "Nessuna risposta disponibile.";
 
-    const accessToken = req.cookies["sb-access-token"];
-    if (!accessToken) {
-      return res.status(401).json({ error: "Non autorizzato. Devi essere autenticato." });
-    }
+    const authHeader = req.headers.authorization || "";
+    const accessToken = authHeader.replace("Bearer ", "");
+
+if (!accessToken) {
+  return res.status(401).json({ error: "Non autorizzato. Devi essere autenticato." });
+}
+
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -234,7 +237,6 @@ if (!dominiAutorizzati.includes(origin)) {
     return res.status(500).json({ error: "Errore durante la generazione della spiegazione", details: errorMessage });
   }
 }
-
 
 
 
