@@ -6,15 +6,16 @@ export default function Home() {
   return (
     <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 text-white min-h-screen">
       {/* Navbar */}
-      <header className="fixed top-0 left-0 w-full z-50 bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700/90 backdrop-blur border-b border-white/20 shadow">
+      <header className="fixed top-0 left-0 w-full z-50 bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700/90 backdrop-blur border-b border-white/10 shadow-md shadow-black/10">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
           <Link href="/">
-            <span className="text-xl font-bold text-white">MyUniAgent</span>
+            <span className="text-2xl font-bold tracking-tight text-white drop-shadow-sm">MyUniAgent</span>
           </Link>
           <div className="space-x-6 hidden md:flex">
-            <Link href="#features" className="text-gray-300 hover:text-white transition">Funzionalità</Link>
-            <Link href="/fox" className="text-gray-300 hover:text-white transition">Agente Fox</Link>
-            <Link href="/auth" className="text-blue-400 hover:underline">Accedi</Link>
+            <Link href="#features" className="text-white/80 hover:text-white transition-colors duration-200">Funzionalità</Link>
+            <Link href="/fox" className="text-white/80 hover:text-white transition-colors duration-200">Agente Fox</Link>
+            <Link href="/auth" className="text-white font-semibold hover:text-blue-200 transition-colors duration-200">Accedi</Link>
+
           </div>
         </nav>
       </header>
