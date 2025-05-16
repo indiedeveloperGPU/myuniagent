@@ -66,6 +66,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Metodo non consentito" });
   }
 
+  const origin = req.headers.origin || "";
+const dominiAutorizzati = [
+  "https://myuniagent.it",       
+  "http://localhost:3000",
+];
+
+if (!dominiAutorizzati.includes(origin)) {
+  return res.status(403).json({ error: "Accesso non consentito da questa origine." });
+}
+
   const { concetto, followUp, livelloStudente } = req.body as {
     concetto: string;
     followUp?: { role: "user" | "assistant"; content: string }[];
@@ -117,9 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const accessToken = req.cookies["sb-access-token"];
     if (!accessToken) {
-      // Se non c'è accessToken, restituisci la spiegazione senza salvare su Supabase
-      // Questo permette anche a utenti non loggati (o in caso di problemi con il token) di ottenere spiegazioni
-      return res.status(200).json({ spiegazione, modelloUsato: modello, livelloApplicato: livelloStudente });
+      return res.status(401).json({ error: "Non autorizzato. Devi essere autenticato." });
     }
 
     const supabase = createClient(
