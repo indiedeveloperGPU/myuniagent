@@ -24,7 +24,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="text-center py-24 px-6">
           <motion.h1 className="text-4xl sm:text-5xl font-bold mb-4 flex items-center justify-center gap-3">
-           <Image src="/graduation-cap.svg"alt="Icona laurea"width={40}height={40}/>MyUniAgent: il tuo assistente accademico intelligente
+           <Image src="/graduation-cap.svg"alt="Icona laurea"width={80}height={80}/>MyUniAgent: il tuo assistente accademico intelligente
            </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="text-lg text-gray-200 max-w-2xl mx-auto mb-6">
             Spiegazioni avanzate, analisi tesi, supporto per esami e Agente Fox a tua disposizione. Tutto in un'unica piattaforma.
