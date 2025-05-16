@@ -30,9 +30,7 @@ export default function Home() {
             Spiegazioni avanzate, analisi tesi, supporto per esami e Agente Fox a tua disposizione. Tutto in un'unica piattaforma.
           </motion.p>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="flex justify-center gap-4">
-            <a href="#fox" className="text-blue-300 font-semibold hover:underline px-6 py-3">
-              Scopri Agente Fox 🦊
-            </a>
+            <a href="#fox" className="text-white/90 font-semibold hover:text-white transition-colors duration-200 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-lg shadow">Scopri Agente Fox 🦊</a>
           </motion.div>
         </section>
 
