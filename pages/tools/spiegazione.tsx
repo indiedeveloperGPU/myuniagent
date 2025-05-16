@@ -152,17 +152,23 @@ export default function Spiegazione() {
   };
 
   const generaSpiegazione = async (testo: string) => {
-    if (!testo) return;
-    setLoading(true);
-    const res = await fetch("/api/spiegazione", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    concetto: testo,
-    livelloStudente: livello, // ✅ CORRETTO
-  }),
-  credentials: "include",
-});
+  if (!testo) return;
+  setLoading(true);
+
+  const session = await supabase.auth.getSession();
+  const token = session.data.session?.access_token;
+
+  const res = await fetch("/api/spiegazione", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`, // 👈 passa il token
+    },
+    body: JSON.stringify({
+      concetto: testo,
+      livelloStudente: livello,
+    }),
+  });
 
 
 
