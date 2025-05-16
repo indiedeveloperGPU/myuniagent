@@ -120,7 +120,7 @@ export default function Spiegazione() {
       .select("messaggi")
       .eq("user_id", user.id)
       .eq("titolo", testo)
-      .single();
+      .maybeSingle()
 
     if (chatEsistente?.messaggi) {
       setChat(chatEsistente.messaggi);
