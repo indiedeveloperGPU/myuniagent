@@ -79,7 +79,7 @@ const features = [
 
 export default function Funzionalita() {
   return (
-    <div className="bg-gradient-to-br from-gray-900 via-purple-900 to-indigo-900 text-white min-h-screen py-24 px-6">
+    <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 text-white min-h-screen py-24 px-6">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-center mb-12">🎓 Tutte le funzionalità di MyUniAgent</h1>
         <p className="text-center text-gray-300 max-w-2xl mx-auto mb-16">
