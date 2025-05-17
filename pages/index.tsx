@@ -27,7 +27,7 @@ export default function Home() {
             <span className="text-2xl font-bold tracking-tight text-white drop-shadow-sm">MyUniAgent</span>
           </Link>
           <div className="space-x-6 hidden md:flex">
-            <Link href="#features" className="text-white/80 hover:text-white transition-colors duration-200">Funzionalità</Link>
+            <Link href="/funzionalita" className="text-white/80 hover:text-white transition-colors duration-200">Funzionalità</Link>
             <Link href="/fox" className="text-white/80 hover:text-white transition-colors duration-200">Agente Fox</Link>
             <Link href="/auth" className="text-white font-semibold hover:text-blue-200 transition-colors duration-200">Accedi</Link>
           </div>
