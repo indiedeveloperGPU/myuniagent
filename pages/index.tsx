@@ -55,11 +55,6 @@ export default function Home() {
         </section>
 
         {/* Logo strip */}
-        <section className="py-8 px-6 max-w-6xl mx-auto flex justify-center gap-8 flex-wrap opacity-80">
-          {["unimi", "unibo", "sapienza", "polimi"].map((logo, i) => (
-            <Image key={i} src={`/logos/${logo}.svg`} alt={logo} width={100} height={40} />
-          ))}
-        </section>
 
         {/* Funzionalità estese */}
         <section id="features" className="py-20 px-6 max-w-7xl mx-auto">
