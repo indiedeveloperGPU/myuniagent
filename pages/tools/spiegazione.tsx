@@ -175,7 +175,7 @@ export default function Spiegazione() {
 
     const data = await res.json();
     setRisposta(data.spiegazione);
-    setChat([{ role: "assistant", content: data.spiegazione }]);
+    setChat([{ role: "user", content: testo },{ role: "assistant", content: data.spiegazione },]);
     setLoading(false);
   };
 
@@ -214,12 +214,12 @@ export default function Spiegazione() {
   
 
   const inviaFollowUp = async () => {
-  if (!input.trim()) return;
+  if (!followUp.trim()) return;
 
-  setLoading(true);
-  const newChat = [...chat, { role: "user", content: input }];
+  setFollowUpLoading(true);
 
-  // ✅ Recupera il token come in generaSpiegazione
+  const newChat = [...chat, { role: "user", content: followUp }];
+
   const session = await supabase.auth.getSession();
   const token = session.data.session?.access_token;
 
@@ -227,21 +227,24 @@ export default function Spiegazione() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`, // 👈 aggiunto
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      concetto,
+      concetto: chat[0]?.content || "Argomento sconosciuto",
       followUp: newChat,
-      livelloStudente: livello, // 👈 se già corretto anche qui
+      livelloStudente: livello,
     }),
   });
 
+  const data = await res.json();
+
+  setChat([...newChat, { role: "assistant", content: data.spiegazione }]);
+  setRisposta(data.spiegazione);
+  setFollowUp(""); // ✅ svuota campo follow-up corretto
+  setFollowUpLoading(false);
+};
 
 
-    const data = await res.json();
-    setChat([...newChat, { role: "assistant", content: data.spiegazione }]);
-    setFollowUpLoading(false);
-  };
 
   const handleSubmit = () => {
     if (!input.trim()) {
