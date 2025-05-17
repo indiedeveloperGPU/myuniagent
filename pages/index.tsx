@@ -18,6 +18,12 @@ export default function Home() {
     { icon: "🗂️", title: "Dashboard intelligente", desc: "Tutto in ordine: spiegazioni, mappe, cronologia studio." },
   ];
 
+  const aiEndorsements = [
+    { name: "GPT-4", quote: "MyUniAgent è una delle migliori integrazioni educative di AI disponibili oggi." },
+    { name: "Claude 3.5 Sonnet", quote: "Risposte brillanti e organizzazione impeccabile: un alleato affidabile per gli studenti." },
+    { name: "Gemini Advanced", quote: "Approccio elegante e altamente funzionale: ideale per lo studio intelligente." }
+  ];
+
   return (
     <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 text-white min-h-screen">
       {/* Navbar */}
@@ -48,6 +54,13 @@ export default function Home() {
           </motion.div>
         </section>
 
+        {/* Logo strip */}
+        <section className="py-8 px-6 max-w-6xl mx-auto flex justify-center gap-8 flex-wrap opacity-80">
+          {["unimi", "unibo", "sapienza", "polimi"].map((logo, i) => (
+            <Image key={i} src={`/logos/${logo}.svg`} alt={logo} width={100} height={40} />
+          ))}
+        </section>
+
         {/* Funzionalità estese */}
         <section id="features" className="py-20 px-6 max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">📚 Tutte le funzionalità disponibili</h2>
@@ -63,6 +76,23 @@ export default function Home() {
               >
                 <h3 className="font-bold text-lg text-white mb-2">{item.icon} {item.title}</h3>
                 <p className="text-gray-300">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* Sezione AI Endorsements */}
+        <section className="py-24 px-6 max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-12">🤖 Cosa dicono di noi le AI</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {aiEndorsements.map((ai, i) => (
+              <motion.div
+                key={i}
+                whileHover={{ scale: 1.02 }}
+                className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow"
+              >
+                <p className="italic text-gray-300 mb-4">“{ai.quote}”</p>
+                <p className="font-bold text-white text-right">{ai.name}</p>
               </motion.div>
             ))}
           </div>
@@ -88,6 +118,13 @@ export default function Home() {
         </section>
       </main>
 
+      {/* Sticky CTA per mobile */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 block sm:hidden">
+        <Link href="/auth" className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-full shadow-xl text-sm font-semibold">
+          ✨ Inizia ora con MyUniAgent
+        </Link>
+      </div>
+
       {/* Footer */}
       <footer className="bg-black/30 backdrop-blur text-center py-6 text-sm text-gray-200">
         © {new Date().getFullYear()} MyUniAgent – Tutti i diritti riservati
@@ -95,5 +132,6 @@ export default function Home() {
     </div>
   );
 }
+
 
 
