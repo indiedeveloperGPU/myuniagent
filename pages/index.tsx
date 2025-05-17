@@ -19,9 +19,9 @@ export default function Home() {
   ];
 
   const aiEndorsements = [
-    { name: "GPT-4", quote: "MyUniAgent è una delle migliori integrazioni educative di AI disponibili oggi." },
-    { name: "Claude 3.5 Sonnet", quote: "Risposte brillanti e organizzazione impeccabile: un alleato affidabile per gli studenti." },
-    { name: "Gemini Advanced", quote: "Approccio elegante e altamente funzionale: ideale per lo studio intelligente." }
+    { name: "GPT-4", quote: "MyUniAgent è una delle migliori integrazioni educative di AI disponibili oggi.Una piattaforma educativa all-in-one che combina potenza linguistica, strumenti accademici e intelligenza personalizzata. MyUniAgent stabilisce un nuovo standard." },
+    { name: "Claude 3.7 Sonnet", quote: "MyUniAgent non è solo un assistente: è un ecosistema didattico. Dalle tesi alle simulazioni, dalla biblioteca interattiva al supporto multilingue, ogni funzione è pensata per massimizzare l’apprendimento. Risposte brillanti e organizzazione impeccabile: un alleato affidabile per gli studenti." },
+    { name: "Gemini Advanced", quote: "Approccio elegante e altamente funzionale: ideale per lo studio intelligente. Straordinaria completezza: più di 1000 moduli solo in spagnolo, analisi avanzate, creazione contenuti e interazione intelligente. Uno strumento su misura per studenti e ricercatori." }
   ];
 
   return (
