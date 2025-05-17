@@ -3,6 +3,21 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 
 export default function Home() {
+  const allFeatures = [
+    { icon: "📘", title: "Spiegazioni personalizzate", desc: "Risposte chiare, su misura per ogni domanda accademica." },
+    { icon: "📄", title: "Riassunti automatici", desc: "Ottieni versioni sintetiche di testi lunghi o complessi." },
+    { icon: "🧠", title: "Mappe concettuali", desc: "Visualizza e memorizza meglio grazie a schemi generati." },
+    { icon: "🌍", title: "Allenamento lingue", desc: "Pratica inglese, francese e spagnolo con teoria e vocabolario." },
+    { icon: "🧑‍🏫", title: "Simulazioni orali", desc: "Simula esami orali con feedback personalizzati." },
+    { icon: "✍️", title: "Simulazioni scritte", desc: "Allena la scrittura accademica con esempi e correzioni." },
+    { icon: "🦊", title: "Richieste a Agente Fox", desc: "Chiedi qualsiasi cosa: documenti, spiegazioni, approfondimenti." },
+    { icon: "📊", title: "Storico simulazioni", desc: "Consulta e rivedi tutte le simulazioni svolte." },
+    { icon: "🏫", title: "Supporto per classi", desc: "Funzioni pensate per docenti e gruppi di studenti." },
+    { icon: "🔍", title: "Analisi tesi", desc: "Controlla, struttura e migliora la tua tesi con l’AI." },
+    { icon: "📚", title: "Biblioteca personale", desc: "Raccogli e organizza tutti i materiali generati." },
+    { icon: "🗂️", title: "Dashboard intelligente", desc: "Tutto in ordine: spiegazioni, mappe, cronologia studio." },
+  ];
+
   return (
     <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 text-white min-h-screen">
       {/* Navbar */}
@@ -15,7 +30,6 @@ export default function Home() {
             <Link href="#features" className="text-white/80 hover:text-white transition-colors duration-200">Funzionalità</Link>
             <Link href="/fox" className="text-white/80 hover:text-white transition-colors duration-200">Agente Fox</Link>
             <Link href="/auth" className="text-white font-semibold hover:text-blue-200 transition-colors duration-200">Accedi</Link>
-
           </div>
         </nav>
       </header>
@@ -24,41 +38,30 @@ export default function Home() {
         {/* Hero Section */}
         <section className="text-center py-24 px-6">
           <motion.h1 className="text-4xl sm:text-5xl font-bold mb-4 flex items-center justify-center gap-3">
-           <Image src="/graduation-cap.svg"alt="Icona laurea"width={80}height={80}/>MyUniAgent: il tuo assistente accademico intelligente
-           </motion.h1>
+            <Image src="/graduation-cap.svg" alt="Icona laurea" width={80} height={80}/>MyUniAgent: il tuo assistente accademico intelligente
+          </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="text-lg text-gray-200 max-w-2xl mx-auto mb-6">
             Spiegazioni avanzate, analisi tesi, supporto per esami e Agente Fox a tua disposizione. Tutto in un'unica piattaforma.
           </motion.p>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="flex justify-center gap-4">
-            <a href="#fox" className="text-white/90 font-semibold hover:text-white transition-colors duration-200 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-lg shadow">Scopri Agente Fox 🦊</a>
+            <a href="#features" className="text-white/90 font-semibold hover:text-white transition-colors duration-200 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-lg shadow">Esplora le funzionalità</a>
           </motion.div>
         </section>
 
-        {/* Funzionalità */}
-        <section id="features" className="py-20 px-6 max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">📚 Cosa puoi fare con MyUniAgent</h2>
+        {/* Funzionalità estese */}
+        <section id="features" className="py-20 px-6 max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-12">📚 Tutte le funzionalità disponibili</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[{
-              title: "📘 Spiegazioni personalizzate",
-              desc: "Ricevi risposte chiare, complete e su misura per ogni tua domanda accademica."
-            }, {
-              title: "🧾 Analisi tesi & supporto alla scrittura",
-              desc: "Carica la tua tesi, analizzala con l’AI o ricevi assistenza per scriverla al meglio."
-            }, {
-              title: "🧠 Simulazioni esami universitari",
-              desc: "Allenati con quiz, domande orali simulate e correzioni intelligenti."
-            }, {
-              title: "🏫 Supporto scuole superiori",
-              desc: "Test d’ingresso, ripetizioni intelligenti, contenuti mirati per studenti delle superiori."
-            }, {
-              title: "🗂️ Dashboard intelligente",
-              desc: "Salva tutto: spiegazioni, mappe concettuali, cronologia studio e quiz svolti."
-            }, {
-              title: "🌍 Allenamento lingue & certificazioni",
-              desc: "Studia inglese, francese e spagnolo con teoria, vocabolario e conversazione."
-            }].map((item, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} viewport={{ once: true }} className="bg-white/5 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow hover:shadow-lg transition">
-                <h3 className="font-bold text-lg text-white mb-2">{item.title}</h3>
+            {allFeatures.map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                viewport={{ once: true }}
+                className="bg-white/5 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow hover:shadow-lg transition"
+              >
+                <h3 className="font-bold text-lg text-white mb-2">{item.icon} {item.title}</h3>
                 <p className="text-gray-300">{item.desc}</p>
               </motion.div>
             ))}
@@ -92,4 +95,5 @@ export default function Home() {
     </div>
   );
 }
+
 
