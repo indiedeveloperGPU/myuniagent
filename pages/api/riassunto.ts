@@ -1,18 +1,39 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
+import { createClient } from "@supabase/supabase-js";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Metodo non consentito" });
   }
 
+  const token = req.headers.authorization?.replace("Bearer ", "");
+if (!token) {
+  return res.status(401).json({ error: "Token mancante" });
+}
+
+const { data: user, error } = await supabase.auth.getUser(token);
+if (error || !user) {
+  return res.status(401).json({ error: "Utente non autenticato" });
+}
+
+
   const { testo } = req.body;
   if (!testo || typeof testo !== "string") {
     return res.status(400).json({ error: "Testo mancante o non valido" });
+  }
+
+  if (testo.length > 10000) {
+    return res.status(400).json({ error: "Testo troppo lungo (max 10.000 caratteri)" });
   }
 
   const prompt = `
@@ -37,9 +58,9 @@ ${testo}
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // Puoi considerare "gpt-4" o altri modelli più recenti se disponibili e se cerchi maggiore profondità
+      model: "gpt-3.5-turbo", 
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.3, // Manteniamo una temperatura bilanciata
+      temperature: 0.3, 
     });
 
     const riassunto = completion.choices[0]?.message?.content?.trim();
@@ -54,6 +75,5 @@ ${testo}
     return res.status(500).json({ error: "Errore durante la generazione del riassunto" });
   }
 }
-
 
 
