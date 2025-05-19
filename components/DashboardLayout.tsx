@@ -34,9 +34,15 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
       
       {/* Sidebar */}
       <aside className="w-64 bg-gray-50 dark:bg-gray-900 shadow-md border-r border-gray-200 dark:border-gray-800">
-        <div className="p-6 text-xl font-extrabold text-center border-b dark:border-gray-800 text-gray-900 dark:text-white tracking-wide">
-          🎓 MyUniAgent
-        </div>
+  <div className="p-6 text-center border-b dark:border-gray-800">
+    <Image
+      src="/logo-myuniagent.png"
+      alt="Logo MyUniAgent"
+      width={120}
+      height={120}
+      className="mx-auto"
+    />
+  </div>
 
         <nav className="p-4 space-y-2">
           {navItems.map(({ href, label }) => {
