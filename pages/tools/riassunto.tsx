@@ -18,6 +18,8 @@ export default function RiassuntoPage() {
   const [filePathFox, setFilePathFox] = useState<string | null>(null);
   const [allegatoFox, setAllegatoFox] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   useEffect(() => {
     const checkUser = async () => {
@@ -67,42 +69,49 @@ export default function RiassuntoPage() {
   };
 
   const handleSubmitGPT = async () => {
-    setResults([]);
-    setLoadingBlocks([]);
-    const blocks = splitTextIntoBlocks(text.trim());
-    const tempResults = Array(blocks.length).fill("");
-    const tempLoading = Array(blocks.length).fill(true);
-    setLoadingBlocks(tempLoading);
+  if (isSubmitting) return;           // blocca invii multipli
+  setIsSubmitting(true);              // disattiva il pulsante
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) {
-      setError("Utente non autenticato.");
-      return;
-    }
+  setResults([]);
+  setLoadingBlocks([]);
+  const blocks = splitTextIntoBlocks(text.trim());
+  const tempResults = Array(blocks.length).fill("");
+  const tempLoading = Array(blocks.length).fill(true);
+  setLoadingBlocks(tempLoading);
 
-    for (let i = 0; i < blocks.length; i++) {
-      try {
-        const res = await fetch("/api/riassunto", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ testo: blocks[i] }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Errore nel riassunto.");
-        tempResults[i] = data.riassunto;
-      } catch (err: any) {
-        tempResults[i] = `❌ Errore nel blocco ${i + 1}: ${err.message}`;
-      } finally {
-        tempLoading[i] = false;
-        setResults([...tempResults]);
-        setLoadingBlocks([...tempLoading]);
-      }
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    setError("Utente non autenticato.");
+    setIsSubmitting(false);          // riattiva se fallisce
+    return;
+  }
+
+  for (let i = 0; i < blocks.length; i++) {
+    try {
+      const res = await fetch("/api/riassunto", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ testo: blocks[i] }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Errore nel riassunto.");
+      tempResults[i] = data.riassunto;
+    } catch (err: any) {
+      tempResults[i] = `❌ Errore nel blocco ${i + 1}: ${err.message}`;
+    } finally {
+      tempLoading[i] = false;
+      setResults([...tempResults]);
+      setLoadingBlocks([...tempLoading]);
     }
-  };
+  }
+
+  setIsSubmitting(false);             // riattiva alla fine
+};
+
 
   const inviaAFox = async () => {
     const sessionResult = await supabase.auth.getSession();
@@ -249,7 +258,8 @@ export default function RiassuntoPage() {
           {modalitaFox === false && (
             <div className="mb-4">
               <textarea className="w-full p-2 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" rows={8} placeholder="Incolla il testo da riassumere..." value={text} onChange={(e) => setText(e.target.value)} />
-              <button onClick={handleSubmitGPT} className="bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-blue-700" disabled={!text}>📝 Riassumi</button>
+              <button onClick={handleSubmitGPT}disabled={!text || isSubmitting}className={`bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-blue-700 transition ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}>{isSubmitting ? "⏳ Generazione in corso..." : "📝 Riassumi"}</button>
+
             </div>
           )}
 
