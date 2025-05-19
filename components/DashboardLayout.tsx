@@ -2,7 +2,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
-
+import Image from "next/image";
 
 const navItems = [
   { href: "/dashboard", label: "🏠 Home" },
