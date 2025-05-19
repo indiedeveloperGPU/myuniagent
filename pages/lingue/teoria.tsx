@@ -244,20 +244,18 @@ export default function TeoriaGrammaticale() {
                       <h3 className="font-semibold mb-2">📝 Quiz</h3>
                       <div className="space-y-4">
                         {contenutoSelezionato.quiz.map((q: any, idx: number) => (
-                          <div key={idx} className="border p-3 rounded bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700">
-                            <p className="text-sm font-medium mb-1">{q.domanda}</p>
+                          <div key={idx} className="border p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 shadow-sm">
+                            <p className="text-base font-semibold text-gray-800 dark:text-gray-100 mb-2">{q.domanda}</p>
                             {q.tipo === "multipla" ? (
                               <div className="space-y-1">
                                 {q.opzioni.map((opt: string, oidx: number) => (
-                                  <label key={oidx} className="block text-sm">
+                                  <label key={oidx}className={`block text-sm px-2 py-1 rounded cursor-pointer transition ${risposte[contenutoSelezionato.id]?.[idx] === opt? "bg-blue-100 dark:bg-blue-800 font-semibold":"hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
                                     <input
-                                      type="radio"
-                                      name={`quiz-${contenutoSelezionato.id}-${idx}`}
-                                      value={opt}
-                                      checked={risposte[contenutoSelezionato.id]?.[idx] === opt}
-                                      onChange={(e) => handleRispostaChange(contenutoSelezionato.id, idx, e.target.value)}
-                                      className="mr-2"
-                                    />
+                                    type="radio"
+                                    name={`quiz-${contenutoSelezionato.id}-${idx}`}
+                                    value={opt}
+                                    checked={risposte[contenutoSelezionato.id]?.[idx] === opt}
+                                    onChange={(e) => handleRispostaChange(contenutoSelezionato.id, idx, e.target.value)}className="mr-2 accent-blue-600"/>
                                     {opt}
                                   </label>
                                 ))}
