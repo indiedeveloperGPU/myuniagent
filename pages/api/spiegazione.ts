@@ -6,6 +6,12 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+
 export const config = {
   api: {
     bodyParser: true,
@@ -73,7 +79,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Metodo non consentito" });
   }
 
-  const origin = req.headers.origin || "";
+  const token = req.headers.authorization?.replace("Bearer ", "");
+if (!token) {
+  return res.status(401).json({ error: "Token mancante" });
+}
+
+const { data: user, error } = await supabase.auth.getUser(token);
+if (error || !user) {
+  return res.status(401).json({ error: "Utente non autenticato" });
+}
+
+
+const origin = req.headers.origin || "";
 const dominiAutorizzati = [
   "https://myuniagent.it",       
   "http://localhost:3000",
