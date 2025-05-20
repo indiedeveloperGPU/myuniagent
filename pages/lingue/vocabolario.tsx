@@ -3,6 +3,11 @@ import { useRouter } from "next/router";
 import { supabase } from "@/lib/supabaseClient";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
+import remarkGfm from "remark-gfm";
+
 
 interface Parola {
   parola: string;
@@ -30,6 +35,7 @@ export default function Vocabolario() {
   const [lingua, setLingua] = useState<string>("");
   const [livello, setLivello] = useState<string>("A1");
   const [vocabolario, setVocabolario] = useState<VocabolarioLight[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [completati, setCompletati] = useState<Set<string>>(new Set());
   const [selezionato, setSelezionato] = useState<string | null>(null);
   const [risposte, setRisposte] = useState<Record<string, Record<string, string>>>({});
@@ -55,13 +61,19 @@ export default function Vocabolario() {
   }, []);
 
   useEffect(() => {
-    if (!lingua) return;
-    const fetchData = async () => {
-      setLoading(true);
-      const session = await supabase.auth.getUser();
-      const user = session.data?.user;
-      if (!user) return;
+  if (!lingua) return;
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);  // reset errore
+    const session = await supabase.auth.getUser();
+    const user = session.data?.user;
+    if (!user) {
+      setLoading(false);
+      setError("Utente non autenticato.");
+      return;
+    }
 
+    try {
       const [{ data: vocabolarioData }, { data: completatiData }] = await Promise.all([
         supabase
           .from("vocabolario")
@@ -82,10 +94,15 @@ export default function Vocabolario() {
         const ids = completatiData.map((c) => c.contenuto_id);
         setCompletati(new Set(ids));
       }
-      setLoading(false);
-    };
-    fetchData();
-  }, [lingua, livello]);
+      setError(null);
+    } catch (e) {
+      setError("Errore durante il caricamento. Riprova più tardi.");
+    }
+    setLoading(false);
+  };
+  fetchData();
+}, [lingua, livello]);
+
 
   const handleRispostaChange = (itemId: string, domandaIdx: number, valore: string) => {
     setRisposte((prev) => ({
@@ -127,26 +144,41 @@ export default function Vocabolario() {
 };
 
 
-  const inviaRisposte = async (item: VocabolarioLight) => {
-    const { data: session } = await supabase.auth.getUser();
-    if (!session.user) return;
+  const inviaRisposte = async (item: VocabolarioCompleto) => {
+  const { data: session } = await supabase.auth.getUser();
+  if (!session.user) return;
 
-    const payload = {
-      user_id: session.user.id,
-      contenuto_id: item.id,
-      lingua,
-      livello,
-      tema: item.tema,
-      risposte: risposte[item.id] || {},
-      stato: "in_attesa"
+  const risposteUtente = Object.entries(risposte[item.id] || {}).map(([idx, risposta]) => {
+    const quiz = item.quiz[parseInt(idx)];
+    return {
+      domanda: quiz.domanda,
+      tipo: quiz.tipo,
+      opzioni: quiz.opzioni || [],
+      risposta_corretta: quiz.risposta,
+      risposta_utente: risposta,
     };
+  });
 
-    const { error } = await supabase.from("vocabolario_risposte").insert(payload);
-
-    if (!error) {
-      setMessaggi((prev) => ({ ...prev, [item.id]: "✅ Risposte inviate. In attesa di valutazione da Agente Fox." }));
-    }
+  const payload = {
+    user_id: session.user.id,
+    contenuto_id: item.id,
+    lingua,
+    livello,
+    tema: item.tema,
+    risposte: risposteUtente,
+    stato: "in_attesa",
   };
+
+  const { error } = await supabase.from("vocabolario_risposte").insert(payload);
+
+  if (!error) {
+    setMessaggi((prev) => ({
+      ...prev,
+      [item.id]: "✅ Risposte inviate. In attesa di valutazione da Agente Fox.",
+    }));
+  }
+};
+
 
   return (
     <DashboardLayout>
@@ -155,7 +187,7 @@ export default function Vocabolario() {
         <div className="w-1/4 border-r pr-4 border-gray-200 dark:border-gray-700">
           <button
             onClick={() => router.back()}
-            className="mb-4 inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-gray-600 rounded-full px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-50 dark:hover:bg-gray-700 transition"
+            className="mb-4 inline-flex items-center gap-2 bg-white dark:bg-gray-900 text-blue-700 dark:text-blue-200 border border-blue-300 dark:border-gray-700 rounded-full px-4 py-2 text-sm font-medium shadow-sm hover:bg-blue-50 dark:hover:bg-gray-800 transition"
           >
             🔙 Torna alla pagina Lingue
           </button>
@@ -174,19 +206,25 @@ export default function Vocabolario() {
           <ul className="space-y-2">
   {moduliDaVisualizzare.map((v) => {
     const variantiTotali = vocabolario.filter(m => m.tema === v.tema).length;
+    const isCompletato = completati.has(v.id);
     return (
       <li key={v.id}>
         <button
-          onClick={() => selezionaModulo(v.id)}
-          className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
-            selezionato === v.id
-              ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
-              : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
-          } border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100`}
-        >
-          <span className="text-sm font-medium">📌 {v.tema}</span>
-          <span className="text-xs text-gray-600">Modulo {v.ordine} di {variantiTotali}</span>
-        </button>
+  onClick={() => selezionaModulo(v.id)}
+  className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
+    selezionato === v.id
+      ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
+      : 'bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
+  } border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100`}
+>
+  <span className="flex items-center gap-2 text-sm font-medium">
+    📌 {v.tema}
+    {completati.has(v.id) && (
+      <span className="text-green-600" title="Modulo completato">✔️</span>
+    )}
+  </span>
+  <span className="text-xs text-gray-600">Modulo {v.ordine} di {variantiTotali}</span>
+</button>
       </li>
     );
   })}
@@ -195,11 +233,12 @@ export default function Vocabolario() {
 
         {/* Contenuto vocabolario selezionato */}
         <div className="w-3/4">
-          {loading && <p className="text-gray-500">Caricamento vocabolario...</p>}
+          {error && <p className="text-red-600 mb-4 animate-fadein">{error}</p>}
+          {loading && <p className="text-gray-500">Caricamento contenuti...</p>}
 
           {!loading && vocabolario.length === 0 && (
-            <p className="text-gray-500">Nessun vocabolario disponibile per questo livello.</p>
-          )}
+  <p className="text-gray-500">Nessun contenuto disponibile per questo livello.</p>
+)}
 
           {!loading && vocabolario.length > 0 && selezionato && (
   <div className="...">
@@ -208,44 +247,58 @@ export default function Vocabolario() {
       <div>
         <h2 className="text-xl font-bold mb-1">📌 {vocabolarioSelezionato.tema}</h2>
         {vocabolarioSelezionato.introduzione && (
-          <p className="text-gray-600 text-sm italic mb-3">{vocabolarioSelezionato.introduzione}</p>
-        )}
-        <ul className="list-disc list-inside space-y-1 mb-4">
-          {vocabolarioSelezionato.parole.map((p, idx) => (
-            <li key={idx}>
-              <strong>{p.parola}</strong> – {p.traduzione}<br />
-              <em className="text-gray-600 text-sm">{p.esempio}</em>
-            </li>
-          ))}
-        </ul>
+  <div className="prose max-w-none mb-3 dark:prose-invert">
+    <ReactMarkdown
+      rehypePlugins={[rehypeRaw, rehypeSanitize]}
+      remarkPlugins={[remarkGfm]}
+    >
+      {vocabolarioSelezionato.introduzione}
+    </ReactMarkdown>
+  </div>
+)}
+
+        <div className="prose max-w-none dark:prose-invert mb-6">
+  <ul className="list-disc list-inside space-y-2">
+    {vocabolarioSelezionato.parole.map((p, idx) => (
+      <li key={idx}>
+        <strong>{p.parola}</strong> – {p.traduzione}<br />
+        <em className="text-gray-600 text-sm">{p.esempio}</em>
+      </li>
+    ))}
+  </ul>
+</div>
+
 
         {vocabolarioSelezionato.quiz && (
           <div className="mt-4">
             <h3 className="font-medium mb-2">📝 Quiz</h3>
             <div className="space-y-3">
               {vocabolarioSelezionato.quiz.map((q: any, idx: number) => (
-                <div key={idx} className="border p-3 rounded bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700">
+                <div key={idx} className="border p-4 rounded bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 mb-4">
                   <p className="text-sm font-medium mb-1">{q.domanda}</p>
                   {q.tipo === "multipla" ? (
                     <div className="space-y-1">
                       {q.opzioni.map((opt: string, oidx: number) => (
-                        <label key={oidx} className="block text-sm">
-                          <input
-                            type="radio"
-                            name={`quiz-${vocabolarioSelezionato.id}-${idx}`}
-                            value={opt}
-                            checked={risposte[vocabolarioSelezionato.id]?.[idx] === opt}
-                            onChange={(e) => handleRispostaChange(vocabolarioSelezionato.id, idx, e.target.value)}
-                            className="mr-2"
-                          />
-                          {opt}
-                        </label>
+                        <label key={oidx}className={`block text-sm px-2 py-1 rounded cursor-pointer transition-colors duration-300${risposte[vocabolarioSelezionato.id]?.[idx] === opt
+                         ? "bg-blue-100 dark:bg-blue-800 font-semibold"
+                        : "hover:bg-gray-100 dark:hover:bg-gray-700"}`}>
+  <input
+    type="radio"
+    name={`quiz-${vocabolarioSelezionato.id}-${idx}`}
+    value={opt}
+    checked={risposte[vocabolarioSelezionato.id]?.[idx] === opt}
+    onChange={(e) => handleRispostaChange(vocabolarioSelezionato.id, idx, e.target.value)}
+    className="mr-2 accent-blue-600"
+  />
+  {opt}
+</label>
+
                       ))}
                     </div>
                   ) : (
                     <textarea
                       rows={2}
-                      className="w-full border mt-1 p-2 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
+                      className="w-full border mt-1 p-2 rounded bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                       placeholder="Scrivi la tua risposta"
                       value={risposte[vocabolarioSelezionato.id]?.[idx] || ""}
                       onChange={(e) => handleRispostaChange(vocabolarioSelezionato.id, idx, e.target.value)}
@@ -279,5 +332,3 @@ export default function Vocabolario() {
 }
 
 Vocabolario.requireAuth = true
-
-
