@@ -194,16 +194,22 @@ export default function TeoriaGrammaticale() {
     return (
       <li key={c.id}>
         <button
-          onClick={() => selezionaModulo(c.id)}
-          className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
-            selezionato === c.id
-              ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
-              : 'bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          <span className="text-sm font-medium">📘 {c.argomento}</span>
-          <span className="text-xs text-gray-600">Modulo {c.ordine} di {moduliTotali}</span>
-        </button>
+  onClick={() => selezionaModulo(c.id)}
+  className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
+    selezionato === c.id
+      ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
+      : 'bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800'
+  }`}
+>
+  <span className="flex items-center gap-2 text-sm font-medium">
+    📘 {c.argomento}
+    {completati.has(c.id) && (
+      <span className="text-green-600" title="Modulo completato">✔️</span>
+    )}
+  </span>
+  <span className="text-xs text-gray-600">Modulo {c.ordine} di {moduliTotali}</span>
+</button>
+
       </li>
     );
   })}
