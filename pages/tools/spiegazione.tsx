@@ -17,6 +17,8 @@ export default function Spiegazione() {
   const [fade, setFade] = useState(false); // 🔥 aggiunto per il fade
   const [livello, setLivello] = useState("superiori"); // valore di default
   const concetto = chat[0]?.role === "user" ? chat[0].content : "Argomento della spiegazione";
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [followUpLoading, setFollowUpLoading] = useState(false);
   const [chatSalvate, setChatSalvate] = useState<{ titolo: string; data: string }[]>([]);
 
@@ -153,7 +155,9 @@ export default function Spiegazione() {
   };
 
   const generaSpiegazione = async (testo: string) => {
-  if (!testo) return;
+  if (!testo || isSubmitting) return;
+
+  setIsSubmitting(true);
   setLoading(true);
 
   const session = await supabase.auth.getSession();
@@ -177,6 +181,7 @@ export default function Spiegazione() {
     setRisposta(data.spiegazione);
     setChat([{ role: "user", content: testo },{ role: "assistant", content: data.spiegazione },]);
     setLoading(false);
+      setIsSubmitting(false);
   };
 
   const inviaAgenteFox = async () => {
@@ -214,8 +219,9 @@ export default function Spiegazione() {
   
 
   const inviaFollowUp = async () => {
-  if (!followUp.trim()) return;
+  if (!followUp.trim() || isSubmitting) return;
 
+  setIsSubmitting(true);
   setFollowUpLoading(true);
 
   const newChat = [...chat, { role: "user", content: followUp }];
@@ -242,6 +248,7 @@ export default function Spiegazione() {
   setRisposta(data.spiegazione);
   setFollowUp(""); // ✅ svuota campo follow-up corretto
   setFollowUpLoading(false);
+  setIsSubmitting(false);
 };
 
 
@@ -316,7 +323,7 @@ export default function Spiegazione() {
 
         <button
   onClick={handleSubmit}
-  disabled={!input.trim() || loading}
+  disabled={!input.trim() || loading || isSubmitting}
   className={`px-4 py-2 rounded text-white ${!input.trim() || loading? 'bg-blue-300 dark:bg-blue-700 cursor-not-allowed':'bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-800'}`}>{loading ? "Caricamento..." : "Genera spiegazione"}
         </button>
         <button onClick={inviaAgenteFox} className="bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800 text-white px-4 py-2 rounded">
@@ -394,8 +401,7 @@ export default function Spiegazione() {
               onChange={(e) => setFollowUp(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && inviaFollowUp()}
             />
-            <button onClick={inviaFollowUp} className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white px-4 py-2 rounded">
-              {followUpLoading ? "Attendi..." : "Invia"}
+            <button onClick={inviaFollowUp}disabled={!followUp.trim() || followUpLoading || isSubmitting}className={`bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 transition ${followUpLoading || isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}>{followUpLoading || isSubmitting ? "⏳ Invio in corso..." : "✉️ Invia"}
             </button>
           </div>
         </div>
