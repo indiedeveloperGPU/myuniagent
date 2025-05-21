@@ -4,11 +4,11 @@ const SisalBonusLanding = () => {
   return (
     <div
       className="min-h-screen bg-cover bg-center flex items-center justify-center px-6 py-12 text-white"
-      style={{ backgroundImage: 'url(https://cdn.pixabay.com/photo/2016/11/29/04/17/football-1867162_1280.jpg)' }}
+      style={{ backgroundImage: 'url(https://cdn.pixabay.com/photo/2017/05/10/20/29/football-2308507_1280.jpg)' }}
     >
-      <div className="bg-black bg-opacity-80 backdrop-blur-md rounded-3xl shadow-2xl p-10 max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="bg-black bg-opacity-90 backdrop-blur-sm rounded-3xl shadow-2xl p-10 max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-10 border-2 border-yellow-500">
 
-        {/* LEFT - TEXT SECTION */}
+        {/* TEXT SECTION */}
         <div className="space-y-6">
           <h1 className="text-4xl md:text-5xl font-extrabold leading-tight text-yellow-400">
             Anche i migliori ci giocano...
@@ -21,15 +21,15 @@ const SisalBonusLanding = () => {
             Iscriviti oggi su SISAL, ricevi <span className="text-green-400 font-bold">20€ GRATIS</span> senza deposito e gioca dove vincono anche i campioni. Tutto quello che vinci è <strong>prelevabile</strong>.
           </p>
 
-          <ul className="space-y-3 text-gray-300 text-base">
-            <li className="flex items-center gap-2">✔ 20€ subito disponibili</li>
-            <li className="flex items-center gap-2">✔ Nessun deposito richiesto</li>
-            <li className="flex items-center gap-2">✔ Vinci & preleva liberamente</li>
+          <ul className="space-y-3 text-lg text-white">
+            <li className="flex items-center gap-2">✅ 20€ subito disponibili</li>
+            <li className="flex items-center gap-2">✅ Nessun deposito richiesto</li>
+            <li className="flex items-center gap-2">✅ Vinci & preleva liberamente</li>
             <li className="flex items-center gap-2">🕒 Hai già un account? Cancellalo, attendi 15 giorni e rientra col bonus</li>
           </ul>
 
-          <button className="mt-4 bg-gradient-to-r from-green-500 to-yellow-400 hover:from-green-600 hover:to-yellow-500 text-black font-bold py-3 px-8 rounded-full text-lg shadow-lg transition-transform transform hover:scale-105">
-            ISCRIVITI ORA
+          <button className="mt-4 bg-gradient-to-r from-lime-400 via-yellow-300 to-orange-500 hover:brightness-110 text-black font-bold py-4 px-8 rounded-full text-xl shadow-2xl animate-pulse transition-transform transform hover:scale-105">
+            🎯 ISCRIVITI ORA E TENTA LA FORTUNA 🎰
           </button>
 
           <p className="text-sm text-gray-400 italic pt-2">
@@ -37,20 +37,20 @@ const SisalBonusLanding = () => {
           </p>
         </div>
 
-        {/* RIGHT - IMAGE SECTION */}
+        {/* IMAGE SECTION */}
         <div className="flex flex-col items-center justify-center gap-6">
-          {/* QUI puoi inserire l’immagine di Tonali */}
+          {/* Immagine di Tonali */}
           <img
-            src="/tonali.png"
+            src="/images/tonali.jpg"
             alt="Sandro Tonali"
-            className="w-full rounded-xl shadow-lg border border-yellow-500"
+            className="w-full rounded-xl shadow-xl border-2 border-yellow-500"
           />
 
-          {/* QUI puoi inserire l’immagine di Fagioli */}
+          {/* Immagine di Fagioli */}
           <img
-            src="/fagioli.png"
+            src="/images/fagioli.jpg"
             alt="Nicolò Fagioli"
-            className="w-full rounded-xl shadow-lg border border-yellow-500"
+            className="w-full rounded-xl shadow-xl border-2 border-yellow-500"
           />
         </div>
 
