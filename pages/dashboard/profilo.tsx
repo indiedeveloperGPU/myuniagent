@@ -1,6 +1,8 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { Pause, Trash2, CheckCircle, AlertTriangle, Ban } from "lucide-react";
+
 
 function ProfiloPage() {
   const [email, setEmail] = useState<string | null>(null);
@@ -14,6 +16,11 @@ function ProfiloPage() {
   const [badgeCertificazione, setBadgeCertificazione] = useState(false);
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<string | null>(null);
+  const [abbonamentoAttivo, setAbbonamentoAttivo] = useState<boolean | null>(null);
+  const [abbonamentoPausaFino, setAbbonamentoPausaFino] = useState<Date | null>(null);
+  const [abbonamentoDaCancellare, setAbbonamentoDaCancellare] = useState<boolean>(false);
+  const [abbonamentoScadenza, setAbbonamentoScadenza] = useState<Date | null>(null);
+
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -28,7 +35,7 @@ function ProfiloPage() {
 
       const { data: profilo } = await supabase
         .from("profiles")
-        .select("name, bio, ruolo")
+        .select("name, bio, ruolo, abbonamento_attivo, abbonamento_pausa_fino, abbonamento_da_cancellare, abbonamento_scadenza")
         .eq("id", user.id)
         .single();
 
@@ -36,6 +43,10 @@ function ProfiloPage() {
         setName(profilo.name || "");
         setBio(profilo.bio || "");
         setRole(profilo.ruolo || null);
+        setAbbonamentoAttivo(profilo.abbonamento_attivo);
+        setAbbonamentoPausaFino(profilo.abbonamento_pausa_fino ? new Date(profilo.abbonamento_pausa_fino) : null);
+        setAbbonamentoDaCancellare(profilo.abbonamento_da_cancellare || false);
+        setAbbonamentoScadenza(profilo.abbonamento_scadenza ? new Date(profilo.abbonamento_scadenza) : null);
       }
 
       const { data: files } = await supabase
@@ -66,6 +77,34 @@ function ProfiloPage() {
     await supabase.from("profiles").upsert({ id: userId, email, name, bio });
     alert("Dati aggiornati ✅");
   };
+
+  const handlePausaAbbonamento = async () => {
+  if (!userId) return;
+  const pausaFino = new Date();
+  pausaFino.setMonth(pausaFino.getMonth() + 3);
+
+  const { error } = await supabase.from("profiles")
+    .update({ abbonamento_pausa_fino: pausaFino.toISOString() })
+    .eq("id", userId);
+
+  if (!error) {
+    alert("Abbonamento messo in pausa ✅");
+    setAbbonamentoPausaFino(pausaFino);
+  }
+};
+
+const handleCancellaAbbonamento = async () => {
+  if (!userId) return;
+  const { error } = await supabase.from("profiles")
+    .update({ abbonamento_da_cancellare: true })
+    .eq("id", userId);
+
+  if (!error) {
+    alert("Abbonamento impostato per la cancellazione ✅");
+    setAbbonamentoDaCancellare(true);
+  }
+};
+
 
   const handleJoinClasse = async () => {
     if (!userId || !codiceClasse) return;
@@ -193,11 +232,97 @@ function ProfiloPage() {
           </div>
         )}
 
-        <div className="p-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded shadow border border-gray-200 dark:border-gray-700">
-  <h2 className="font-semibold text-lg">💳 Abbonamento</h2>
-  <p className="text-green-700 dark:text-green-400 mt-1">Attivo – Piano annuale (15€/anno)</p>
-  <p className="text-sm text-gray-500 dark:text-gray-400">Gestione disponibile a breve</p>
+        <div className="p-5 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 space-y-4">
+  <div className="flex items-center justify-between">
+    <h2 className="font-semibold text-lg">💳 Abbonamento</h2>
+    {abbonamentoAttivo ? (
+      <span className="text-sm px-2 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+        Attivo
+      </span>
+    ) : (
+      <span className="text-sm px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
+        Non attivo
+      </span>
+    )}
+  </div>
+
+  {abbonamentoAttivo && (
+    <>
+      {abbonamentoPausaFino && abbonamentoPausaFino > new Date() && (
+        <div className="text-yellow-700 dark:text-yellow-400 text-sm">
+          ⏸ In pausa fino al <strong>{abbonamentoPausaFino.toLocaleDateString()}</strong>
+        </div>
+      )}
+
+      {abbonamentoDaCancellare && (
+        <div className="text-red-700 dark:text-red-400 text-sm">
+          ⚠️ In scadenza: valido fino al{" "}
+          <strong>{abbonamentoScadenza ? abbonamentoScadenza.toLocaleDateString() : "data sconosciuta"}</strong>
+        </div>
+      )}
+    </>
+  )}
+
+  {!abbonamentoAttivo && (
+    <p className="text-sm text-gray-500 dark:text-gray-400">
+      Abbonati per accedere alle funzionalità premium
+    </p>
+  )}
+
+  {abbonamentoAttivo && (
+    <div className="flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0 pt-2">
+      {!abbonamentoPausaFino || abbonamentoPausaFino <= new Date() ? (
+        <button
+  onClick={handlePausaAbbonamento}
+  className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-4 py-2 rounded-md transition transform active:scale-95"
+>
+  <Pause className="inline w-4 h-4 mr-1" />
+  Pausa 3 mesi
+</button>
+      ) : (
+        <div className="relative group inline-block">
+  <button
+    disabled
+    className="bg-yellow-200 text-yellow-800 text-sm px-4 py-2 rounded-md cursor-not-allowed"
+  >
+    Pausa attiva
+  </button>
+  <span className="absolute left-1/2 -translate-x-1/2 -bottom-8 text-xs bg-black text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none z-10 whitespace-nowrap">
+    In pausa fino al {abbonamentoPausaFino?.toLocaleDateString()}
+  </span>
 </div>
+
+      )}
+
+      {!abbonamentoDaCancellare ? (
+        <button
+  onClick={handleCancellaAbbonamento}
+  className="bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-2 rounded-md transition transform active:scale-95"
+>
+  <Trash2 className="inline w-4 h-4 mr-1" />
+  Cancella abbonamento
+</button>
+      ) : (
+        <div className="relative group inline-block">
+  <button
+    disabled
+    className="bg-red-200 text-red-800 text-sm px-4 py-2 rounded-md cursor-not-allowed"
+  >
+    Cancellazione programmata
+  </button>
+  <span className="absolute left-1/2 -translate-x-1/2 -bottom-8 text-xs bg-black text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none z-10 whitespace-nowrap">
+    Valido fino al {abbonamentoScadenza?.toLocaleDateString() || "?"}
+  </span>
+</div>
+
+      )}
+    </div>
+  )}
+</div>
+
+
+
+
       </div>
 
       {/* Tesi caricate */}
