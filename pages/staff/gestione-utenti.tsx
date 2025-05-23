@@ -89,20 +89,19 @@ function GestioneUtenti() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">👥 Gestione Utenti</h1>
+    <div className="p-6 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+      <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">👥 Gestione Utenti</h1>
 
       <div className="flex flex-wrap gap-2 mb-4">
         {["tutti", "studenti", "docenti_approvati", "docenti_attesa"].map((f) => (
           <button
             key={f}
             onClick={() => setFiltro(f as any)}
-            className={`px-4 py-2 rounded ${filtro === f ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-          >
+            className={`px-4 py-2 rounded transition ${filtro === f? "bg-blue-600 text-white": "bg-gray-200 dark:bg-gray-800 dark:text-gray-200"}`}>
             {f.replace("_", " ")}
           </button>
         ))}
-        <button onClick={exportCsv} className="bg-gray-800 text-white px-3 py-2 rounded">
+        <button onClick={exportCsv} className="bg-gray-800 dark:bg-gray-700 text-white px-3 py-2 rounded hover:bg-gray-900">
           ⬇️ Esporta CSV
         </button>
       </div>
@@ -110,7 +109,7 @@ function GestioneUtenti() {
       <input
         type="text"
         placeholder="Cerca per email..."
-        className="border p-2 rounded w-full mb-6"
+        className="border p-2 rounded w-full mb-6 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -118,9 +117,9 @@ function GestioneUtenti() {
       {loading ? (
         <p>Caricamento utenti...</p>
       ) : (
-        <div className="overflow-x-auto rounded shadow">
-          <table className="min-w-full text-sm text-gray-800">
-            <thead className="bg-gray-100 text-xs uppercase tracking-wide text-gray-600">
+        <div className="overflow-x-auto rounded shadow bg-white dark:bg-gray-800">
+          <table className="min-w-full text-sm text-gray-800 dark:text-gray-100">
+            <thead className="bg-gray-100 dark:bg-gray-700 text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">
               <tr>
                 <th className="px-4 py-3 text-left">Email</th>
                 <th className="text-center">Ruolo</th>
@@ -131,9 +130,9 @@ function GestioneUtenti() {
                 <th className="text-center">Azioni</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {utentiFiltrati.map((u, idx) => (
-                <tr key={u.id} className={`${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50`}>
+                <tr key={u.id} className={`${idx % 2 === 0 ? "bg-white dark:bg-gray-800" : "bg-gray-50 dark:bg-gray-900"} hover:bg-blue-50 dark:hover:bg-gray-700`}>
                   <td className="px-4 py-3 align-middle">
   <div className="flex items-center gap-2">
     <span
@@ -166,7 +165,7 @@ function GestioneUtenti() {
                   <td className="text-center align-middle">
                     <div className="relative inline-block text-left">
                       <button
-                        className="flex items-center gap-1 bg-white border border-gray-300 hover:border-gray-500 text-gray-700 px-3 py-1 rounded shadow-sm text-sm"
+                        className="flex items-center gap-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 hover:border-gray-500 text-gray-700 dark:text-gray-100 px-3 py-1 rounded shadow-sm text-sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -180,7 +179,7 @@ function GestioneUtenti() {
                       <div
   className={`absolute ${
     dropUpId === u.id ? "bottom-10" : "top-full mt-2"
-  } right-0 w-56 bg-white border border-gray-200 rounded shadow-md z-10 ${
+  } right-0 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-md z-10 ${
     openDropdownId === u.id ? "" : "hidden"
   }`}
   onClick={(e) => e.stopPropagation()}
@@ -205,7 +204,7 @@ function GestioneUtenti() {
               ))}
             </tbody>
           </table>
-          {utentiFiltrati.length === 0 && <p className="text-gray-500 p-4">Nessun utente trovato.</p>}
+          {utentiFiltrati.length === 0 && <p className="text-gray-500 dark:text-gray-400 p-4">Nessun utente trovato.</p>}
         </div>
       )}
     </div>
@@ -218,4 +217,3 @@ GestioneUtenti.getLayout = function getLayout(page: React.ReactNode) {
 
 GestioneUtenti.requireAuth = true;
 export default GestioneUtenti;
-
