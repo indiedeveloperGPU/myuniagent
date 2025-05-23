@@ -701,4 +701,3 @@ export default function MappaConcettuale() {
 }
 
 MappaConcettuale.requireAuth = true
-
