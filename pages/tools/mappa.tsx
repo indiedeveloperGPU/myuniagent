@@ -19,7 +19,11 @@ import { Document, Packer, Paragraph, TextRun } from "docx";
 import { saveAs } from "file-saver";
 import * as htmlToImage from 'html-to-image';
 import jsPDF from 'jspdf';
+import { useReactFlow } from "reactflow";
 import { supabase } from "@/lib/supabaseClient";
+import toast, { Toaster } from 'react-hot-toast';
+import dagre from "dagre";
+
 
 type CustomData = {
   label: string;
@@ -27,13 +31,16 @@ type CustomData = {
   isEditing: boolean;
   onChange: (text: string) => void;
   onBlur: () => void;
+  color?: string;
 };
 
 function CustomNode({ data }: NodeProps<CustomData>) {
   return (
     <div
       onDoubleClick={data.onDoubleClick}
-      className="bg-blue-100 dark:bg-blue-900 text-black dark:text-white p-2 rounded shadow text-sm text-center min-w-[100px]"
+      className={`p-2 rounded shadow text-sm text-center min-w-[100px] text-black dark:text-white ${
+  data.color || "bg-blue-100 dark:bg-blue-900"
+}`}
     >
       {data.isEditing ? (
         <input
@@ -52,6 +59,9 @@ function CustomNode({ data }: NodeProps<CustomData>) {
   );
 }
 
+<Toaster position="top-right" />
+
+
 const nodeTypes = { custom: CustomNode };
 
 export default function MappaConcettuale() {
@@ -66,6 +76,7 @@ export default function MappaConcettuale() {
   const [topic, setTopic] = useState("");
   const [loading, setLoading] = useState(false);
   const [mappeSalvate, setMappeSalvate] = useState<any[]>([]);
+  const [presentazioneAttiva, setPresentazioneAttiva] = useState(false);
   const [showGuida, setShowGuida] = useState(false);
   const [titoloMappa, setTitoloMappa] = useState("Mappa senza titolo");
 
@@ -77,6 +88,8 @@ export default function MappaConcettuale() {
     setFuture([]);
   };
 
+
+
   const handleUndo = () => {
     if (history.length === 0) return;
     const prev = history[history.length - 1];
@@ -85,6 +98,42 @@ export default function MappaConcettuale() {
     setNodes(prev.nodes);
     setEdges(prev.edges);
   };
+
+  const toggleFullscreen = () => {
+  const el = document.getElementById("reactflow-wrapper");
+  if (!el) return;
+
+  if (!document.fullscreenElement) {
+    el.requestFullscreen?.();
+  } else {
+    document.exitFullscreen?.();
+  }
+};
+
+
+  const layoutGraph = (nodes: Node[], edges: Edge[]): Node[] => {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({ rankdir: "TB" }); // TB = Top to Bottom
+
+  nodes.forEach((node) => {
+    g.setNode(node.id, { width: 150, height: 60 });
+  });
+
+  edges.forEach((edge) => {
+    g.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(g);
+
+  return nodes.map((node) => {
+    const pos = g.node(node.id);
+    return {
+      ...node,
+      position: { x: pos.x - 75, y: pos.y - 30 }, // centra i nodi
+    };
+  });
+};
 
   const handleRedo = () => {
     if (future.length === 0) return;
@@ -108,6 +157,50 @@ export default function MappaConcettuale() {
     };
     fetchUser();
   }, []);
+
+  useEffect(() => {
+  const handleKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape" && presentazioneAttiva) {
+      setPresentazioneAttiva(false);
+      document.exitFullscreen?.();
+    }
+  };
+
+  window.addEventListener("keydown", handleKey);
+  return () => window.removeEventListener("keydown", handleKey);
+}, [presentazioneAttiva]);
+
+
+  useEffect(() => {
+  const saved = localStorage.getItem("autosave-mappa");
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed.nodes && parsed.edges) {
+        setNodes(parsed.nodes);
+        setEdges(parsed.edges);
+        setTitoloMappa(parsed.titoloMappa || "Mappa senza titolo");
+        setNodeCount((parsed.nodes?.length || 0) + 1);
+        console.log("✔️ Mappa recuperata da auto-save");
+      }
+    } catch (e) {
+      console.error("Errore nel parsing autosave", e);
+    }
+  }
+}, []);
+
+
+  useEffect(() => {
+  const timeout = setTimeout(() => {
+    if (nodes.length || edges.length) {
+      localStorage.setItem("autosave-mappa", JSON.stringify({ nodes, edges, titoloMappa }));
+      toast.success("💾 Mappa salvata automaticamente", { duration: 1500 });
+    }
+  }, 2000); // salva dopo 2s da ogni modifica
+
+  return () => clearTimeout(timeout);
+}, [nodes, edges, titoloMappa]);
+
 
   const fetchMappeUtente = async (userId: string) => {
     const { data } = await supabase
@@ -201,7 +294,9 @@ export default function MappaConcettuale() {
     const flowWrapper = document.getElementById('reactflow-wrapper');
   
     if (!flowWrapper) {
-      alert("Errore: Impossibile trovare l'area della mappa per l'esportazione.");
+      toast.success("✅ Mappa salvata!");
+      toast.error("Errore durante l'esportazione!");
+
       return;
     }
   
@@ -251,7 +346,8 @@ export default function MappaConcettuale() {
   
     } catch (error) {
       console.error("Errore durante la generazione del PDF:", error);
-      alert("Si è verificato un errore durante l'esportazione in PDF.");
+      toast.success("✅ Mappa esportata in PDF!");
+      toast.error("Errore durante l'esportazione in PDF!");
     } finally {
       setLoading(false);
     }
@@ -261,7 +357,8 @@ export default function MappaConcettuale() {
     const flowWrapper = document.getElementById('reactflow-wrapper'); // O l'elemento che hai scelto
   
     if (!flowWrapper) {
-      alert("Errore: Impossibile trovare l'area della mappa per l'esportazione.");
+      toast.success("✅ Mappa esportata correttamente in PNG");
+      toast.error("Errore: Impossibile trovare l'area della mappa per l'esportazione.");
       return;
     }
   
@@ -280,7 +377,8 @@ export default function MappaConcettuale() {
   
     } catch (error) {
       console.error("Errore durante la generazione del PNG:", error);
-      alert("Si è verificato un errore durante l'esportazione in PNG.");
+      toast.success("✅ Mappa salvata correttamente in PNG");
+      toast.error("Si è verificato un errore durante l'esportazione in PNG");
     } finally {
       setLoading(false);
     }
@@ -288,7 +386,7 @@ export default function MappaConcettuale() {
 
 
   const handleSave = async () => {
-    if (!userId) return alert("Utente non loggato");
+    if (!userId) return toast.success("Utente non loggato");
 
     await supabase.from("mappe_concettuali").insert({
       user_id: userId,
@@ -296,7 +394,7 @@ export default function MappaConcettuale() {
       data: { nodes, edges },
     });
 
-    alert("✅ Mappa salvata!");
+    toast.success("✅ Mappa salvata!");
     fetchMappeUtente(userId);
   };
 
@@ -391,6 +489,7 @@ export default function MappaConcettuale() {
 
   const styledEdges = edges.map((edge) => ({
     ...edge,
+    label: edge.label || "",
     style: {
       stroke: edge.id === selectedEdgeId ? "#ef4444" : "#777",
       strokeWidth: edge.id === selectedEdgeId ? 3 : 1.5,
@@ -400,6 +499,19 @@ export default function MappaConcettuale() {
   if (!userChecked) {
     return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
   }
+
+  {presentazioneAttiva && (
+  <button
+    onClick={() => {
+      setPresentazioneAttiva(false);
+      document.exitFullscreen?.();
+    }}
+    className="fixed top-4 right-4 z-50 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded shadow-lg"
+  >
+    ✖ Esci
+  </button>
+)}
+
 
   return (
     <DashboardLayout>
@@ -460,18 +572,73 @@ export default function MappaConcettuale() {
         </button>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-      <button
-  onClick={addNewNode}className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">➕ Nodo</button><button
-  onClick={handleExportPNG}className="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">🖼️ PNG</button><button
-  onClick={handleExportDocx}className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">📄 DOCX</button><button
-  onClick={handleUndo}disabled={history.length === 0}className="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">↩️ Indietro</button><button
-  onClick={handleRedo}disabled={future.length === 0}className="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">↪️ Avanti</button><button
-  onClick={handleSave}className="bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-900 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">💾 Salva</button><button
-  onClick={deleteSelectedNode}disabled={!selectedNodeId}className="bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">🗑️ Nodo</button><button
-  onClick={deleteSelectedEdge}disabled={!selectedEdgeId}className="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg disabled:opacity-50">🗑️ Connessione</button>
-  <button onClick={handleExportPDF}className="bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg">📄 PDF</button>
+      {!presentazioneAttiva && (
+  <div className="mb-4 flex flex-wrap gap-2">
+    <button onClick={addNewNode} className="...">➕ Nodo</button>
+    <button onClick={handleExportPNG} className="...">🖼️ PNG</button>
+    <button onClick={handleExportDocx} className="...">📄 DOCX</button>
+    <button onClick={handleUndo} disabled={history.length === 0} className="...">↩️ Indietro</button>
+    <button onClick={handleRedo} disabled={future.length === 0} className="...">↪️ Avanti</button>
+    <button onClick={handleSave} className="...">💾 Salva</button>
+    <button onClick={deleteSelectedNode} disabled={!selectedNodeId} className="...">🗑️ Nodo</button>
+    <button onClick={deleteSelectedEdge} disabled={!selectedEdgeId} className="...">🗑️ Connessione</button>
+    <button onClick={handleExportPDF} className="...">📄 PDF</button>
+    <button onClick={() => {
+      const newNodes = layoutGraph(nodes, edges);
+      saveToHistory();
+      setNodes(newNodes);
+    }} className="...">🧭 Riordina automatico</button>
+    <button
+  onClick={() => {
+    const attiva = !presentazioneAttiva;
+    setPresentazioneAttiva(attiva);
+    if (attiva) toggleFullscreen();
+    else document.exitFullscreen?.();
+  }}
+  className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded"
+>
+  {presentazioneAttiva ? "💼 Modalità normale" : "🎥 Presentazione"}
+</button>
+
   </div>
+)}
+
+
+  {selectedNodeId && (
+  <input
+    type="color"
+    onChange={(e) => {
+      const color = e.target.value;
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === selectedNodeId
+            ? { ...node, data: { ...node.data, color } }
+            : node
+        )
+      );
+    }}
+    title="Scegli colore nodo"
+    className="w-10 h-10 p-0 border rounded cursor-pointer"
+  />
+)}
+
+{selectedEdgeId && (
+  <input
+    type="text"
+    placeholder="Etichetta connessione"
+    onChange={(e) => {
+      const text = e.target.value;
+      setEdges((eds) =>
+        eds.map((edge) =>
+          edge.id === selectedEdgeId ? { ...edge, label: text } : edge
+        )
+      );
+    }}
+    className="border px-2 py-1 rounded"
+  />
+)}
+
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {mappeSalvate.map((mappa) => (
@@ -486,25 +653,52 @@ export default function MappaConcettuale() {
         ))}
       </div>
 
-      <div className="h-[70vh] w-full border rounded bg-white dark:bg-gray-900 shadow border-gray-300 dark:border-gray-700" id="reactflow-wrapper">
-        <ReactFlow
-          nodes={nodesWithEdit}
-          edges={styledEdges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          onEdgeClick={onEdgeClick}
-          nodeTypes={nodeTypes}
-          fitView
-        >
-          <MiniMap />
-          <Controls />
-          <Background />
-        </ReactFlow>
-      </div>
+      <div
+  className="h-[70vh] w-full border rounded bg-white dark:bg-gray-900 shadow border-gray-300 dark:border-gray-700"
+  id="reactflow-wrapper"
+  onDoubleClick={(event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const { project } = useReactFlow();
+    const position = project({
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top,
+    });
+
+    const newNode: Node = {
+      id: nodeCount.toString(),
+      type: "custom",
+      position,
+      data: { label: `Nuovo Nodo ${nodeCount}` },
+    };
+
+    saveToHistory();
+    setNodes((nds) => [...nds, newNode]);
+    setNodeCount((prev) => prev + 1);
+  }}
+>
+  <ReactFlow
+    nodes={nodesWithEdit}
+    edges={styledEdges}
+    onNodesChange={onNodesChange}
+    onEdgesChange={onEdgesChange}
+    onConnect={onConnect}
+    onNodeClick={onNodeClick}
+    onEdgeClick={onEdgeClick}
+    nodeTypes={nodeTypes}
+    fitView
+    snapToGrid={true}
+    snapGrid={[20, 20]}
+    selectNodesOnDrag={true}
+  >
+    <MiniMap />
+    <Controls />
+    <Background />
+  </ReactFlow>
+</div>
+
     </DashboardLayout>
   );
 }
 
 MappaConcettuale.requireAuth = true
+
