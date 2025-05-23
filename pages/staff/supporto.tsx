@@ -140,12 +140,12 @@ function StaffSupport() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">📬 Ticket di Supporto</h1>
+    <div className="p-6 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+      <h1 className="text-3xl font-bold mb-4 text-gray-800 dark:text-white">📬 Ticket di Supporto</h1>
 
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <select
-          className="border px-3 py-2 rounded"
+          className="border px-3 py-2 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
           value={statoFiltro}
           onChange={(e) => setStatoFiltro(e.target.value)}
         >
@@ -156,7 +156,7 @@ function StaffSupport() {
         <input
           type="text"
           placeholder="🔍 Cerca per email, oggetto, testo..."
-          className="border px-3 py-2 rounded w-full md:w-1/3"
+           className="border px-3 py-2 rounded w-full md:w-1/3 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -165,8 +165,8 @@ function StaffSupport() {
       {loading ? (
         <p>Caricamento...</p>
       ) : (
-        <table className="w-full table-auto border border-gray-200">
-          <thead className="bg-gray-100">
+        <table className="w-full table-auto border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-800">
+          <thead className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
             <tr>
               <th className="text-left px-3 py-2">📝 Oggetto</th>
               <th className="text-left px-3 py-2">📂 Tipo</th>
@@ -177,7 +177,7 @@ function StaffSupport() {
           </thead>
           <tbody>
             {filteredTickets.map((ticket) => (
-              <tr key={ticket.id} className="border-t hover:bg-gray-50">
+              <tr key={ticket.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-3 py-2">{ticket.oggetto}</td>
                 <td className="px-3 py-2">{ticket.tipo}</td>
                 <td className="px-3 py-2">{new Date(ticket.creato_il).toLocaleDateString()}</td>
@@ -205,11 +205,11 @@ function StaffSupport() {
       )}
 
       {selectedTicket && (
-        <div className="fixed inset-0 bg-white bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded shadow-lg p-6 w-full max-w-xl relative">
+        <div className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50">
+           <div className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded shadow-lg p-6 w-full max-w-xl relative">
             <button
               onClick={() => setSelectedTicket(null)}
-              className="absolute top-2 right-2 text-gray-600 hover:text-black"
+              className="absolute top-2 right-2 text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white"
             >
               ✖️
             </button>
@@ -227,7 +227,7 @@ function StaffSupport() {
             <div className="mt-4">
               <label className="block mb-1 font-semibold">✍️ Risposta staff:</label>
               <textarea
-                className="w-full border rounded p-2 mb-2"
+                className="w-full border rounded p-2 mb-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
                 rows={3}
                 disabled={selectedTicket.stato === "chiuso"}
                 value={risposte[selectedTicket.id] ?? selectedTicket.risposta ?? ""}
@@ -267,8 +267,3 @@ function StaffSupport() {
 StaffSupport.getLayout = (page: React.ReactNode) => <StaffLayout>{page}</StaffLayout>;
 StaffSupport.requireAuth = true;
 export default StaffSupport;
-
-
-
-
-
