@@ -75,6 +75,7 @@ export default function MappaConcettuale() {
   const [mappeSalvate, setMappeSalvate] = useState<any[]>([]);
   const [presentazioneAttiva, setPresentazioneAttiva] = useState(false);
   const [showGuida, setShowGuida] = useState(false);
+  const [layoutDirection, setLayoutDirection] = useState<"TB" | "LR">("TB");
   const [titoloMappa, setTitoloMappa] = useState("Mappa senza titolo");
 
   const [history, setHistory] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
@@ -111,7 +112,7 @@ export default function MappaConcettuale() {
   const layoutGraph = (nodes: Node[], edges: Edge[]): Node[] => {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: "TB" }); // TB = Top to Bottom
+  g.setGraph({ rankdir: layoutDirection });
 
   nodes.forEach((node) => {
     g.setNode(node.id, { width: 150, height: 60 });
@@ -584,6 +585,12 @@ useEffect(() => {
           {loading ? "Generazione..." : "✨ Genera mappa"}
         </button>
       </div>
+
+      <select value={layoutDirection} onChange={(e) => setLayoutDirection(e.target.value as "TB" | "LR")} className="border border-gray-300 dark:border-gray-600 text-sm rounded px-2 py-1" title="Direzione layout">
+        <option value="TB">⬇️ Albero verticale</option>
+        <option value="LR">➡️ Albero orizzontale</option>
+      </select>
+
 
       {!presentazioneAttiva && (
   <div className="mb-4 flex flex-wrap gap-2">
