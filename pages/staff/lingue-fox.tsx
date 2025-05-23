@@ -141,16 +141,16 @@ export default function LingueFox() {
 
   return (
     <StaffLayout>
-      <div className="max-w-6xl mx-auto relative">
-        <h1 className="text-2xl font-bold mb-6">🥊 Richieste Lingue – Agente Fox</h1>
+      <div className="max-w-6xl mx-auto relative text-gray-900 dark:text-gray-100 transition-colors duration-200">
+        <h1 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">🥊 Richieste Lingue – Agente Fox</h1>
 
         {loading ? (
-          <p className="text-gray-600">Caricamento richieste in corso...</p>
+          <p className="text-gray-600 dark:text-gray-300">Caricamento richieste in corso...</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full border">
               <thead>
-                <tr className="bg-gray-100">
+                <tr className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                   <th className="text-left px-4 py-2">Tipo</th>
                   <th className="text-left px-4 py-2">Lingua</th>
                   <th className="text-left px-4 py-2">Livello</th>
@@ -162,7 +162,7 @@ export default function LingueFox() {
               </thead>
               <tbody>
                 {richieste.map((r) => (
-                  <tr key={r.id} className="border-b">
+                  <tr key={r.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-4 py-2">{r.tipo}</td>
                     <td className="px-4 py-2 capitalize">{r.lingua}</td>
                     <td className="px-4 py-2">{r.livello}</td>
@@ -191,7 +191,7 @@ export default function LingueFox() {
         )}
 
         {aperta && (
-          <div ref={pannelloRef} className="fixed top-0 right-0 w-full sm:w-[400px] h-full bg-white shadow-xl border-l p-5 overflow-y-auto z-50">
+          <div ref={pannelloRef} className="fixed top-0 right-0 w-full sm:w-[400px] h-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-xl border-l border-gray-200 dark:border-gray-700 p-5 overflow-y-auto z-50">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold">📝 Valutazione richiesta</h2>
               <button onClick={() => setAperta(null)} className="text-gray-600 hover:text-black">&times;</button>
@@ -211,7 +211,7 @@ export default function LingueFox() {
                   : normalizza(rispostaData) === normalizza(rispostaCorretta);
 
                 return (
-                  <div key={index} className="bg-gray-50 border rounded p-3">
+                  <div key={index} className="bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded p-3">
                     <p className="text-sm font-medium">🔹 Domanda {index + 1}</p>
                     <p className="text-sm text-gray-800 font-semibold mb-1">{q.domanda}</p>
                     {q.opzioni && q.opzioni.length > 0 && (
@@ -238,7 +238,7 @@ export default function LingueFox() {
                 <textarea
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
-                  className="w-full border p-2 rounded"
+                  className="w-full border p-2 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
                   rows={4}
                   placeholder="Scrivi qui la valutazione..."
                 />
@@ -248,7 +248,7 @@ export default function LingueFox() {
                     type="number"
                     value={voto ?? ""}
                     onChange={(e) => setVoto(Number(e.target.value))}
-                    className="w-full border p-2 rounded"
+                    className="w-full border p-2 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
                     min={0}
                     max={10}
                     placeholder="Inserisci un voto"
