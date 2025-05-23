@@ -24,7 +24,12 @@ const livelli = ["A1", "A2", "B1", "B2", "C1", "C2"];
 export default function TeoriaGrammaticale() {
   const router = useRouter();
   const [lingua, setLingua] = useState<string>("");
-  const [livello, setLivello] = useState<string>("A1");
+  const [livello, setLivello] = useState<string>(() => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("fox-livello") || "A1";
+  }
+  return "A1";
+});
   const [contenuti, setContenuti] = useState<ContenutoLight[]>([]);
   const [completati, setCompletati] = useState<Set<string>>(new Set());
   const [selezionato, setSelezionato] = useState<string | null>(null);
@@ -49,6 +54,13 @@ export default function TeoriaGrammaticale() {
     };
     fetchLinguaPreferita();
   }, []);
+
+useEffect(() => {
+  if (livello) {
+    localStorage.setItem("fox-livello", livello);
+  }
+}, [livello]);
+
 
   useEffect(() => {
     if (!lingua) return;
