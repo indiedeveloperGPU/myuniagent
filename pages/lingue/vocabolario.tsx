@@ -33,7 +33,12 @@ const livelli = ["A1", "A2", "B1", "B2", "C1", "C2"];
 export default function Vocabolario() {
   const router = useRouter();
   const [lingua, setLingua] = useState<string>("");
-  const [livello, setLivello] = useState<string>("A1");
+  const [livello, setLivello] = useState<string>(() => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("fox-livello") || "A1";
+  }
+  return "A1";
+});
   const [vocabolario, setVocabolario] = useState<VocabolarioLight[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [completati, setCompletati] = useState<Set<string>>(new Set());
@@ -59,6 +64,13 @@ export default function Vocabolario() {
     };
     fetchLingua();
   }, []);
+
+  useEffect(() => {
+  if (livello) {
+    localStorage.setItem("fox-livello", livello);
+  }
+}, [livello]);
+
 
   useEffect(() => {
   if (!lingua) return;
@@ -332,3 +344,8 @@ export default function Vocabolario() {
 }
 
 Vocabolario.requireAuth = true
+
+
+
+
+
