@@ -26,12 +26,13 @@ interface StatisticheFox {
 
 function StatBox({ title, value }: { title: string; value: string }) {
   return (
-    <div className="bg-blue-50 p-4 rounded shadow border border-blue-200 text-center">
-      <div className="text-sm text-gray-600">{title}</div>
-      <div className="text-xl font-bold">{value}</div>
+    <div className="bg-blue-50 dark:bg-gray-800 p-4 rounded shadow border border-blue-200 dark:border-gray-700 text-center">
+      <div className="text-sm text-gray-600 dark:text-gray-300">{title}</div>
+      <div className="text-xl font-bold text-gray-800 dark:text-white">{value}</div>
     </div>
   );
 }
+
 
 function AgenteFoxAdmin() {
   const [richieste, setRichieste] = useState<RichiestaFox[]>([]);
@@ -179,8 +180,8 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, id: string) =>
   );
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">🦊 Agente Fox - Gestione richieste</h1>
+    <div className="p-6 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-white">🦊 Agente Fox - Gestione richieste</h1>
 
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
@@ -201,7 +202,12 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, id: string) =>
         ].map(({ key, label }) => (
           <button
             key={key}
-            className={`px-3 py-1 rounded ${filtro === key ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+            className={`px-3 py-1 rounded transition ${
+  filtro === key
+    ? "bg-blue-600 text-white"
+    : "bg-gray-200 dark:bg-gray-800 dark:text-gray-200"
+}`}
+
             onClick={() => setFiltro(key)}
           >
             {label}
@@ -216,7 +222,7 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, id: string) =>
       ) : (
         <div className="space-y-6">
           {richiesteFiltrate.map((r) => (
-            <div key={r.id} className="bg-white p-4 rounded shadow border border-gray-200">
+            <div key={r.id} className="bg-white dark:bg-gray-800 p-4 rounded shadow border border-gray-200 dark:border-gray-700">
               <div className="text-sm text-gray-500 mb-1">
                 Inviata il: {new Date(r.inviata_il).toLocaleString()} | Stato: <span className="font-semibold">{r.stato}</span>
               </div>
@@ -250,7 +256,7 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, id: string) =>
 {editingId === r.id ? (
   <div className="space-y-2 mt-3">
     <textarea
-      className="w-full p-2 border rounded"
+      className="w-full p-2 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
       rows={4}
       placeholder="Scrivi la risposta..."
       value={risposte[r.id] || r.risposta || ""}
@@ -297,7 +303,7 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, id: string) =>
 ) : (
   <div className="flex flex-wrap items-center gap-3 mt-3">
     {r.risposta && (
-  <div className="bg-gray-50 p-3 rounded border border-gray-300 w-full space-y-2">
+  <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded border border-gray-300 dark:border-gray-700 w-full space-y-2">
     <p className="text-sm text-gray-700 whitespace-pre-wrap">
       <strong>Risposta:</strong> {r.risposta}
     </p>
