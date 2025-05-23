@@ -31,16 +31,13 @@ type CustomData = {
   isEditing: boolean;
   onChange: (text: string) => void;
   onBlur: () => void;
-  color?: string;
 };
 
 function CustomNode({ data }: NodeProps<CustomData>) {
   return (
     <div
       onDoubleClick={data.onDoubleClick}
-      className={`p-2 rounded shadow text-sm text-center min-w-[100px] text-black dark:text-white ${
-  data.color || "bg-blue-100 dark:bg-blue-900"
-}`}
+      className="bg-blue-100 dark:bg-blue-900 text-black dark:text-white p-2 rounded shadow text-sm text-center min-w-[100px]"
     >
       {data.isEditing ? (
         <input
@@ -189,6 +186,22 @@ export default function MappaConcettuale() {
   }
 }, []);
 
+useEffect(() => {
+  const handleFullscreenChange = () => {
+    const isFullscreen = !!document.fullscreenElement;
+    if (!isFullscreen) {
+      // Se esco dal fullscreen manualmente, aggiorno React
+      setPresentazioneAttiva(false);
+    }
+  };
+
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  return () => {
+    document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  };
+}, []);
+
+
 
   useEffect(() => {
   const timeout = setTimeout(() => {
@@ -196,7 +209,7 @@ export default function MappaConcettuale() {
       localStorage.setItem("autosave-mappa", JSON.stringify({ nodes, edges, titoloMappa }));
       toast.success("💾 Mappa salvata automaticamente", { duration: 1500 });
     }
-  }, 2000); // salva dopo 2s da ogni modifica
+  }, 8000); // salva dopo 8s da ogni modifica
 
   return () => clearTimeout(timeout);
 }, [nodes, edges, titoloMappa]);
@@ -601,25 +614,6 @@ export default function MappaConcettuale() {
 </button>
 
   </div>
-)}
-
-
-  {selectedNodeId && (
-  <input
-    type="color"
-    onChange={(e) => {
-      const color = e.target.value;
-      setNodes((nds) =>
-        nds.map((node) =>
-          node.id === selectedNodeId
-            ? { ...node, data: { ...node.data, color } }
-            : node
-        )
-      );
-    }}
-    title="Scegli colore nodo"
-    className="w-10 h-10 p-0 border rounded cursor-pointer"
-  />
 )}
 
 {selectedEdgeId && (
