@@ -268,3 +268,5 @@ export default function LingueFox() {
     </StaffLayout>
   );
 }
+
+LingueFox.requireAuth = true;
