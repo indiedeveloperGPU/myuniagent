@@ -37,7 +37,14 @@ export default function TeoriaGrammaticale() {
   const [loadingModulo, setLoadingModulo] = useState<boolean>(false);
   const [risposte, setRisposte] = useState<Record<string, Record<string, string>>>({});
   const [loading, setLoading] = useState<boolean>(false);
+  const [faseCaricamento, setFaseCaricamento] = useState(0);
   const [messaggi, setMessaggi] = useState<Record<string, string>>({});
+  const frasiCaricamento = [
+  "🧠 Analisi del tuo livello in corso…",
+  "📚 Selezione dei contenuti migliori…",
+  "🔍 Personalizzazione dell'esperienza…",
+  "🚀 Preparazione modulo finale…",
+];
 
   useEffect(() => {
     const fetchLinguaPreferita = async () => {
@@ -60,6 +67,20 @@ useEffect(() => {
     localStorage.setItem("fox-livello", livello);
   }
 }, [livello]);
+
+useEffect(() => {
+  if (!loadingModulo) {
+    setFaseCaricamento(0);
+    return;
+  }
+
+  const fasiTotali = 4;
+  const interval = setInterval(() => {
+    setFaseCaricamento((prev) => (prev + 1) % fasiTotali);
+  }, 1000); // una fase al secondo
+
+  return () => clearInterval(interval);
+}, [loadingModulo]);
 
 
   useEffect(() => {
@@ -99,8 +120,11 @@ useEffect(() => {
   }, [lingua, livello]);
 
   const selezionaModulo = async (id: string) => {
-    setSelezionato(id);
-    setLoadingModulo(true);
+  setSelezionato(id);
+  setLoadingModulo(true);
+  setContenutoSelezionato(null); // reset visivo del modulo precedente
+
+  setTimeout(async () => {
     const { data, error } = await supabase
       .from("teoria_contenuti")
       .select("id, argomento, contenuto, quiz, ordine")
@@ -109,7 +133,9 @@ useEffect(() => {
 
     if (data) setContenutoSelezionato(data);
     setLoadingModulo(false);
-  };
+  }, 4000); // 4 secondi
+};
+
 
   const handleRispostaChange = (contenutoId: string, domandaIdx: number, valore: string) => {
     setRisposte((prev) => ({
@@ -206,7 +232,8 @@ useEffect(() => {
     return (
       <li key={c.id}>
         <button
-  onClick={() => selezionaModulo(c.id)}
+  onClick={() => !loadingModulo && selezionaModulo(c.id)}
+  disabled={loadingModulo}
   className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
     selezionato === c.id
       ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
@@ -239,7 +266,17 @@ useEffect(() => {
 
           {!loading && contenuti.length > 0 && selezionato && (
             <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6 rounded shadow">
-              {loadingModulo && <p className="text-gray-500">⏳ Caricamento modulo...</p>}
+              {loadingModulo && (<div className="flex flex-col items-center justify-center text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded p-6 shadow-md space-y-4 animate-pulse">
+    <img
+      src="/images/fox-loader.gif"
+      alt="Volpe che carica"
+      className="w-24 h-24"
+    />
+    <p className="text-lg font-medium text-center">{frasiCaricamento[faseCaricamento]}</p>
+    <p className="text-sm text-gray-500 dark:text-gray-400 text-center">(attendere qualche secondo…)</p>
+  </div>
+)}
+
               {!loadingModulo && contenutoSelezionato && (
                 <div>
                   <h2 className="text-xl font-bold mb-3">📘 {contenutoSelezionato.argomento}</h2>
@@ -314,3 +351,4 @@ useEffect(() => {
 }
 
 TeoriaGrammaticale.requireAuth = true;
+
