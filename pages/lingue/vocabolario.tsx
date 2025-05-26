@@ -48,6 +48,14 @@ export default function Vocabolario() {
   const [messaggi, setMessaggi] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingModulo, setLoadingModulo] = useState<boolean>(false);
+  const [faseCaricamento, setFaseCaricamento] = useState(0);
+  const frasiCaricamento = [
+  "🧠 Analisi del tuo livello in corso…",
+  "📚 Selezione dei contenuti migliori…",
+  "🔍 Personalizzazione dell'esperienza…",
+  "🚀 Preparazione modulo finale…",
+];
+
 
   useEffect(() => {
     const fetchLingua = async () => {
@@ -70,6 +78,21 @@ export default function Vocabolario() {
     localStorage.setItem("fox-livello", livello);
   }
 }, [livello]);
+
+useEffect(() => {
+  if (!loadingModulo) {
+    setFaseCaricamento(0);
+    return;
+  }
+
+  const fasiTotali = 4;
+  const interval = setInterval(() => {
+    setFaseCaricamento((prev) => (prev + 1) % fasiTotali);
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [loadingModulo]);
+
 
 
   useEffect(() => {
@@ -143,17 +166,23 @@ export default function Vocabolario() {
   .filter((v): v is VocabolarioLight & { completato: boolean } => v !== undefined);
 }, [vocabolario, completati]);
 
-  const selezionaModulo = async (id: string) => {
+const selezionaModulo = async (id: string) => {
   setSelezionato(id);
   setLoadingModulo(true);
-  const { data } = await supabase
-    .from("vocabolario")
-    .select("id, tema, ordine, introduzione, parole, quiz")
-    .eq("id", id)
-    .single();
-  if (data) setVocabolarioSelezionato(data);
-  setLoadingModulo(false);
+  setVocabolarioSelezionato(null);
+
+  setTimeout(async () => {
+    const { data } = await supabase
+      .from("vocabolario")
+      .select("id, tema, ordine, introduzione, parole, quiz")
+      .eq("id", id)
+      .single();
+
+    if (data) setVocabolarioSelezionato(data);
+    setLoadingModulo(false);
+  }, 4000); // 4 secondi
 };
+
 
 
   const inviaRisposte = async (item: VocabolarioCompleto) => {
@@ -222,7 +251,8 @@ export default function Vocabolario() {
     return (
       <li key={v.id}>
         <button
-  onClick={() => selezionaModulo(v.id)}
+  onClick={() => !loadingModulo && selezionaModulo(v.id)}
+  disabled={loadingModulo}
   className={`w-full text-left px-3 py-2 rounded-md border flex flex-col items-start ${
     selezionato === v.id
       ? 'bg-blue-100 dark:bg-blue-900 font-semibold'
@@ -254,7 +284,17 @@ export default function Vocabolario() {
 
           {!loading && vocabolario.length > 0 && selezionato && (
   <div className="...">
-    {loadingModulo && <p className="text-gray-500">⏳ Caricamento modulo...</p>}
+    {loadingModulo && (
+  <div className="flex flex-col items-center justify-center text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded p-6 shadow-md space-y-4 animate-pulse">
+    <img
+      src="/images/fox-loader.gif"
+      alt="Volpe che carica"
+      className="w-24 h-24"
+    />
+    <p className="text-lg font-medium text-center">{frasiCaricamento[faseCaricamento]}</p>
+    <p className="text-sm text-gray-500 dark:text-gray-400 text-center">(attendere qualche secondo…)</p>
+  </div>
+)}
     {!loadingModulo && vocabolarioSelezionato && (
       <div>
         <h2 className="text-xl font-bold mb-1">📌 {vocabolarioSelezionato.tema}</h2>
@@ -344,8 +384,3 @@ export default function Vocabolario() {
 }
 
 Vocabolario.requireAuth = true
-
-
-
-
-
