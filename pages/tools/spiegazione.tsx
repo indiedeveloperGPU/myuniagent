@@ -412,8 +412,3 @@ export default function Spiegazione() {
 
 
 Spiegazione.requireAuth = true;
-
-
-
-
-
