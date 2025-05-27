@@ -4,6 +4,9 @@ import { useRouter } from "next/router";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
 import toast from "react-hot-toast";
+import ReactMarkdown from "react-markdown";
+
+
 
 // COMPONENTE
 export default function Spiegazione() {
@@ -492,33 +495,51 @@ export default function Spiegazione() {
 )}
 </div>
       {chat.length > 0 && (
-        <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded shadow whitespace-pre-wrap">
-          <h2 className="font-semibold mb-2">📄 Conversazione:</h2>
-          <div className="flex flex-col gap-3 mb-4 max-h-[400px] overflow-y-auto">
-            {chat.map((msg, i) => (
-              <div key={i}className={`p-3 max-w-[85%] shadow rounded-2xl text-sm leading-relaxed ${
-      msg.role === "user"
-      ? "bg-green-100 dark:bg-green-700 self-end text-right ml-auto"
-      : "bg-gray-200 dark:bg-gray-700 self-start text-left mr-auto"
-  }`}
->
-  <p><strong className="block mb-1 text-xs opacity-70">{msg.role === "user" ? "Tu" : "MyUniAgent"}</strong>{msg.content}</p>
-</div>
-
-            ))}
+  <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded shadow">
+    <h2 className="font-semibold mb-4 text-xl text-gray-800 dark:text-gray-100">📄 Conversazione:</h2>
+    <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto">
+      {chat.map((msg, i) => (
+        <div
+          key={i}
+          className={`w-full p-4 rounded-md border text-base leading-relaxed shadow-sm ${
+            msg.role === "user"
+              ? "bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+              : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+          }`}
+        >
+          <div className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
+            {msg.role === "user" ? "🙋‍♂️ Tu" : "🎓 MyUniAgent"}
           </div>
-          <div className="flex gap-2 mt-2">
-            <input type="text" className="flex-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
-              placeholder="Fai una domanda di approfondimento..."
-              value={followUp}
-              onChange={(e) => setFollowUp(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && inviaFollowUp()}
-            />
-            <button onClick={inviaFollowUp}disabled={!followUp.trim() || followUpLoading || isSubmitting}className={`bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 transition ${followUpLoading || isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}>{followUpLoading || isSubmitting ? "⏳ Invio in corso..." : "✉️ Invia"}
-            </button>
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown>{msg.content}</ReactMarkdown>
           </div>
         </div>
-      )}
+      ))}
+    </div>
+
+    {/* Campo follow-up */}
+    <div className="flex gap-2 mt-4">
+      <input
+        type="text"
+        className="flex-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
+        placeholder="Fai una domanda di approfondimento..."
+        value={followUp}
+        onChange={(e) => setFollowUp(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && inviaFollowUp()}
+      />
+      <button
+        onClick={inviaFollowUp}
+        disabled={!followUp.trim() || followUpLoading || isSubmitting}
+        className={`bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 transition ${
+          followUpLoading || isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+        }`}
+      >
+        {followUpLoading || isSubmitting ? "⏳ Invio in corso..." : "✉️ Invia"}
+      </button>
+    </div>
+  </div>
+)}
+
     </DashboardLayout>
   );
 }
