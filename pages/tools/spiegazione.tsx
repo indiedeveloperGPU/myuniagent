@@ -496,16 +496,15 @@ export default function Spiegazione() {
           <h2 className="font-semibold mb-2">📄 Conversazione:</h2>
           <div className="flex flex-col gap-3 mb-4 max-h-[400px] overflow-y-auto">
             {chat.map((msg, i) => (
-              <div
-              key={i}
-              className={`p-2 rounded ${
-                msg.role === "user"
-                  ? "bg-white dark:bg-gray-700 text-right"
-                  : "bg-blue-50 dark:bg-gray-600 text-left"
-              }`}
-            >
-                <p><strong>{msg.role === "user" ? "Tu" : "MyUniAgent"}:</strong> {msg.content}</p>
-              </div>
+              <div key={i}className={`p-3 max-w-[85%] shadow rounded-2xl text-sm leading-relaxed ${
+      msg.role === "user"
+      ? "bg-green-100 dark:bg-green-700 self-end text-right ml-auto"
+      : "bg-gray-200 dark:bg-gray-700 self-start text-left mr-auto"
+  }`}
+>
+  <p><strong className="block mb-1 text-xs opacity-70">{msg.role === "user" ? "Tu" : "MyUniAgent"}</strong>{msg.content}</p>
+</div>
+
             ))}
           </div>
           <div className="flex gap-2 mt-2">
