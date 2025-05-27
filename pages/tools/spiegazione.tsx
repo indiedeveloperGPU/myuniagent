@@ -155,33 +155,94 @@ export default function Spiegazione() {
   };
 
   const generaSpiegazione = async (testo: string) => {
-  if (!testo || isSubmitting) return;
+    if (!testo || isSubmitting) return;
 
-  setIsSubmitting(true);
-  setLoading(true);
+    setIsSubmitting(true);
+    setLoading(true);
+    setRisposta(""); // Pulisci la risposta precedente
+    // Aggiungi subito il messaggio dell'utente e un segnaposto per l'assistente
+    const userMessage = { role: "user" as const, content: testo };
+    const assistantPlaceholder = { role: "assistant" as const, content: "" }; // Inizia vuoto
+    setChat([userMessage, assistantPlaceholder]);
 
-  const session = await supabase.auth.getSession();
-  const token = session.data.session?.access_token;
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
 
-  const res = await fetch("/api/spiegazione", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`, // 👈 passa il token
-    },
-    body: JSON.stringify({
-      concetto: testo,
-      livelloStudente: livello,
-    }),
-  });
+    try {
+      const res = await fetch("/api/spiegazione", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          concetto: testo,
+          livelloStudente: livello, // Assicurati che 'livello' sia lo stato corretto
+        }),
+      });
 
+      if (!res.ok || !res.body) {
+        // Se la risposta non è ok (es. errore 500, 400 prima dello stream)
+        // o se non c'è un corpo della risposta, gestisci l'errore.
+        const errorData = await res.json().catch(() => ({ error: "Errore sconosciuto nel leggere la risposta" }));
+        toast.error(errorData.error || "Errore durante la generazione della spiegazione.");
+        setChat(prevChat => prevChat.slice(0, prevChat.length -1)); // Rimuovi il placeholder dell'assistente
+        setLoading(false);
+        setIsSubmitting(false);
+        return;
+      }
 
+      // 🔥 Inizio gestione dello stream
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedResponse = "";
 
-    const data = await res.json();
-    setRisposta(data.spiegazione);
-    setChat([{ role: "user", content: testo },{ role: "assistant", content: data.spiegazione },]);
-    setLoading(false);
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break; // Lo stream è terminato
+
+        const chunk = decoder.decode(value, { stream: true });
+        accumulatedResponse += chunk;
+
+        // Aggiorna l'ultimo messaggio (quello dell'assistente) nella chat
+        setChat(prevChat => {
+          const newChat = [...prevChat];
+          if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+            newChat[newChat.length - 1].content = accumulatedResponse;
+          }
+          return newChat;
+        });
+        setRisposta(accumulatedResponse); // Aggiorna anche lo stato 'risposta' se lo usi per display separato
+      }
+      // Assicurati che l'ultimo pezzetto sia processato se il decoder ha bufferizzato qualcosa
+      const finalChunk = decoder.decode();
+       if (finalChunk) {
+           accumulatedResponse += finalChunk;
+           setChat(prevChat => {
+               const newChat = [...prevChat];
+               if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+                   newChat[newChat.length - 1].content = accumulatedResponse;
+               }
+               return newChat;
+           });
+           setRisposta(accumulatedResponse);
+       }
+      // 🔥 Fine gestione dello stream
+
+    } catch (error) {
+      console.error("Errore nel fetch o nello streaming:", error);
+      toast.error("Si è verificato un errore durante la richiesta.");
+      // Potresti voler rimuovere il placeholder dell'assistente anche qui
+       setChat(prevChat => {
+           if (prevChat.length > 0 && prevChat[prevChat.length -1].role === "assistant" && prevChat[prevChat.length -1].content === "") {
+               return prevChat.slice(0, prevChat.length -1);
+           }
+           return prevChat;
+       });
+    } finally {
+      setLoading(false);
       setIsSubmitting(false);
+    }
   };
 
   const inviaAgenteFox = async () => {
@@ -219,39 +280,96 @@ export default function Spiegazione() {
   
 
   const inviaFollowUp = async () => {
-  if (!followUp.trim() || isSubmitting) return;
+    if (!followUp.trim() || isSubmitting || followUpLoading) return; // Aggiunto followUpLoading al controllo
 
-  setIsSubmitting(true);
-  setFollowUpLoading(true);
+    setIsSubmitting(true);
+    setFollowUpLoading(true);
 
-  const newChat = [...chat, { role: "user", content: followUp }];
+    const userMessageContent = followUp;
+    // Aggiungi subito il messaggio dell'utente alla chat
+    const newChatWithMessage = [...chat, { role: "user" as const, content: userMessageContent }];
+    // Aggiungi un segnaposto per la risposta dell'assistente
+    const assistantPlaceholder = { role: "assistant" as const, content: "" };
+    setChat([...newChatWithMessage, assistantPlaceholder]);
+    setFollowUp(""); // Svuota l'input del follow-up
+    setRisposta(""); // Pulisci la risposta precedente
 
-  const session = await supabase.auth.getSession();
-  const token = session.data.session?.access_token;
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
 
-  const res = await fetch("/api/spiegazione", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      concetto: chat[0]?.content || "Argomento sconosciuto",
-      followUp: newChat,
-      livelloStudente: livello,
-    }),
-  });
+    try {
+      const res = await fetch("/api/spiegazione", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          concetto: chat[0]?.content || "Argomento sconosciuto", // Usa il primo messaggio come concetto base
+          followUp: newChatWithMessage, // Invia la cronologia fino al messaggio dell'utente corrente
+          livelloStudente: livello,
+        }),
+      });
 
-  const data = await res.json();
+      if (!res.ok || !res.body) {
+        const errorData = await res.json().catch(() => ({ error: "Errore sconosciuto nel leggere la risposta del follow-up" }));
+        toast.error(errorData.error || "Errore durante l'invio del follow-up.");
+        setChat(prevChat => prevChat.slice(0, prevChat.length -1)); // Rimuovi il placeholder dell'assistente
+        setFollowUpLoading(false);
+        setIsSubmitting(false);
+        return;
+      }
 
-  setChat([...newChat, { role: "assistant", content: data.spiegazione }]);
-  setRisposta(data.spiegazione);
-  setFollowUp(""); // ✅ svuota campo follow-up corretto
-  setFollowUpLoading(false);
-  setIsSubmitting(false);
-};
+      // 🔥 Inizio gestione dello stream per follow-up
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedResponse = "";
 
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
+        const chunk = decoder.decode(value, { stream: true });
+        accumulatedResponse += chunk;
+
+        setChat(prevChat => {
+          const newChat = [...prevChat];
+          if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+            newChat[newChat.length - 1].content = accumulatedResponse;
+          }
+          return newChat;
+        });
+        setRisposta(accumulatedResponse);
+      }
+      
+      const finalChunk = decoder.decode();
+      if (finalChunk) {
+          accumulatedResponse += finalChunk;
+          setChat(prevChat => {
+              const newChat = [...prevChat];
+              if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+                  newChat[newChat.length - 1].content = accumulatedResponse;
+              }
+              return newChat;
+          });
+          setRisposta(accumulatedResponse);
+      }
+      // 🔥 Fine gestione dello stream per follow-up
+
+    } catch (error) {
+      console.error("Errore nel fetch o nello streaming del follow-up:", error);
+      toast.error("Si è verificato un errore durante la richiesta di follow-up.");
+       setChat(prevChat => {
+           if (prevChat.length > 0 && prevChat[prevChat.length -1].role === "assistant" && prevChat[prevChat.length -1].content === "") {
+               return prevChat.slice(0, prevChat.length -1);
+           }
+           return prevChat;
+       });
+    } finally {
+      setFollowUpLoading(false);
+      setIsSubmitting(false);
+    }
+  };
 
   const handleSubmit = () => {
     if (!input.trim()) {
@@ -373,10 +491,6 @@ export default function Spiegazione() {
   </div>
 )}
 </div>
-      
-
-
-
       {chat.length > 0 && (
         <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded shadow whitespace-pre-wrap">
           <h2 className="font-semibold mb-2">📄 Conversazione:</h2>
