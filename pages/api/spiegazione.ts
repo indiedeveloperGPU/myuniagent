@@ -11,7 +11,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-
 export const config = {
   api: {
     bodyParser: true,
@@ -65,7 +64,7 @@ Quando elabori una risposta:
 5.  **Riferimenti a Paradigmi e Contesti (Concettuali):** Anche se non puoi citare fonti bibliografiche specifiche in tempo reale, le tue spiegazioni devono riflettere una profonda conoscenza dei principali paradigmi teorici, degli approcci metodologici, degli autori di riferimento concettuale e degli studi fondamentali nel campo. Puoi e devi accennare a "scuole di pensiero", "teorie dominanti" **ma anche a quelle minoritarie, alternative o emergenti**, "critiche epistemologiche o metodologiche mosse da...", **e, ove pertinente e possibile, illustra come determinati concetti astratti si concretizzano o si scontrano con istituzioni, prassi operative o contesti socio-culturali specifici (pur senza attingere a conoscenze di eventi ultra-recenti o dati iper-locali non presenti nella tua base di conoscenza generale).**
 6.  **Esemplificazioni Complesse, Modelli Illustrativi e Applicazioni Pratiche:** Utilizza esempi pregnanti, modelli concettuali o riferimenti a casi di studio (anche stilizzati o ipotetici, se necessario) che siano rappresentativi del livello di complessità affrontato in ambito universitario. Illustra l'applicazione pratica di teorie e concetti, ma anche le loro difficoltà di traduzione nel reale.
 7.  **Interconnessioni e Visione Sistemica Olistica:** Metti in luce in modo esplicito le relazioni tra l'argomento specifico e quadri concettuali più ampi, sia all'interno della stessa disciplina (mostrando coerenze e fratture) sia in ottica interdisciplinare, ove pertinente, per favorire una comprensione integrata e non frammentata.
-8.  **Sintesi Avanzata, Implicazioni Future e Originalità Contributiva:** Ogni paragrafo, e la risposta nel suo complesso, deve mirare a introdurre un contributo analitico significativo, sia esso teorico, critico o applicativo, evitando ripetizioni e generalizzazioni superficiali o banalizzanti. **Collega le diverse parti dell'argomentazione mostrando le interdipendenze, le possibili sinergie e le irrisolte tensioni.** Concludi con una sintesi critica che non si limiti a riepilogare, ma che colleghi i punti trattati in una nuova luce, e proponga una riflessione di livello accademico, come un confronto dottrinale approfondito e aggiornato, un’ipotesi interpretativa stimolante e argomentata, un rilievo metodologico pertinente, **o l'identificazione motivata di questioni irrisolte meritevoli di ulteriore indagine e riflessione critica.**
+8.  **Sintesi Avanzata, Implicazioni Future e Originalità Contributiva:** Ogni paragrafo, e la risposta nel suo complesso, deve mirare a introdurre un contributo analitico significativo, sia esso teorico, critico o applicativo, evitando ripetizioni e generalizzazioni superficiali o banalizzanti. **Collega le diverse parti dell'argomentazione mostrando le interdipendenze, le possibili sinergie e le irrisolte tensioni.** Concludi con una sintesi critica che non si limiti a riepilogare, ma che colleghi i punti trattati in una nuova luce, e proponga una riflessione di livello accademico, come un confronto dottrinale approfondito e aggiornato, un'ipotesi interpretativa stimolante e argomentata, un rilievo metodologico pertinente, **o l'identificazione motivata di questioni irrisolte meritevoli di ulteriore indagine e riflessione critica.**
 9.  **Precisione Metodologica e Consapevolezza Epistemologica (se applicabile):** Se la domanda tocca aspetti metodologici o epistemologici, discuti la validità, l'affidabilità, i presupposti e i limiti dei diversi approcci di ricerca o analisi, dimostrando consapevolezza delle implicazioni della scelta di un particolare framework.
 
 Il tuo ruolo è quello di un interlocutore accademico stimolante e provocatorio (in senso intellettuale), capace di elevare il livello della discussione, di sfidare le assunzioni e di fornire gli strumenti concettuali per una comprensione profonda, critica e sfaccettata della materia, adeguata a un contesto di studi superiori e alla preparazione rigorosa di esami universitari.`,
@@ -73,62 +72,58 @@ Il tuo ruolo è quello di un interlocutore accademico stimolante e provocatorio 
 
 type LivelloStudente = "medie" | "superiori" | "universita";
 
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Metodo non consentito" });
   }
 
   const token = req.headers.authorization?.replace("Bearer ", "");
-if (!token) {
-  return res.status(401).json({ error: "Token mancante" });
-}
+  if (!token) {
+    return res.status(401).json({ error: "Token mancante" });
+  }
 
-const { data: user, error } = await supabase.auth.getUser(token);
-if (error || !user) {
-  return res.status(401).json({ error: "Utente non autenticato" });
-}
+  const { data: user, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return res.status(401).json({ error: "Utente non autenticato" });
+  }
 
+  const origin = req.headers.origin || "";
+  const dominiAutorizzati = [
+    "https://myuniagent.it",       
+    "http://localhost:3000",
+  ];
 
-const origin = req.headers.origin || "";
-const dominiAutorizzati = [
-  "https://myuniagent.it",       
-  "http://localhost:3000",
-];
-
-if (!dominiAutorizzati.includes(origin)) {
-  return res.status(403).json({ error: "Accesso non consentito da questa origine." });
-}
+  if (!dominiAutorizzati.includes(origin)) {
+    return res.status(403).json({ error: "Accesso non consentito da questa origine." });
+  }
 
   const { concetto, followUp, livelloStudente } = req.body as {
     concetto: string;
     followUp?: { role: "user" | "assistant"; content: string }[];
-    livelloStudente: LivelloStudente; // Aggiunto il tipo per livelloStudente
+    livelloStudente: LivelloStudente;
   };
 
   if (!concetto || typeof concetto !== "string") {
     return res.status(400).json({ error: "Concetto mancante o non valido" });
   }
 
-  // Validazione per livelloStudente
   if (!livelloStudente || !systemPrompts[livelloStudente]) {
     return res.status(400).json({ error: "Livello studente mancante o non valido. Scegliere tra: medie, superiori, universita." });
   }
 
   const modello = "gpt-3.5-turbo";
-  const systemPromptSelezionato = systemPrompts[livelloStudente]; // Selezione del prompt corretto
+  const systemPromptSelezionato = systemPrompts[livelloStudente];
 
-  const messaggi: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [ // Tipo più specifico per i messaggi
+  const messaggi: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: "system",
-      content: systemPromptSelezionato, // Utilizzo del prompt selezionato
+      content: systemPromptSelezionato,
     },
   ];
 
   if (Array.isArray(followUp) && followUp.length > 0) {
-    // Assicurati che i messaggi di followUp abbiano il tipo corretto
     const typedFollowUp = followUp.map(msg => ({
-        role: msg.role as "user" | "assistant", // Cast esplicito del ruolo
+        role: msg.role as "user" | "assistant",
         content: msg.content
     }));
     messaggi.push(...typedFollowUp);
@@ -140,127 +135,141 @@ if (!dominiAutorizzati.includes(origin)) {
   }
 
   try {
-    const completamento = await openai.chat.completions.create({
+    // 🔥 CAMBIAMENTO PRINCIPALE: Configurazione per lo streaming
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Inizia lo streaming della risposta di OpenAI
+    const stream = await openai.chat.completions.create({
       model: modello,
       messages: messaggi,
       temperature: 0.4,
+      stream: true, // 🔥 IMPORTANTE: Abilita lo streaming
     });
 
-    const spiegazione =
-      completamento.choices[0]?.message?.content ?? "Nessuna risposta disponibile.";
+    let spiegazioneCompleta = ""; // Raccogliamo la risposta completa per il salvataggio
 
-    const authHeader = req.headers.authorization || "";
-    const accessToken = authHeader.replace("Bearer ", "");
-
-if (!accessToken) {
-  return res.status(401).json({ error: "Non autorizzato. Devi essere autenticato." });
-}
-
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error: userError, // Aggiunto per gestire l'errore nel recupero dell'utente
-    } = await supabase.auth.getUser();
-
-    if (userError || !user?.id) {
-      console.error("Errore nel recupero dell'utente Supabase o utente non trovato:", userError);
-      // Anche in caso di errore con Supabase Auth, restituisci la spiegazione per non bloccare l'utente
-      return res.status(200).json({ spiegazione, modelloUsato: modello, livelloApplicato: livelloStudente, warning: "Impossibile salvare la chat, errore utente Supabase." });
-    }
-
-    const nuovoMessaggioAssistente = { role: "assistant" as const, content: spiegazione }; // Tipo 'assistant' come const
-
-    // Determina il messaggio utente corretto per il salvataggio
-    let messaggioUtenteCorrente: { role: "user"; content: string };
-    if (Array.isArray(followUp) && followUp.length > 0) {
-        const ultimoMessaggioUtente = followUp.filter(m => m.role === 'user').pop();
-        messaggioUtenteCorrente = ultimoMessaggioUtente 
-            ? { role: "user" as const, content: ultimoMessaggioUtente.content }
-            : { role: "user" as const, content: `Follow-up a: ${concetto}` }; // Fallback se non c'è un messaggio utente nel followUp
-    } else {
-        messaggioUtenteCorrente = { role: "user" as const, content: `Spiegami: ${concetto}` };
-    }
-
-
-    if (!Array.isArray(followUp) || followUp.length === 0) {
-      // ✅ Nuova chat: creiamo una riga in chat_spiegazioni
-      const messaggiIniziali = [
-        messaggioUtenteCorrente, // Messaggio utente iniziale
-        nuovoMessaggioAssistente,
-      ];
-
-      const { error: insertError } = await supabase.from("chat_spiegazioni").insert({
-        user_id: user.id,
-        titolo: concetto.substring(0, 100), // Tronca il titolo se troppo lungo per il DB
-        messaggi: messaggiIniziali,
-        livello_studente: livelloStudente, // ✨ Salviamo anche il livello studente
-      });
-      if (insertError) console.error("Errore Supabase inserimento chat_spiegazioni:", insertError);
-
-
-      // Salviamo anche in attivita per la cronologia generica
-      const { error: attivitaError } = await supabase.from("attivita").insert({
-        user_id: user.id,
-        tipo: "spiegazione",
-        input: concetto,
-        output: spiegazione,
-        // Potresti voler aggiungere livello_studente anche qui se la tabella 'attivita' lo supporta
-      });
-      if (attivitaError) console.error("Errore Supabase inserimento attivita:", attivitaError);
-
-    } else {
-      // ✅ Follow-up: aggiorniamo la conversazione esistente
-      // Usiamo il 'concetto' originale (che dovrebbe essere il titolo della chat) per trovare la chat
-      const { data: chatEsistente, error: selectError } = await supabase
-        .from("chat_spiegazioni")
-        .select("id, messaggi")
-        .eq("user_id", user.id)
-        .eq("titolo", concetto.substring(0, 100)) // Assicurati che il titolo corrisponda a come è stato salvato
-        // .order('ultima_modifica', { ascending: false }) // Potrebbe essere utile per prendere la più recente se ci sono duplicati di titolo
-        .limit(1)
-        .single();
-
-      if (selectError && selectError.code !== 'PGRST116') { // PGRST116: single row not found, gestibile
-          console.error("Errore Supabase select chat_spiegazioni:", selectError);
-      }
-
-      if (chatEsistente) {
-        const messaggiDaSalvare = [...followUp, nuovoMessaggioAssistente];
-
-        const { error: updateError } = await supabase.from("chat_spiegazioni")
-          .update({
-            messaggi: messaggiDaSalvare,
-            ultima_modifica: new Date().toISOString(),
-            livello_studente: livelloStudente, // ✨ Aggiorniamo/salviamo il livello anche nei follow-up
-          })
-          .eq("id", chatEsistente.id);
-        if (updateError) console.error("Errore Supabase update chat_spiegazioni:", updateError);
-      } else {
-          console.warn(`Nessuna chat esistente trovata per il follow-up con titolo: ${concetto.substring(0,100)} per l'utente ${user.id}. Potrebbe essere necessario creare una nuova chat.`);
-          // Potresti voler gestire questo caso creando una nuova chat se non viene trovata,
-          // invece di non salvare nulla. Per ora, logga un warning.
+    // 🔥 Gestione dello stream
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || "";
+      if (content) {
+        spiegazioneCompleta += content;
+        // Invia ogni pezzo al client immediatamente
+        res.write(content);
       }
     }
 
-    return res.status(200).json({ spiegazione, modelloUsato: modello, livelloApplicato: livelloStudente });
+    // 🔥 Fine dello stream
+    res.end();
+
+    // 🔥 SALVATAGGIO ASINCRONO: Ora salviamo i dati dopo aver completato lo streaming
+    // Questo evita di rallentare la risposta all'utente
+    setImmediate(async () => {
+      try {
+        const authHeader = req.headers.authorization || "";
+        const accessToken = authHeader.replace("Bearer ", "");
+
+        if (!accessToken) {
+          console.error("Token mancante per il salvataggio asincrono");
+          return;
+        }
+
+        const supabaseAuth = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            },
+          }
+        );
+
+        const {
+          data: { user: authUser },
+          error: userError,
+        } = await supabaseAuth.auth.getUser();
+
+        if (userError || !authUser?.id) {
+          console.error("Errore nel recupero dell'utente per salvataggio:", userError);
+          return;
+        }
+
+        const nuovoMessaggioAssistente = { role: "assistant" as const, content: spiegazioneCompleta };
+
+        let messaggioUtenteCorrente: { role: "user"; content: string };
+        if (Array.isArray(followUp) && followUp.length > 0) {
+            const ultimoMessaggioUtente = followUp.filter(m => m.role === 'user').pop();
+            messaggioUtenteCorrente = ultimoMessaggioUtente 
+                ? { role: "user" as const, content: ultimoMessaggioUtente.content }
+                : { role: "user" as const, content: `Follow-up a: ${concetto}` };
+        } else {
+            messaggioUtenteCorrente = { role: "user" as const, content: `Spiegami: ${concetto}` };
+        }
+
+        if (!Array.isArray(followUp) || followUp.length === 0) {
+          // Nuova chat
+          const messaggiIniziali = [
+            messaggioUtenteCorrente,
+            nuovoMessaggioAssistente,
+          ];
+
+          const { error: insertError } = await supabaseAuth.from("chat_spiegazioni").insert({
+            user_id: authUser.id,
+            titolo: concetto.substring(0, 100),
+            messaggi: messaggiIniziali,
+            livello_studente: livelloStudente,
+          });
+          if (insertError) console.error("Errore Supabase inserimento chat_spiegazioni:", insertError);
+
+          const { error: attivitaError } = await supabaseAuth.from("attivita").insert({
+            user_id: authUser.id,
+            tipo: "spiegazione",
+            input: concetto,
+            output: spiegazioneCompleta,
+          });
+          if (attivitaError) console.error("Errore Supabase inserimento attivita:", attivitaError);
+
+        } else {
+          // Follow-up
+          const { data: chatEsistente, error: selectError } = await supabaseAuth
+            .from("chat_spiegazioni")
+            .select("id, messaggi")
+            .eq("user_id", authUser.id)
+            .eq("titolo", concetto.substring(0, 100))
+            .limit(1)
+            .single();
+
+          if (selectError && selectError.code !== 'PGRST116') {
+              console.error("Errore Supabase select chat_spiegazioni:", selectError);
+          }
+
+          if (chatEsistente) {
+            const messaggiDaSalvare = [...followUp, nuovoMessaggioAssistente];
+
+            const { error: updateError } = await supabaseAuth.from("chat_spiegazioni")
+              .update({
+                messaggi: messaggiDaSalvare,
+                ultima_modifica: new Date().toISOString(),
+                livello_studente: livelloStudente,
+              })
+              .eq("id", chatEsistente.id);
+            if (updateError) console.error("Errore Supabase update chat_spiegazioni:", updateError);
+          } else {
+              console.warn(`Nessuna chat esistente trovata per il follow-up con titolo: ${concetto.substring(0,100)} per l'utente ${authUser.id}`);
+          }
+        }
+      } catch (saveError) {
+        console.error("Errore durante il salvataggio asincrono:", saveError);
+      }
+    });
+
   } catch (error: any) {
-    console.error("Errore generazione spiegazione OpenAI o altro:", error);
+    console.error("Errore generazione spiegazione OpenAI:", error);
     const errorMessage = error.response?.data?.error?.message || error.message || "Errore sconosciuto";
-    return res.status(500).json({ error: "Errore durante la generazione della spiegazione", details: errorMessage });
+    res.status(500).json({ error: "Errore durante la generazione della spiegazione", details: errorMessage });
   }
 }
-
-
-
