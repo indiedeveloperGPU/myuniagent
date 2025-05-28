@@ -5,8 +5,9 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
-
-
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeHighlight from 'rehype-highlight';
 
 // COMPONENTE
 export default function Spiegazione() {
@@ -17,8 +18,8 @@ export default function Spiegazione() {
   const [chat, setChat] = useState<{ role: string; content: string }[]>([]);
   const [followUp, setFollowUp] = useState("");
   const [inviatoAFox, setInviatoAFox] = useState(false);
-  const [fade, setFade] = useState(false); // 🔥 aggiunto per il fade
-  const [livello, setLivello] = useState("superiori"); // valore di default
+  const [fade, setFade] = useState(false); 
+  const [livello, setLivello] = useState("superiori"); 
   const concetto = chat[0]?.role === "user" ? chat[0].content : "Argomento della spiegazione";
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -156,6 +157,19 @@ export default function Spiegazione() {
       setInput(""); setChat([]); setRisposta("");
     }
   };
+
+  const normalizeLatex = (text: string): string => {
+  return text
+    .replace(/\\\\\[/g, '\\[')  // \\[ → \[
+    .replace(/\\\\\]/g, '\\]')  // \\] → \]
+    .replace(/\\\\\(/g, '\\(')  // \\( → \(
+    .replace(/\\\\\)/g, '\\)')  // \\) → \)
+    .replace(/\\\[/g, '$$')     // \[ → $$
+    .replace(/\\\]/g, '$$')     // \] → $$
+    .replace(/\\\(/g, '$')      // \( → $
+    .replace(/\\\)/g, '$');     // \) → $
+};
+
 
   const generaSpiegazione = async (testo: string) => {
     if (!testo || isSubmitting) return;
@@ -510,9 +524,16 @@ export default function Spiegazione() {
           <div className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
             {msg.role === "user" ? "🙋‍♂️ Tu" : "🎓 MyUniAgent"}
           </div>
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown>{msg.content}</ReactMarkdown>
-          </div>
+          <div className="max-w-none text-base leading-relaxed text-gray-900 dark:text-gray-100">
+  <ReactMarkdown
+    remarkPlugins={[remarkMath]}
+    rehypePlugins={[rehypeKatex, rehypeHighlight]}
+  >
+    {normalizeLatex(msg.content)}
+  </ReactMarkdown>
+</div>
+
+
         </div>
       ))}
     </div>
