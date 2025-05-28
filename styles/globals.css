@@ -5,13 +5,6 @@
   --foreground: #171717;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
@@ -77,4 +70,19 @@ body {
     background-color: #0f172a;  /* slate-900 */
     color: #f8fafc;             /* slate-50 */
   }
+}
+/* DARK MODE */
+html.dark .katex,
+html.dark .katex * {
+  color: #e5e5e5 !important;
+  fill: #e5e5e5 !important;
+  stroke: #e5e5e5 !important;
+}
+
+/* LIGHT MODE */
+html:not(.dark) .katex,
+html:not(.dark) .katex * {
+  color: #1f2937 !important;
+  fill: #1f2937 !important;
+  stroke: #1f2937 !important;
 }
