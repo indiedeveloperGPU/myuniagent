@@ -337,15 +337,15 @@ export default function SimulazioniScrittePage() {
         </Link>
       </div>
 
-      <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm mb-6 text-gray-700 text-sm animate-fadein">
-        <div className="flex items-center gap-2">
-          <span className="text-green-500 text-lg">📝</span>
-          <p>
-  <strong>Info:</strong> Scegli {categoria === "superiori" ? "categoria, indirizzo" : "categoria, facoltà"}, materia e argomento per generare una simulazione.
-</p>
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4 rounded-2xl shadow-sm mb-6 text-gray-700 dark:text-gray-100 text-sm animate-fadein">
+  <div className="flex items-center gap-2">
+    <span className="text-green-500 text-lg">📝</span>
+    <p>
+      <strong>Info:</strong> Scegli {categoria === "superiori" ? "categoria, indirizzo" : "categoria, facoltà"}, materia e argomento per generare una simulazione.
+    </p>
+  </div>
+</div>
 
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
   {/* Categoria */}
