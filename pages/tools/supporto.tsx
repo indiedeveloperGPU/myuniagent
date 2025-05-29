@@ -123,7 +123,7 @@ function SupportoPage() {
         </h1>
 
         {/* Sezione invio ticket */}
-        <section className="bg-gray-50 dark:bg-gray-800 p-6 rounded-xl shadow space-y-4">
+        <section className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-xl shadow space-y-4 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
           <h2 className="text-xl font-semibold text-blue-800 dark:text-blue-300">
             📨 Invia una richiesta di supporto
           </h2>
