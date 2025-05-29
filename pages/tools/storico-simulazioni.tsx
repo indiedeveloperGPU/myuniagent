@@ -103,17 +103,29 @@ export default function StoricoSimulazioniPage() {
           <p className="text-sm text-gray-500">Numero Simulazioni</p>
           <p className="text-2xl font-bold">{filtrato.length}</p>
         </div>
-        <div className="bg-white rounded-lg p-4 shadow">
-          <ResponsiveContainer width="100%" height={100}>
-            <LineChart data={filtrato}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="completata_il" tickFormatter={(dateStr) => new Date(dateStr).toLocaleDateString()} />
-              <YAxis domain={[0, 30]} />
-              <Tooltip labelFormatter={(dateStr) => new Date(dateStr).toLocaleString()} />
-              <Line type="monotone" dataKey="voto" stroke="#2563eb" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg p-4 shadow border border-gray-200 dark:border-gray-700">
+  <ResponsiveContainer width="100%" height={100}>
+    <LineChart data={filtrato}>
+      <CartesianGrid stroke={document.documentElement.classList.contains("dark") ? "#444" : "#ccc"} strokeDasharray="3 3" />
+      <XAxis
+        dataKey="completata_il"
+        tickFormatter={(dateStr) => new Date(dateStr).toLocaleDateString()}
+        stroke={document.documentElement.classList.contains("dark") ? "#ccc" : "#333"}
+      />
+      <YAxis domain={[0, 30]} stroke={document.documentElement.classList.contains("dark") ? "#ccc" : "#333"} />
+      <Tooltip
+        contentStyle={{
+          backgroundColor: document.documentElement.classList.contains("dark") ? "#1f2937" : "#fff",
+          borderColor: document.documentElement.classList.contains("dark") ? "#4b5563" : "#ccc",
+          color: document.documentElement.classList.contains("dark") ? "#f3f4f6" : "#111"
+        }}
+        labelFormatter={(dateStr) => new Date(dateStr).toLocaleString()}
+      />
+      <Line type="monotone" dataKey="voto" stroke="#2563eb" strokeWidth={2} />
+    </LineChart>
+  </ResponsiveContainer>
+</div>
+
       </div>
 
       {/* Filtri */}
@@ -286,4 +298,3 @@ if (typeof parsed === "object" && parsed !== null) {
 }
 
 StoricoSimulazioniPage.requireAuth = true;
-
