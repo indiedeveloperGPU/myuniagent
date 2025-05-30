@@ -84,6 +84,24 @@ export default function AbbonatiPage() {
   }
 };
 
+const handleAbbonamento = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const res = await fetch("/api/checkout", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email: user?.email }),
+  });
+
+  const { url } = await res.json();
+  if (url) {
+    window.location.href = url;
+  }
+};
+
+
 
   const attivaAbbonamento = async () => {
     if (!userId) return;
@@ -156,7 +174,7 @@ export default function AbbonatiPage() {
           {loading ? "Attivazione in corso..." : "Attiva ora"}
         </button>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-          (Pagamento sicuro. Il rinnovo non è automatico.)
+          Pagamento sicuro con Stripe. Nessun rinnovo automatico.
         </p>
       </motion.div>
 
