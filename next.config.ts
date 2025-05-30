@@ -1,12 +1,10 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   reactStrictMode: true,
   api: {
-    bodyParser: {
-      sizeLimit: "1mb", // (facoltativo, utile per payload Stripe)
-    },
-    externalResolver: true, // consigliato quando usi `micro` per il raw body
+    bodyParser: false, // serve per Stripe Webhook, non per checkout
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
