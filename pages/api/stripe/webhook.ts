@@ -10,12 +10,12 @@ export const config = {
 };
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2025-05-28.basil", // o la tua versione
+  apiVersion: "2025-05-28.basil",
 });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // usa una chiave server-side con accesso update
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -31,17 +31,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     event = stripe.webhooks.constructEvent(buf.toString(), sig, endpointSecret);
   } catch (err) {
-    console.error("Errore firma webhook:", err);
+    console.error("❌ Errore firma webhook:", err);
     return res.status(400).send(`Webhook Error: ${err}`);
   }
 
-  // Gestione evento
+  console.log("📩 Evento ricevuto da Stripe:", event.type);
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
-    const customerEmail = session.customer_email;
+    console.log("✅ Sessione completata:", {
+      id: session.id,
+      email: session.customer_email,
+      amount_total: session.amount_total,
+    });
 
-    if (customerEmail) {
+    if (session.customer_email) {
       const scadenza = new Date();
       scadenza.setFullYear(scadenza.getFullYear() + 1);
 
@@ -51,12 +56,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           abbonamento_attivo: true,
           abbonamento_scadenza: scadenza.toISOString(),
         })
-        .eq("email", customerEmail);
+        .eq("email", session.customer_email);
 
       if (error) {
-        console.error("Errore aggiornamento Supabase:", error);
+        console.error("❌ Errore aggiornamento profilo Supabase:", error);
         return res.status(500).send("Errore aggiornamento database");
       }
+
+      console.log("🎉 Abbonamento attivato con successo per:", session.customer_email);
     }
   }
 
