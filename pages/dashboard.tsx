@@ -73,26 +73,37 @@ const FeatureCard = ({ icon, title, desc }: { icon: string; title: string; desc:
 export default function DashboardPage() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showTrialMessage, setShowTrialMessage] = useState(false);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("name")
-          .eq("id", user.id)
-          .single();
+  const fetchProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("name, created_at")
+        .eq("id", user.id)
+        .single();
 
-        if (!error && data?.name) {
-          setName(data.name);
+      if (!error && data) {
+        if (data.name) setName(data.name);
+
+        // Calcola se è ancora entro il giorno di prova
+        const createdAt = new Date(data.created_at);
+        const now = new Date();
+        const msInDay = 24 * 60 * 60 * 1000;
+
+        const diff = now.getTime() - createdAt.getTime();
+        if (diff < msInDay) {
+          setShowTrialMessage(true);
         }
       }
-      setLoading(false);
-    };
+    }
+    setLoading(false);
+  };
 
-    fetchProfile();
-  }, []);
+  fetchProfile();
+}, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -133,6 +144,12 @@ export default function DashboardPage() {
     👋 Benvenuto
     {name ? <span className="text-blue-700 dark:text-blue-400">, {name}</span> : ""}!
   </h1>
+  {showTrialMessage && (
+  <div className="bg-blue-100 dark:bg-blue-800 text-blue-900 dark:text-blue-100 px-4 py-2 rounded-md text-sm sm:text-base font-medium shadow mt-2">
+    🧪 Benvenuto! Sei nel tuo giorno di prova gratuito. Hai tempo 1 giorno.
+  </div>
+)}
+
   <p className="text-gray-700 dark:text-gray-300 text-base sm:text-lg">
     Hai effettuato correttamente l’accesso a <strong>MyUniAgent</strong>. Usa la barra laterale per accedere alle funzionalità.
   </p>
