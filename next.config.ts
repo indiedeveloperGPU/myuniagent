@@ -5,4 +5,14 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
 };
 
+module.exports = {
+  api: {
+    bodyParser: {
+      sizeLimit: "1mb",
+      // permette raw body per Stripe
+      // Stripe gestisce la firma sull'intero payload
+    },
+  },
+};
+
 export default nextConfig;
