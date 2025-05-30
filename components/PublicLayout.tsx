@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 
+
 type PublicLayoutProps = {
   children: ReactNode;
   title?: string;
@@ -37,3 +38,4 @@ export default function PublicLayout({ children, title }: PublicLayoutProps) {
     </div>
   );
 }
+
