@@ -76,6 +76,15 @@ export default function AbbonatiPage() {
     fetchUser();
   }, []);
 
+  const checkoutStripe = async () => {
+  const res = await fetch("/api/checkout", { method: "POST" });
+  const data = await res.json();
+  if (data.url) {
+    window.location.href = data.url;
+  }
+};
+
+
   const attivaAbbonamento = async () => {
     if (!userId) return;
     setLoading(true);
@@ -140,7 +149,7 @@ export default function AbbonatiPage() {
         <p className="text-3xl font-extrabold text-blue-700 dark:text-blue-400 mb-6">30€ / anno</p>
 
         <button
-          onClick={attivaAbbonamento}
+          onClick={checkoutStripe}
           disabled={loading}
           className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded shadow transition-colors duration-200"
         >
