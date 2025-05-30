@@ -15,6 +15,8 @@ export default function AuthPage() {
   const [ruolo, setRuolo] = useState("studente");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [checkingSession, setCheckingSession] = useState(true);
+
   
 
   useEffect(() => {
@@ -38,6 +40,8 @@ export default function AuthPage() {
         }
       }
     }
+
+    setCheckingSession(false);
   };
 
   checkSession();
@@ -113,6 +117,7 @@ export default function AuthPage() {
           id: user.id,
           email: user.email,
           ruolo,
+          abbonamento_attivo: false,
         });
       }
 
@@ -121,6 +126,14 @@ export default function AuthPage() {
 
     setLoading(false);
   };
+
+  if (checkingSession) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800">
+      <p className="text-white text-lg">⏳ Verifica sessione...</p>
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center overflow-auto bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 px-3 py-8 sm:px-4 sm:py-12">
