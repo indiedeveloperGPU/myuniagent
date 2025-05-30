@@ -3,11 +3,13 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Toaster } from "react-hot-toast";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import 'katex/dist/katex.min.css';      
 import 'highlight.js/styles/github.css';       
 import 'highlight.js/styles/github-dark.css';  
 import "@/styles/globals.css";
 import 'katex/dist/contrib/mhchem.js';
+
 
 type CustomAppProps = AppProps & {
   Component: AppProps["Component"] & {
