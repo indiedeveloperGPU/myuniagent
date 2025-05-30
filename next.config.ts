@@ -1,18 +1,12 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   reactStrictMode: true,
-};
-
-module.exports = {
   api: {
     bodyParser: {
-      sizeLimit: "1mb",
-      // permette raw body per Stripe
-      // Stripe gestisce la firma sull'intero payload
+      sizeLimit: "1mb", // (facoltativo, utile per payload Stripe)
     },
+    externalResolver: true, // consigliato quando usi `micro` per il raw body
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
