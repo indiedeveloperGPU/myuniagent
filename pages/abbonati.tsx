@@ -93,7 +93,7 @@ export default function AbbonatiPage() {
   const res = await fetch("/api/checkout", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: user.email }),
+    body: JSON.stringify({ userId: user.id }),
   });
 
   const { url } = await res.json();
