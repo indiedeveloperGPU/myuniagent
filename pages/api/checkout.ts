@@ -10,9 +10,7 @@ if (!process.env.STRIPE_PRICE_ID) {
   throw new Error('STRIPE_PRICE_ID mancante nel file .env');
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-05-28.basil", // ✅ Versione API corretta
-});
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -34,9 +32,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Verifica origine per sicurezza (opzionale ma consigliato)
     const origin = req.headers.origin;
-    if (process.env.NODE_ENV === 'production' && !origin?.includes(process.env.NEXT_PUBLIC_SITE_URL || '')) {
-      return res.status(403).json({ error: "Origin non autorizzato" });
-    }
+    if (
+  process.env.NODE_ENV === "production" &&
+  origin &&
+  !origin.replace("https://", "").startsWith(process.env.NEXT_PUBLIC_SITE_URL?.replace("https://", "") || "")
+) {
+  return res.status(403).json({ error: "Origin non autorizzato" });
+}
+
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
