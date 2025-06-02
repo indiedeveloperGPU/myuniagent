@@ -83,18 +83,18 @@ export default function AbbonatiPage() {
 
 
   const handleCheckout = async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email) {
-    toast.error("Utente non autenticato.");
-    return;
-  }
+  if (!userId) {
+  toast.error("Utente non autenticato.");
+  return;
+}
 
-  setLoading(true);
-  const res = await fetch("/api/checkout", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId: user.id }),
-  });
+setLoading(true);
+const res = await fetch("/api/checkout", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ userId }),
+});
+
 
   const { url } = await res.json();
   setLoading(false);
