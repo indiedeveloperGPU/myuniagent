@@ -65,41 +65,47 @@ export default function AbbonatiPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-      } else {
+  const fetchUser = async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
         router.push("/auth");
+      } else {
+        setUserId(user.id);
       }
-    };
-    fetchUser();
-  }, []);
+    } catch (err) {
+      toast.error("Errore durante il recupero utente.");
+      router.push("/auth");
+    }
+  };
+  fetchUser();
+}, []);
 
-  const checkoutStripe = async () => {
-  const res = await fetch("/api/checkout", { method: "POST" });
-  const data = await res.json();
-  if (data.url) {
-    window.location.href = data.url;
-  }
-};
 
-const handleAbbonamento = async () => {
+  const handleCheckout = async () => {
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) {
+    toast.error("Utente non autenticato.");
+    return;
+  }
 
+  setLoading(true);
   const res = await fetch("/api/checkout", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email: user?.email }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: user.email }),
   });
 
   const { url } = await res.json();
+  setLoading(false);
+  
   if (url) {
     window.location.href = url;
+  } else {
+    toast.error("Errore nella creazione della sessione di pagamento.");
   }
 };
+
 
 
 
@@ -166,15 +172,13 @@ const handleAbbonamento = async () => {
         </p>
         <p className="text-3xl font-extrabold text-blue-700 dark:text-blue-400 mb-6">30€ / anno</p>
 
-        <button
-          onClick={checkoutStripe}
-          disabled={loading}
+        <button onClick={handleCheckout} disabled={loading}
           className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded shadow transition-colors duration-200"
         >
           {loading ? "Attivazione in corso..." : "Attiva ora"}
         </button>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-          Pagamento sicuro con Stripe. Nessun rinnovo automatico.
+          Pagamento sicuro con Stripe. Rinnovo automatico.
         </p>
       </motion.div>
 
