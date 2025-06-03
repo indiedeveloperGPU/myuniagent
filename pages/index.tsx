@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Typewriter } from "react-simple-typewriter";
+import Tilt from 'react-parallax-tilt';
+
 
 export default function Home() {
   const allFeatures = [
@@ -41,7 +43,11 @@ export default function Home() {
   ];
 
   return (
-    <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 text-white min-h-screen">
+    <div className="relative overflow-hidden bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 text-white min-h-screen">
+  {/* Orbs visivi decorativi */}
+  <div className="absolute top-[10%] left-[5%] w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse opacity-20 z-0" />
+  <div className="absolute top-[40%] right-[10%] w-48 h-48 bg-white/10 rounded-full blur-2xl animate-pulse opacity-20 z-0" />
+  <div className="absolute bottom-[5%] left-[30%] w-56 h-56 bg-white/10 rounded-full blur-2xl animate-pulse opacity-20 z-0" />
       {/* Navbar */}
       <header className="fixed top-0 left-0 w-full z-50 bg-gradient-to-r from-indigo-700 via-purple-700 to-pink-700/90 backdrop-blur border-b border-white/10 shadow-md shadow-black/10">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
@@ -60,7 +66,7 @@ export default function Home() {
         {/* Hero */}
         <section className="text-center py-24 px-6">
           <motion.h1 className="text-4xl sm:text-5xl font-bold mb-4 flex items-center justify-center gap-3">
-            <Image src="/graduation-cap.svg" alt="Icona laurea" width={80} height={80} />MyUniAgent: il tuo assistente accademico intelligente
+            <Image src="/graduation-cap.svg" alt="Icona laurea" width={80} height={80}/>MyUniAgent: il tuo assistente accademico intelligente
           </motion.h1>
           <motion.p className="text-lg text-gray-200 max-w-2xl mx-auto mb-6">
             Spiegazioni avanzate, analisi tesi, supporto per esami e Agente Fox a tua disposizione. Tutto in un'unica piattaforma.
@@ -72,19 +78,35 @@ export default function Home() {
 
         {/* Feature Grid */}
         <section id="features" className="py-20 px-6 max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">📚 Tutte le funzionalità disponibili</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {allFeatures.map((item, i) => (
-              <motion.div key={i} className="bg-white/5 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow hover:shadow-lg transition">
-                <div className="flex items-center gap-3 mb-3">
-                  <Image src={`/images/3d/${item.img}`} alt={item.title} width={40} height={40} />
-                  <h3 className="font-bold text-lg text-white">{item.title}</h3>
-                </div>
-                <p className="text-gray-300">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </section>
+        <h2 className="text-3xl font-bold text-center mb-12">📚 Tutte le funzionalità disponibili</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {allFeatures.map((item, i) => (
+  <Tilt
+    key={i}
+    glareEnable={true}
+    glareMaxOpacity={0.2}
+    glareColor="#ffffff"
+    glarePosition="all"
+    tiltMaxAngleX={10}
+    tiltMaxAngleY={10}
+    transitionSpeed={1500}
+    className="rounded-xl"
+  >
+    <motion.div
+      className="bg-white/5 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow hover:shadow-xl transition"
+      whileHover={{ scale: 1.02 }}
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <Image src={`/images/3d/${item.img}`} alt={item.title} width={40} height={40} />
+        <h3 className="font-bold text-lg text-white">{item.title}</h3>
+      </div>
+      <p className="text-gray-300">{item.desc}</p>
+    </motion.div>
+  </Tilt>
+))}
+
+        </div>
+      </section>
 
         {/* Agente Fox */}
         <section id="fox" className="py-24 px-6 bg-black/10 backdrop-blur-md border-t border-white/10">
