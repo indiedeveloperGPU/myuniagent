@@ -93,7 +93,7 @@ export default function Home() {
     className="rounded-xl"
   >
     <motion.div
-      className="bg-white/5 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow hover:shadow-xl transition"
+      className="bg-white/5 backdrop-blur-md p-6 rounded-xl border border-white/10 shadow-[0_0_20px_rgba(236,72,255,0.3)] hover:shadow-[0_0_30px_rgba(236,72,255,0.5)] transition duration-300"
       whileHover={{ scale: 1.02 }}
     >
       <div className="flex items-center gap-3 mb-3">
