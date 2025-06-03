@@ -94,7 +94,7 @@ export default function Home() {
               Un'intelligenza artificiale brillante, rapida, discreta. Interpreta documenti, risolve domande complesse, elabora concetti tecnici. Sempre pronto.
             </motion.p>
             <motion.div className="flex justify-center mb-6">
-              <Image src="/images/3d/fox-final.png" alt="Agente Fox" width={400} height={400} className="rounded-xl shadow-xl" />
+              <Image src="/images/fox-final.png" alt="Agente Fox" width={400} height={400} className="rounded-xl shadow-xl" />
             </motion.div>
           </div>
         </section>
