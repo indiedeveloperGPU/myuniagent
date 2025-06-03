@@ -28,7 +28,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { userId } = req.body;
-    console.log("📩 userId ricevuto:", userId);
 
 
     if (!userId) {
@@ -40,8 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select("email")
       .eq("id", userId)
       .single();
-      console.log("🔎 Profilo trovato:", profile);
-      console.log("❗ Profilo error:", profileError);
 
     if (profileError || !profile?.email) {
       console.error("❌ Email non trovata per userId:", userId);
@@ -86,7 +83,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         product: "MyUniAgent_Annual_Subscription",
       },
       billing_address_collection: "auto",
-      customer_creation: "always",
     });
 
     return res.status(200).json({ url: session.url });
