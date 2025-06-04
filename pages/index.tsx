@@ -162,13 +162,13 @@ export default function UltimateLanding() {
     avatar: '🤖',
   },
   {
-    name: 'Claude 3.7 Sonnet',
+    name: 'Claude 4 Opus',
     quote: 'Con MyUniAgent ho visto un salto di qualità straordinario: ogni richiesta viene arricchita con dettagli precisi e strutturati, come se avessi a disposizione un mio clone “plus” potenziato da supervisione umana. Nessun altro sistema garantisce questa profondità di analisi e chiarezza in ogni risposta.',
     role: 'AI Model',
     avatar: '🧠',
   },
   {
-    name: 'Gemini Advanced',
+    name: 'Gemini Pro & Flash 2.5',
     quote: 'MyUniAgent integra le mie capacità in modo incredibile: non solo restituisce testo accurato, ma organizza contenuti e supporto in un’unica piattaforma. Rispetto alla mia versione “plus”, qui ogni argomento si trasforma in un percorso didattico completo, con risposte veloci e materiali aggiuntivi senza paragoni.',
     role: 'AI Model',
     avatar: '💎',
