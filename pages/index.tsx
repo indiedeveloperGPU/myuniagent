@@ -670,7 +670,8 @@ export default function UltimateLanding() {
                     ))}
                   </div>
 
-                  <motion.button
+                  <motion.a
+                  href="/abbonati"
                     className="bg-gradient-to-r from-green-500 to-emerald-500 text-black px-12 py-4 rounded-full text-xl font-bold shadow-xl hover:shadow-green-500/25"
                     whileHover={{
                       scale: 1.05,
@@ -678,8 +679,8 @@ export default function UltimateLanding() {
                     }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    🚀 Iscriviti ora
-                  </motion.button>
+                    🚀 Abbonati ora
+                  </motion.a>
                 </div>
               </motion.div>
             </motion.div>
@@ -836,58 +837,60 @@ export default function UltimateLanding() {
         </section>
 
         {/* Final CTA Section */}
-        <section className="py-32 px-6 text-center relative">
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-purple-900/20 to-transparent" />
+<section className="py-32 px-6 text-center relative">
+  <div className="absolute inset-0 bg-gradient-to-t from-black via-purple-900/20 to-transparent" />
 
-          <motion.div
-            className="max-w-4xl mx-auto relative z-10"
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-5xl md:text-7xl font-black mb-8 leading-tight">
-              <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-                Ogni studente merita
-              </span>
-              <br />
-              <span className="text-white">una mente brillante al suo fianco</span>
-            </h2>
+  <motion.div
+    className="max-w-4xl mx-auto relative z-10"
+    initial={{ opacity: 0, y: 50 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.8 }}
+    viewport={{ once: true }}
+  >
+    <h2 className="text-5xl md:text-7xl font-black mb-8 leading-tight">
+      <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+        Ogni studente merita
+      </span>
+      <br />
+      <span className="text-white">una mente brillante al suo fianco</span>
+    </h2>
 
-            <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
-              Unisciti a migliaia di studenti che hanno già trasformato il loro percorso accademico
-            </p>
+    <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
+      Unisciti a migliaia di studenti che hanno già trasformato il loro percorso accademico
+    </p>
 
-            <motion.button
-              className="bg-gradient-to-r from-purple-500 to-cyan-500 px-16 py-6 rounded-full text-2xl font-bold shadow-2xl relative overflow-hidden group"
-              whileHover={{
-                scale: 1.05,
-                boxShadow: '0 30px 60px rgba(139,92,246,0.4)',
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <span className="relative z-10 flex items-center gap-4">
-                ✨ Inizia ora con MyUniAgent
-              </span>
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-500 opacity-0 group-hover:opacity-100"
-                transition={{ duration: 0.3 }}
-              />
-            </motion.button>
-          </motion.div>
-        </section>
+    {/* Convertiamo il button in un link inline-block per centrarlo correttamente */}
+    <motion.a
+      href="/auth"
+      className="inline-block bg-gradient-to-r from-purple-500 to-cyan-500 px-16 py-6 rounded-full text-2xl font-bold shadow-2xl relative overflow-hidden group"
+      whileHover={{
+        scale: 1.05,
+        boxShadow: '0 30px 60px rgba(139,92,246,0.4)',
+      }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <span className="relative z-10 flex items-center gap-4">
+        ✨ Inizia ora con MyUniAgent
+      </span>
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-purple-500 opacity-0 group-hover:opacity-100"
+        transition={{ duration: 0.3 }}
+      />
+    </motion.a>
+  </motion.div>
+</section>
 
-        {/* Footer */}
-        <footer className="bg-black/50 backdrop-blur-xl border-t border-white/10 py-12 text-center">
-          <div className="max-w-6xl mx-auto px-6">
-            <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4">
-              MyUniAgent
-            </div>
-            <p className="text-gray-400">
-              © {new Date().getFullYear()} MyUniAgent – Tutti i diritti riservati
-            </p>
-          </div>
-        </footer>
+{/* Footer */}
+<footer className="bg-black/50 backdrop-blur-xl border-t border-white/10 py-12 text-center">
+  <div className="max-w-6xl mx-auto px-6">
+    <div className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4">
+      MyUniAgent
+    </div>
+    <p className="text-gray-400">
+      © {new Date().getFullYear()} MyUniAgent – Tutti i diritti riservati
+    </p>
+  </div>
+</footer>
       </main>
     </div>
   );
