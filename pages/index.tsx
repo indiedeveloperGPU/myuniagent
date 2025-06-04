@@ -603,7 +603,7 @@ export default function UltimateLanding() {
       {/* Bottone per richiedere Fox (scroll o link a registrazione) */}
       <div className="pt-4">
         <motion.a
-          href="#auth"
+          href="auth"
           className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 px-12 py-4 rounded-full text-xl font-bold text-black shadow-lg group overflow-hidden relative"
           whileHover={{
             scale: 1.05,
