@@ -3,41 +3,10 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Typewriter } from "react-simple-typewriter";
 import Tilt from 'react-parallax-tilt';
-import * as THREE from "three";
 import Head from "next/head";
 import { useEffect, useRef } from "react";
 
 export default function Home() {
-  const vantaRef = useRef<HTMLDivElement>(null);
-
- useEffect(() => {
-  let vantaEffect: any = null;
-  if (typeof window !== "undefined") {
-    const VANTA = (window as any).VANTA?.NET;
-    if (VANTA && vantaRef.current) {
-      vantaEffect = VANTA({
-        el: vantaRef.current,
-        mouseControls: true,
-        touchControls: true,
-        gyroControls: false,
-        minHeight: 200.0,
-        minWidth: 200.0,
-        scale: 1.0,
-        scaleMobile: 1.0,
-        color: 0xff00ff,
-        backgroundColor: 0x0e0e1a,
-        points: 11.0,
-        maxDistance: 24.0,
-        spacing: 16.0,
-      });
-    }
-  }
-  return () => {
-    if (vantaEffect && vantaEffect.destroy) vantaEffect.destroy();
-  };
-}, []);
-
-
   const allFeatures = [
     { img: "feature-books.png", title: "Spiegazioni personalizzate", desc: "Risposte chiare, su misura per ogni domanda accademica." },
     { img: "feature-summary.png", title: "Riassunti automatici", desc: "Ottieni versioni sintetiche di testi lunghi o complessi." },
@@ -86,13 +55,8 @@ export default function Home() {
   ];
 
   return (
-  <>
-    <Head>
-      <script src="/js/three.r134.min.js"></script>
-      <script src="/js/vanta.net.min.js"></script>
-    </Head>
 
-    <div className="relative overflow-hidden bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800 text-white min-h-screen">
+    <div className="relative overflow-hidden text-white min-h-screen bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-gray-900 dark:to-gray-800">
       {/* Orbs visivi decorativi */}
       <div className="absolute top-[10%] left-[5%] w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse opacity-20 z-0" />
       <div className="absolute top-[40%] right-[10%] w-48 h-48 bg-white/10 rounded-full blur-2xl animate-pulse opacity-20 z-0" />
@@ -112,7 +76,7 @@ export default function Home() {
         </nav>
       </header>
 
-      <main ref={vantaRef} className="pt-24 min-h-screen">
+      <main className="pt-24 min-h-screen">
         {/* Hero */}
         <section className="text-center py-24 px-6">
           <motion.h1 className="text-4xl sm:text-5xl font-bold mb-4 flex items-center justify-center gap-3">
@@ -240,7 +204,5 @@ export default function Home() {
         © {new Date().getFullYear()} MyUniAgent – Tutti i diritti riservati
       </footer>
     </div>
-  </>
-);
+  )
 }
-
