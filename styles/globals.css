@@ -99,3 +99,7 @@ html:not(.dark) .katex * {
 .soft-pulse {
   animation: softPulse 3s ease-in-out infinite;
 }
+
+html {
+  scroll-behavior: smooth;
+}
