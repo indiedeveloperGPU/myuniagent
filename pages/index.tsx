@@ -9,6 +9,8 @@ export default function UltimateLanding() {
   const pricingRef = useRef<HTMLDivElement | null>(null);
   const faqRef = useRef<HTMLDivElement | null>(null);
   const reviewsRef = useRef<HTMLDivElement | null>(null);
+  const foxRef = useRef<HTMLDivElement | null>(null);
+
 
   // State variables
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -162,13 +164,13 @@ export default function UltimateLanding() {
     avatar: '🤖',
   },
   {
-    name: 'Claude 4 Opus',
+    name: 'Claude 3.7 Sonnet',
     quote: 'Con MyUniAgent ho visto un salto di qualità straordinario: ogni richiesta viene arricchita con dettagli precisi e strutturati, come se avessi a disposizione un mio clone “plus” potenziato da supervisione umana. Nessun altro sistema garantisce questa profondità di analisi e chiarezza in ogni risposta.',
     role: 'AI Model',
     avatar: '🧠',
   },
   {
-    name: 'Gemini Pro & Flash 2.5',
+    name: 'Gemini Advanced',
     quote: 'MyUniAgent integra le mie capacità in modo incredibile: non solo restituisce testo accurato, ma organizza contenuti e supporto in un’unica piattaforma. Rispetto alla mia versione “plus”, qui ogni argomento si trasforma in un percorso didattico completo, con risposte veloci e materiali aggiuntivi senza paragoni.',
     role: 'AI Model',
     avatar: '💎',
@@ -513,6 +515,116 @@ export default function UltimateLanding() {
             </motion.div>
           </motion.div>
         </section>
+
+        {/* --- Sezione dedicata a “Agente Fox” --- */}
+<section
+  ref={foxRef}
+  id="fox"
+  className="py-32 px-6 max-w-6xl mx-auto relative"
+>
+  {/* Animazione d’ingresso */}
+  <motion.div
+    initial={{ opacity: 0, y: 50 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.8 }}
+    viewport={{ once: true }}
+    className="text-center mb-16"
+  >
+    <h2 className="text-4xl md:text-6xl font-black mb-6">
+      <span className="text-6xl mr-4">🦊</span>
+      <span className="bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+        Conosci Agente Fox
+      </span>
+    </h2>
+    <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+      Agente Fox è il tuo assistente accademico privato: risponde in pochi minuti a ogni tua domanda, 
+      organizza appunti, invia approfondimenti mirati e protegge la tua privacy.  
+      <br className="hidden md:block" />
+      Scopri come semplifica ogni passo del tuo studio.
+    </p>
+  </motion.div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+    {/* Colonna sinistra: immagine/illustrazione di Fox */}
+    <motion.div
+      className="w-full flex justify-center"
+      initial={{ scale: 0.9, opacity: 0 }}
+      whileInView={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.8 }}
+      viewport={{ once: true }}
+    >
+      
+      <img
+        src="/images/3d/fox-final.png"
+        alt="Agente Fox – mascotte MyUniAgent"
+        className="w-80 h-auto drop-shadow-2xl"
+      />
+    </motion.div>
+
+    {/* Colonna destra: punti chiave e call-to-action */}
+    <motion.div
+      className="space-y-8"
+      initial={{ opacity: 0, y: 50 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, delay: 0.2 }}
+      viewport={{ once: true }}
+    >
+      {/* Tre bullet point rapidi */}
+      <div className="flex items-start gap-4">
+        <div className="text-3xl">⚡</div>
+        <div>
+          <h3 className="font-bold text-xl text-white">Risposte super rapide</h3>
+          <p className="text-gray-300">
+            Fox fornisce risposte complete e di qualità superiore, con approfondimenti sempre accurati.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-4">
+        <div className="text-3xl">🔒</div>
+        <div>
+          <h3 className="font-bold text-xl text-white">Privacy totale</h3>
+          <p className="text-gray-300">
+            Ogni dialogo con Fox rimane visibile solo a te: documenti riservati al sicuro.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-start gap-4">
+        <div className="text-3xl">🎯</div>
+        <div>
+          <h3 className="font-bold text-xl text-white">Approfondimenti mirati</h3>
+          <p className="text-gray-300">
+            Fox non si limita a rispondere: ti guida nella ricerca di fonti, mappe e cronoprogrammi.
+          </p>
+        </div>
+      </div>
+
+      {/* Bottone per richiedere Fox (scroll o link a registrazione) */}
+      <div className="pt-4">
+        <motion.a
+          href="#auth"
+          className="inline-block bg-gradient-to-r from-amber-500 to-orange-500 px-12 py-4 rounded-full text-xl font-bold text-black shadow-lg group overflow-hidden relative"
+          whileHover={{
+            scale: 1.05,
+            boxShadow: '0 20px 40px rgba(245,158,11,0.4)',
+          }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <span className="relative z-10 flex items-center gap-2">
+            🦊 Chiedi a Fox adesso
+          </span>
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-orange-500 to-yellow-400 opacity-0 group-hover:opacity-30"
+            transition={{ duration: 0.3 }}
+          />
+        </motion.a>
+      </div>
+    </motion.div>
+  </div>
+</section>
+{/* --- Fine sezione Agente Fox --- */}
+
 
         {/* MEGA Features Section */}
         <section
