@@ -753,7 +753,7 @@ export default function UltimateLanding() {
                 <div className="bg-black/80 rounded-3xl p-12 backdrop-blur-xl">
                   <div className="text-7xl font-black mb-4">
                     <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                      30€
+                      34.99€
                     </span>
                     <span className="text-2xl text-gray-400 font-normal">/anno</span>
                   </div>
