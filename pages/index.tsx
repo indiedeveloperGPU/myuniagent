@@ -387,7 +387,7 @@ export default function UltimateLanding() {
                 >
                   {/* Animated graduation cap */}
                   <motion.div
-                    className="text-8xl md:text-9xl mb-8 inline-block"
+                    className="w-32 h-32 mb-8 inline-block"
                     animate={{
                       rotate: [0, 5, -5, 0],
                       scale: [1, 1.1, 1],
