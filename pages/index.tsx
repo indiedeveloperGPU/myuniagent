@@ -491,18 +491,19 @@ export default function UltimateLanding() {
             className="text-center"
           >
             <motion.h2
-              className="text-4xl md:text-6xl font-black mb-12"
-              whileHover={{ scale: 1.02 }}
-            >
-             <img
+  className="flex items-center justify-center text-4xl md:text-6xl font-black mb-12"
+  whileHover={{ scale: 1.02 }}
+>
+  <img
     src="/images/3d/rocket.png"
     alt="Razzo 3D"
     className="w-16 h-16 mr-4 object-contain"
   />
-              <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                Chi siamo
-              </span>
-            </motion.h2>
+  <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+    Chi siamo
+  </span>
+</motion.h2>
+
 
             <motion.div
               className="bg-white/5 backdrop-blur-xl border border-white/20 rounded-3xl p-12 shadow-2xl"
