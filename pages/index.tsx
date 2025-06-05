@@ -477,6 +477,7 @@ export default function UltimateLanding() {
         </motion.section>
 
         {/* Enhanced About Section */}
+        {/* Enhanced About Section */}
         <section
           ref={aboutRef}
           id="about"
@@ -493,7 +494,11 @@ export default function UltimateLanding() {
               className="text-4xl md:text-6xl font-black mb-12"
               whileHover={{ scale: 1.02 }}
             >
-              <span className="text-6xl mr-4">🚀</span>
+             <img
+    src="/images/3d/rocket.png"
+    alt="Razzo 3D"
+    className="w-16 h-16 mr-4 object-contain"
+  />
               <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                 Chi siamo
               </span>
