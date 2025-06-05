@@ -7,6 +7,8 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import { useMemo } from "react";
+import toast, { Toaster } from 'react-hot-toast';
+
 
 interface ContenutoLight {
   id: string;
@@ -166,41 +168,112 @@ useEffect(() => {
 
 
   const inviaRisposte = async (contenuto: ContenutoCompleto) => {
-    const { data: session } = await supabase.auth.getUser();
-    if (!session.user) return;
+  const { data: session } = await supabase.auth.getUser();
+  if (!session.user) return;
 
-    const risposteUtente = Object.entries(risposte[contenuto.id] || {}).map(([idx, risposta]) => {
-      const quiz = contenuto.quiz[parseInt(idx)];
-      return {
-        domanda: quiz.domanda,
-        tipo: quiz.tipo,
-        opzioni: quiz.opzioni || [],
-        risposta_corretta: quiz.risposta,
-        risposta_utente: risposta,
-      };
-    });
+  const risposteUtente = Object.entries(risposte[contenuto.id] || {}).map(([idx, risposta]) => {
+    const quiz = contenuto.quiz[parseInt(idx)];
 
-    const payload = {
-      user_id: session.user.id,
-      contenuto_id: contenuto.id,
-      lingua,
-      livello,
-      risposte: risposteUtente,
-      stato: "in_attesa",
+    const normalizza = (val: string) => val.trim().toLowerCase();
+    const rispostaCorretta = Array.isArray(quiz.risposta)
+      ? quiz.risposta.map(normalizza)
+      : [normalizza(quiz.risposta)];
+    const rispostaUtenteNorm = normalizza(risposta);
+
+    const corretta = rispostaCorretta.includes(rispostaUtenteNorm);
+
+    return {
+      domanda: quiz.domanda,
+      tipo: quiz.tipo,
+      opzioni: quiz.opzioni || [],
+      risposta_corretta: quiz.risposta,
+      risposta_utente: risposta,
+      corretta,
     };
+  });
 
-    const { error } = await supabase.from("teoria_quiz_risposte").insert(payload);
+  const corrette = risposteUtente.filter((r) => r.corretta).length;
+  const totale = risposteUtente.length;
+  const voto = Math.floor((corrette / totale) * 10);
 
-    if (!error) {
-      setMessaggi((prev) => ({
-        ...prev,
-        [contenuto.id]: "✅ Risposte inviate. In attesa di valutazione da Agente Fox.",
-      }));
-    }
+  const payload = {
+    user_id: session.user.id,
+    contenuto_id: contenuto.id,
+    lingua,
+    livello,
+    risposte: risposteUtente,
+    stato: "corretto",
+    voto,
+    feedback: `Agente Fox ha corretto il tuo quiz: ${corrette} risposte corrette su ${totale}.`,
+    notificato: false,
+    updated_at: new Date().toISOString()
   };
+
+  const { error } = await supabase.from("teoria_quiz_risposte").insert(payload);
+
+  if (!error) {
+    setMessaggi((prev) => ({
+      ...prev,
+      [contenuto.id]: `✅ Corretto automaticamente! Hai ottenuto ${voto}/10.`,
+    }));
+    toast.custom((t) => (
+  <div
+    className={`${
+      t.visible ? 'animate-enter' : 'animate-leave'
+    } max-w-sm w-full bg-white dark:bg-gray-900 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 p-4`}
+  >
+    <div className="flex-shrink-0 mr-3">
+      <img src="/images/3d/fox-final.png" alt="Agente Fox" className="w-10 h-10 rounded-full" />
+    </div>
+    <div className="flex-1 w-0">
+      <p className="text-sm font-semibold text-gray-900 dark:text-white">Quiz corretto da Agente Fox!</p>
+      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+        Hai ottenuto <strong>{voto}/10</strong>. Ottimo lavoro!
+      </p>
+    </div>
+    <div className="ml-4 flex-shrink-0 flex items-center">
+      <button
+        onClick={() => toast.dismiss(t.id)}
+        className="text-gray-400 hover:text-gray-600 dark:hover:text-white"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+), { duration: 5000 });
+
+
+
+    setCompletati((prev) => {
+      const nuovi = new Set([...prev, contenuto.id]);
+
+      // 🔁 Seleziona automaticamente il prossimo modulo dello stesso argomento
+      const moduliArgomento = contenuti
+        .filter((m) => m.argomento === contenuto.argomento)
+        .sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0));
+
+      const indexCorrente = moduliArgomento.findIndex((m) => m.id === contenuto.id);
+      const prossimo = moduliArgomento[indexCorrente + 1];
+
+      if (prossimo && !nuovi.has(prossimo.id)) {
+        selezionaModulo(prossimo.id);
+      }
+
+      return nuovi;
+    });
+  } else {
+    setMessaggi((prev) => ({
+      ...prev,
+      [contenuto.id]: "❌ Errore durante il salvataggio. Riprova.",
+    }));
+  }
+};
+
+
 
   return (
     <DashboardLayout>
+      <Toaster position="top-right" reverseOrder={false} />
       <div className="flex gap-6">
         {/* Sidebar sinistra */}
         <div className="w-1/4 border-r pr-4">
@@ -351,4 +424,3 @@ useEffect(() => {
 }
 
 TeoriaGrammaticale.requireAuth = true;
-
