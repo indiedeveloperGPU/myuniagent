@@ -398,7 +398,11 @@ export default function UltimateLanding() {
                       ease: 'easeInOut',
                     }}
                   >
-                    🎓
+                    <img
+    src="/images/3d/laurea-cap.png"
+    alt="Cappello laurea"
+    className="w-full h-full object-contain"
+  />
                   </motion.div>
 
                   <motion.h1
