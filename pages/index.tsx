@@ -742,12 +742,15 @@ export default function UltimateLanding() {
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-4xl md:text-6xl font-black mb-6">
-                <span className="text-5xl mr-4">💸</span>
+              <img
+    src="/images/3d/payment.png"
+    alt="Pyment 3D"
+    className="w-24 h-24 mr-4 object-contain"
+  />
                 <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
                   Prezzo onesto
                 </span>
-              </h2>
+              
 
               <p className="text-xl md:text-2xl text-gray-200 mb-16 max-w-2xl mx-auto">
                 Un investimento nel tuo futuro accademico. Nessuna sorpresa, solo risultati
