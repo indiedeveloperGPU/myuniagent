@@ -7,6 +7,8 @@ import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import toast, { Toaster } from 'react-hot-toast';
+
 
 
 interface Parola {
@@ -191,14 +193,28 @@ const selezionaModulo = async (id: string) => {
 
   const risposteUtente = Object.entries(risposte[item.id] || {}).map(([idx, risposta]) => {
     const quiz = item.quiz[parseInt(idx)];
+
+    const normalizza = (val: string) => val.trim().toLowerCase();
+    const rispostaCorretta = Array.isArray(quiz.risposta)
+      ? quiz.risposta.map(normalizza)
+      : [normalizza(quiz.risposta)];
+    const rispostaUtenteNorm = normalizza(risposta);
+
+    const corretta = rispostaCorretta.includes(rispostaUtenteNorm);
+
     return {
       domanda: quiz.domanda,
       tipo: quiz.tipo,
       opzioni: quiz.opzioni || [],
       risposta_corretta: quiz.risposta,
       risposta_utente: risposta,
+      corretta,
     };
   });
+
+  const corrette = risposteUtente.filter((r) => r.corretta).length;
+  const totale = risposteUtente.length;
+  const voto = Math.floor((corrette / totale) * 10);
 
   const payload = {
     user_id: session.user.id,
@@ -207,7 +223,11 @@ const selezionaModulo = async (id: string) => {
     livello,
     tema: item.tema,
     risposte: risposteUtente,
-    stato: "in_attesa",
+    stato: "corretto",
+    voto,
+    feedback: `Agente Fox ha corretto il tuo quiz: ${corrette} risposte corrette su ${totale}.`,
+    notificato: false,
+    updated_at: new Date().toISOString()
   };
 
   const { error } = await supabase.from("vocabolario_risposte").insert(payload);
@@ -215,14 +235,69 @@ const selezionaModulo = async (id: string) => {
   if (!error) {
     setMessaggi((prev) => ({
       ...prev,
-      [item.id]: "✅ Risposte inviate. In attesa di valutazione da Agente Fox.",
+      [item.id]: `✅ Corretto automaticamente! Hai ottenuto ${voto}/10.`,
     }));
+
+    toast.success(`Quiz inviato! Agente Fox ti ha assegnato ${voto}/10.`);
+
+    setCompletati((prev) => {
+      const nuovi = new Set([...prev, item.id]);
+
+      // 🔁 Passaggio automatico al modulo successivo dello stesso tema
+      const moduliTema = vocabolario
+        .filter((m) => m.tema === item.tema)
+        .sort((a, b) => (a.ordine ?? 0) - (b.ordine ?? 0));
+
+      const indexCorrente = moduliTema.findIndex((m) => m.id === item.id);
+      const prossimo = moduliTema[indexCorrente + 1];
+
+      if (prossimo && !nuovi.has(prossimo.id)) {
+        setTimeout(() => {
+          selezionaModulo(prossimo.id);
+        }, 500);
+      }
+
+      return nuovi;
+    });
+  } else {
+    setMessaggi((prev) => ({
+      ...prev,
+      [item.id]: "❌ Errore durante il salvataggio. Riprova.",
+    }));
+    toast.custom((t) => (
+  <div
+    className={`${
+      t.visible ? 'animate-enter' : 'animate-leave'
+    } max-w-sm w-full bg-white dark:bg-gray-900 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 p-4`}
+  >
+    <div className="flex-shrink-0 mr-3">
+      <img src="/images/fox-toast.png" alt="Agente Fox" className="w-10 h-10 rounded-full" />
+    </div>
+    <div className="flex-1 w-0">
+      <p className="text-sm font-semibold text-gray-900 dark:text-white">Quiz corretto da Agente Fox!</p>
+      <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+        Hai ottenuto <strong>{voto}/10</strong>. Continua così!
+      </p>
+    </div>
+    <div className="ml-4 flex-shrink-0 flex items-center">
+      <button
+        onClick={() => toast.dismiss(t.id)}
+        className="text-gray-400 hover:text-gray-600 dark:hover:text-white"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+), { duration: 5000 });
+
   }
 };
 
 
+
   return (
     <DashboardLayout>
+      <Toaster position="top-right" reverseOrder={false} />
       <div className="flex gap-6">
         {/* Sidebar sinistra */}
         <div className="w-1/4 border-r pr-4 border-gray-200 dark:border-gray-700">
