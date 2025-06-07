@@ -8,6 +8,8 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
+import remarkGfm from 'remark-gfm';
+
 
 // COMPONENTE
 export default function Spiegazione() {
@@ -17,8 +19,6 @@ export default function Spiegazione() {
   const [userChecked, setUserChecked] = useState(false);
   const [chat, setChat] = useState<{ role: string; content: string }[]>([]);
   const [followUp, setFollowUp] = useState("");
-  const [inviatoAFox, setInviatoAFox] = useState(false);
-  const [fade, setFade] = useState(false); 
   const [livello, setLivello] = useState("superiori"); 
   const concetto = chat[0]?.role === "user" ? chat[0].content : "Argomento della spiegazione";
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,52 +47,6 @@ export default function Spiegazione() {
       caricaChatOGenera(concettoQuery);
     }
   }, [router.query]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (input) checkRispostaFox(input);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [input, chat]);
-
-  const checkRispostaFox = async (concetto: string) => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) return;
-
-    const res = await fetch("/api/fox/check", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ concetto }),
-    });
-
-    const data = await res.json();
-
-    if (data?.risposta && !chat.some(msg => msg.content.includes(data.risposta))) {
-      const nuovoMsg = {
-        role: "assistant",
-        content: `📥 Risposta da Agente Fox:\n${data.risposta}`
-      };
-      setChat((prev) => [...prev, nuovoMsg]);
-      toast.success("📩 Hai ricevuto una risposta da Agente Fox!");
-
-      // ✅ Salva nel DB
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.id) {
-        await supabase
-          .from("chat_spiegazioni")
-          .update({
-            messaggi: [...chat, nuovoMsg],
-            ultima_modifica: new Date().toISOString(),
-          })
-          .eq("user_id", user.id)
-          .eq("titolo", concetto);
-      }
-    }
-  };
 
   useEffect(() => {
     const caricaChatSalvate = async () => {
@@ -140,7 +94,6 @@ export default function Spiegazione() {
     }
 
     setLoading(false);
-    await checkRispostaFox(testo); // ✅ check se c'è risposta già salvata da Fox
   };
 
   const eliminaConversazione = async (titolo: string) => {
@@ -159,16 +112,23 @@ export default function Spiegazione() {
   };
 
   const normalizeLatex = (text: string): string => {
-  return text
-    .replace(/\\\\\[/g, '\\[')  // \\[ → \[
-    .replace(/\\\\\]/g, '\\]')  // \\] → \]
-    .replace(/\\\\\(/g, '\\(')  // \\( → \(
-    .replace(/\\\\\)/g, '\\)')  // \\) → \)
-    .replace(/\\\[/g, '$$')     // \[ → $$
-    .replace(/\\\]/g, '$$')     // \] → $$
-    .replace(/\\\(/g, '$')      // \( → $
-    .replace(/\\\)/g, '$');     // \) → $
+  let normalized = text
+    .replace(/\\\\\[/g, '\\[')
+    .replace(/\\\\\]/g, '\\]')
+    .replace(/\\\\\(/g, '\\(')
+    .replace(/\\\\\)/g, '\\)')
+    .replace(/\\\[/g, '$$')
+    .replace(/\\\]/g, '$$')
+    .replace(/\\\(/g, '$')
+    .replace(/\\\)/g, '$');
+  normalized = normalized.replace(/(^|[^$\\])([a-zA-Z0-9]+)\^(\([^)]+\)|[a-zA-Z0-9]+)/g, (match, before, base, exp) => {
+    return `${before}$${base}^{${exp.replace(/^\(|\)$/g, '')}}$`;
+  });
+
+  return normalized;
 };
+
+
 
 
   const generaSpiegazione = async (testo: string) => {
@@ -262,38 +222,99 @@ export default function Spiegazione() {
     }
   };
 
-  const inviaAgenteFox = async () => {
-    if (!input.trim()) {
-      toast.error("Inserisci prima una domanda o un concetto.");
-      return;
-    }
-  
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.id) {
-      toast.error("Non sei autenticato.");
-      return;
-    }
-  
-    const { error } = await supabase.from("agente_fox").insert({
-      user_id: user.id,
-      domanda: input,
-      stato: "in_attesa",
-      inviata_il: new Date().toISOString(),
+  const generaSpiegazioneFox = async (testo: string) => {
+  if (!testo || isSubmitting) return;
+
+  setIsSubmitting(true);
+  setLoading(true);
+  setRisposta("");
+  const userMessage = { role: "user" as const, content: testo };
+  const assistantPlaceholder = { role: "assistant" as const, content: "" };
+  setChat([userMessage, assistantPlaceholder]);
+
+  const session = await supabase.auth.getSession();
+  const token = session.data.session?.access_token;
+
+  try {
+    const res = await fetch("/api/spiegazione", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        concetto: testo,
+        livelloStudente: livello,
+      }),
     });
-  
-    if (!error) {
-      toast.success("Richiesta inviata ad Agente Fox!");
-      setInviatoAFox(true);
-      setFade(true); // 🔥 attiva fade-in
-  
-      setTimeout(() => {
-        setFade(false); // 🔥 fade-out dopo 7.5s
-        setTimeout(() => setInviatoAFox(false), 500); // 🔥 togli completamente dopo fade-out
-      }, 7500);
-    } else {
-      toast.error("Errore durante l'invio.");
+
+    if (!res.ok || !res.body) {
+      const errorData = await res.json().catch(() => ({ error: "Errore sconosciuto nel leggere la risposta" }));
+      toast.error(errorData.error || "Errore durante la richiesta ad Agente Fox.");
+      setChat(prevChat => prevChat.slice(0, prevChat.length - 1));
+      setLoading(false);
+      setIsSubmitting(false);
+      return;
     }
-  };
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedResponse = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      accumulatedResponse += chunk;
+      setChat(prevChat => {
+        const newChat = [...prevChat];
+        if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+          newChat[newChat.length - 1].content = accumulatedResponse;
+        }
+        return newChat;
+      });
+      setRisposta(accumulatedResponse);
+    }
+
+    const finalChunk = decoder.decode();
+    if (finalChunk) {
+      accumulatedResponse += finalChunk;
+      setChat(prevChat => {
+        const newChat = [...prevChat];
+        if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+          newChat[newChat.length - 1].content = accumulatedResponse;
+        }
+        return newChat;
+      });
+      setRisposta(accumulatedResponse);
+    }
+
+  } catch (error) {
+    console.error("Errore con Fox:", error);
+    toast.error("Errore durante la richiesta ad Agente Fox.");
+    setChat(prevChat => {
+      if (prevChat.length > 0 && prevChat[prevChat.length - 1].role === "assistant" && prevChat[prevChat.length - 1].content === "") {
+        return prevChat.slice(0, prevChat.length - 1);
+      }
+      return prevChat;
+    });
+  } finally {
+    setLoading(false);
+    setIsSubmitting(false);
+  }
+};
+
+
+  const inviaAgenteFox = async () => {
+  if (!input.trim()) {
+    toast.error("Inserisci prima una domanda o un concetto.");
+    return;
+  }
+
+  toast.success("🦊 Agente Fox sta generando la spiegazione...");
+  await generaSpiegazioneFox(input);
+};
+
   
 
   const inviaFollowUp = async () => {
@@ -387,16 +408,7 @@ export default function Spiegazione() {
       setIsSubmitting(false);
     }
   };
-
-  const handleSubmit = () => {
-    if (!input.trim()) {
-      toast.error("Inserisci un concetto prima di generare la spiegazione.");
-      return;
-    }
-    caricaChatOGenera(input);
-  };
   
-
   if (!userChecked) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
 
   return (
@@ -455,21 +467,9 @@ export default function Spiegazione() {
   </select>
 </div>
 
-
-        <button
-  onClick={handleSubmit}
-  disabled={!input.trim() || loading || isSubmitting}
-  className={`px-4 py-2 rounded text-white ${!input.trim() || loading? 'bg-blue-300 dark:bg-blue-700 cursor-not-allowed':'bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-800'}`}>{loading ? "Caricamento..." : "Genera spiegazione"}
-        </button>
         <button onClick={inviaAgenteFox} className="bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800 text-white px-4 py-2 rounded">
           🔎 Chiedi supporto all’Agente Fox 🦊
         </button>
-        {inviatoAFox && (
-  <div className={`bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-400 dark:border-yellow-300 text-yellow-800 dark:text-yellow-100 p-4 rounded mt-4 text-sm transition-all duration-500 ease-in-out ${fade ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
-    <strong>🦊 L’Agente Fox sta elaborando la tua richiesta.</strong><br />
-    Potrai visualizzare la risposta appena disponibile nella sezione <span className="font-medium">“Le mie richieste Agente Fox”</span>.
-  </div>
-)}
 
 
       </div>
@@ -525,12 +525,14 @@ export default function Spiegazione() {
             {msg.role === "user" ? "🙋‍♂️ Tu" : "🎓 MyUniAgent"}
           </div>
           <div className="max-w-none text-base leading-relaxed text-gray-900 dark:text-gray-100">
+<div className="prose prose-sm md:prose-base lg:prose-lg dark:prose-invert max-w-none markdown-table">
   <ReactMarkdown
-    remarkPlugins={[remarkMath]}
-    rehypePlugins={[rehypeKatex, rehypeHighlight]}
+   remarkPlugins={[remarkMath, remarkGfm]}
+   rehypePlugins={[rehypeKatex, rehypeHighlight]}
   >
     {normalizeLatex(msg.content)}
   </ReactMarkdown>
+  </div>
 </div>
 
 
