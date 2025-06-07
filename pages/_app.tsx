@@ -87,6 +87,14 @@ setIsSubscribed(hasValidSubscription);
     return <p className="text-center mt-10">🔐 Verifica autenticazione...</p>;
   }
 
+  if (Component.requireAuth && !isSubscribed) {
+  // opzionale: redirect automatico
+  if (typeof window !== 'undefined') {
+    router.push('/');
+  }
+  return <p className="text-center mt-10">🚫 Abbonamento non attivo. Reindirizzamento...</p>;
+}
+
   return (
     <>
       <Toaster position="top-right" reverseOrder={false} />
