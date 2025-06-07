@@ -22,6 +22,10 @@ export default function Spiegazione() {
   const [livello, setLivello] = useState("superiori"); 
   const concetto = chat[0]?.role === "user" ? chat[0].content : "Argomento della spiegazione";
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [suggerimenti, setSuggerimenti] = useState<string[]>([]);
+  const [mostraSuggerimenti, setMostraSuggerimenti] = useState(false);
+  const [suggerimentoLoading, setSuggerimentoLoading] = useState(false);
+
 
   const [followUpLoading, setFollowUpLoading] = useState(false);
   const [chatSalvate, setChatSalvate] = useState<{ titolo: string; data: string }[]>([]);
@@ -221,6 +225,50 @@ export default function Spiegazione() {
       setIsSubmitting(false);
     }
   };
+
+  const ottimizzaPrompt = async () => {
+  if (!input.trim()) {
+    toast.error("Inserisci una domanda prima.");
+    return;
+  }
+
+  setSuggerimentoLoading(true);
+  toast.loading("Analisi in corso... ✨", { id: "ottimizza" });
+  setMostraSuggerimenti(false);
+
+  const session = await supabase.auth.getSession();
+  const token = session.data.session?.access_token;
+
+  try {
+    const res = await fetch("/api/ottimizzaPrompt", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ domanda: input }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.suggestions) {
+      const suggeriti = data.suggestions
+        .split(/\\n|\\r|\\r\\n|•|-|\\*/g)
+        .map((s: string) => s.trim())
+       .filter((s: string) => s.length > 10);
+      setSuggerimenti(suggeriti.slice(0, 3));
+      setMostraSuggerimenti(true);
+    } else {
+      toast.error("Nessun suggerimento disponibile.");
+    }
+  } catch (error) {
+    console.error("Errore ottimizzazione:", error);
+    toast.error("Errore durante l'analisi della domanda.");
+  } finally {
+    setSuggerimentoLoading(false);
+    toast.dismiss("ottimizza");
+  }
+};
+
 
   const generaSpiegazioneFox = async (testo: string) => {
   if (!testo || isSubmitting) return;
@@ -467,12 +515,80 @@ export default function Spiegazione() {
   </select>
 </div>
 
-        <button onClick={inviaAgenteFox} className="bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800 text-white px-4 py-2 rounded">
-          🔎 Chiedi supporto all’Agente Fox 🦊
-        </button>
+        <button
+  onClick={() => generaSpiegazioneFox(input)}
+  disabled={!input.trim() || isSubmitting}
+  className={`relative bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800 text-white px-4 py-2 rounded transition flex items-center justify-center ${
+    isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+  }`}
+>
+  {isSubmitting ? (
+    <>
+      <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path
+          className="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8v8H4z"
+        />
+      </svg>
+      Attendi, Fox sta pensando...
+    </>
+  ) : (
+    <>
+      🦊 Chiedi supporto all’Agente Fox
+    </>
+  )}
+</button>
+
+        <button
+  onClick={ottimizzaPrompt}
+  disabled={!input.trim() || suggerimentoLoading}
+  className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 text-white px-4 py-2 rounded relative group transition-all"
+  title="Analizza e migliora la tua domanda per ottenere spiegazioni più precise"
+>
+  ✨ Ottimizza domanda
+  <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max text-xs text-white bg-gray-900 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+    Ricevi 1–3 versioni migliorate
+  </span>
+</button>
+
+
 
 
       </div>
+
+      {mostraSuggerimenti && suggerimenti.length > 0 && (
+  <div className="relative bg-yellow-50 dark:bg-yellow-800 border-l-4 border-yellow-500 text-yellow-900 dark:text-yellow-100 p-4 rounded shadow-md mb-4">
+    <button
+      onClick={() => setMostraSuggerimenti(false)}
+      className="absolute top-2 right-2 text-sm text-gray-400 hover:text-gray-800 dark:hover:text-white transition"
+      title="Chiudi suggerimenti"
+    >
+      ✖
+    </button>
+    <h2 className="font-semibold mb-2">🔍 Suggerimenti per migliorare la domanda:</h2>
+    <ul className="space-y-2">
+      {suggerimenti.map((sugg, i) => (
+        <li key={i} className="flex justify-between items-center bg-white dark:bg-gray-900 p-3 rounded border border-yellow-300 dark:border-gray-600 shadow-sm">
+          <span className="text-sm text-gray-700 dark:text-gray-100">{sugg}</span>
+          <button
+            className="ml-2 text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded flex items-center space-x-1 transition"
+            onClick={() => {
+              setInput(sugg);
+              setMostraSuggerimenti(false);
+              toast.success("Domanda sostituita con la versione ottimizzata.");
+            }}
+          >
+            <span>↪️ Usa</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+
+
 
       {chatSalvate.length > 0 && (
         <div className="mb-6">
