@@ -558,47 +558,43 @@ setSuggerimenti(filtrati.slice(0, 3));
     Ricevi 1–3 versioni migliorate
   </span>
 </button>
-
-
-
-
       </div>
-
       {mostraSuggerimenti && suggerimenti.length > 0 && (
-  <div className="relative bg-yellow-50 dark:bg-yellow-800 border-l-4 border-yellow-500 text-yellow-900 dark:text-yellow-100 p-5 rounded-lg shadow-md mb-6">
+  <div className="relative bg-white/80 dark:bg-[#1e1e1e]/80 backdrop-blur-md border border-gray-200 dark:border-gray-700 p-6 rounded-xl shadow-lg mb-6 transition-all">
     <button
       onClick={() => setMostraSuggerimenti(false)}
-      className="absolute top-2 right-2 text-sm text-gray-400 hover:text-gray-800 dark:hover:text-white transition"
+      className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-sm transition"
       title="Chiudi suggerimenti"
     >
       ✖
     </button>
-    <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-      <span>🔍</span>
-      <span>Suggerimenti per migliorare la domanda:</span>
+    <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+      <span className="text-blue-500">💡</span>
+      <span>Migliora la tua domanda</span>
     </h2>
-    <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-4">
+
+    <div className="grid gap-4">
       {suggerimenti.map((sugg, i) => (
-        <div key={i} className="bg-white dark:bg-gray-900 border border-yellow-300 dark:border-gray-700 rounded-md p-4 shadow-sm flex flex-col justify-between">
-          <p className="text-sm text-gray-800 dark:text-gray-100 mb-3">💡 {sugg}</p>
+        <div
+          key={i}
+          className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm transition hover:shadow-md flex justify-between items-start"
+        >
+          <p className="text-sm text-gray-800 dark:text-gray-100 max-w-[80%]">{sugg}</p>
           <button
-            className="self-end bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded flex items-center gap-1 transition"
+            className="text-sm bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-3 py-1.5 rounded-md shadow-sm transition"
             onClick={() => {
               setInput(sugg);
               setMostraSuggerimenti(false);
-              toast.success("Domanda sostituita con la versione ottimizzata.");
+              toast.success("Domanda ottimizzata selezionata.");
             }}
           >
-            ↪️ Usa questa
+            Usa
           </button>
         </div>
       ))}
     </div>
   </div>
 )}
-
-
-
 
       {chatSalvate.length > 0 && (
         <div className="mb-6">
