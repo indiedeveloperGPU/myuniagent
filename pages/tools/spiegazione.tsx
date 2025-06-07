@@ -251,11 +251,17 @@ export default function Spiegazione() {
 
     const data = await res.json();
     if (res.ok && data.suggestions) {
-      const suggeriti = data.suggestions
-        .split(/\\n|\\r|\\r\\n|•|-|\\*/g)
-        .map((s: string) => s.trim())
-       .filter((s: string) => s.length > 10);
-      setSuggerimenti(suggeriti.slice(0, 3));
+      if (Array.isArray(data.suggestions)) {
+  const suggeriti = data.suggestions
+    .map((s: string) => s.trim())
+    .filter((s: string) => s.length > 10);
+  const filtrati = suggeriti.filter((s: string) => !s.toLowerCase().startsWith("ecco alcune"));
+setSuggerimenti(filtrati.slice(0, 3));
+} else {
+  console.warn("Suggerimenti in formato inatteso:", data.suggestions);
+  toast.error("Errore nel ricevere i suggerimenti.");
+}
+
       setMostraSuggerimenti(true);
     } else {
       toast.error("Nessun suggerimento disponibile.");
@@ -559,7 +565,7 @@ export default function Spiegazione() {
       </div>
 
       {mostraSuggerimenti && suggerimenti.length > 0 && (
-  <div className="relative bg-yellow-50 dark:bg-yellow-800 border-l-4 border-yellow-500 text-yellow-900 dark:text-yellow-100 p-4 rounded shadow-md mb-4">
+  <div className="relative bg-yellow-50 dark:bg-yellow-800 border-l-4 border-yellow-500 text-yellow-900 dark:text-yellow-100 p-5 rounded-lg shadow-md mb-6">
     <button
       onClick={() => setMostraSuggerimenti(false)}
       className="absolute top-2 right-2 text-sm text-gray-400 hover:text-gray-800 dark:hover:text-white transition"
@@ -567,26 +573,30 @@ export default function Spiegazione() {
     >
       ✖
     </button>
-    <h2 className="font-semibold mb-2">🔍 Suggerimenti per migliorare la domanda:</h2>
-    <ul className="space-y-2">
+    <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+      <span>🔍</span>
+      <span>Suggerimenti per migliorare la domanda:</span>
+    </h2>
+    <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-4">
       {suggerimenti.map((sugg, i) => (
-        <li key={i} className="flex justify-between items-center bg-white dark:bg-gray-900 p-3 rounded border border-yellow-300 dark:border-gray-600 shadow-sm">
-          <span className="text-sm text-gray-700 dark:text-gray-100">{sugg}</span>
+        <div key={i} className="bg-white dark:bg-gray-900 border border-yellow-300 dark:border-gray-700 rounded-md p-4 shadow-sm flex flex-col justify-between">
+          <p className="text-sm text-gray-800 dark:text-gray-100 mb-3">💡 {sugg}</p>
           <button
-            className="ml-2 text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded flex items-center space-x-1 transition"
+            className="self-end bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-sm rounded flex items-center gap-1 transition"
             onClick={() => {
               setInput(sugg);
               setMostraSuggerimenti(false);
               toast.success("Domanda sostituita con la versione ottimizzata.");
             }}
           >
-            <span>↪️ Usa</span>
+            ↪️ Usa questa
           </button>
-        </li>
+        </div>
       ))}
-    </ul>
+    </div>
   </div>
 )}
+
 
 
 
