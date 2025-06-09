@@ -3,6 +3,11 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
 import { saveAs } from "file-saver";
 import { Document, Packer, Paragraph, TextRun } from "docx";
+import { pdfjs, Document as PDFDocument, Page } from "react-pdf";
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf-worker/pdf.worker.min.js";
+import dynamic from "next/dynamic";
+const PdfModal = dynamic(() => import("@/components/PdfModal"), { ssr: false });
+
 
 const MAX_CHARS = 3500;
 
@@ -19,6 +24,12 @@ export default function RiassuntoPage() {
   const [allegatoFox, setAllegatoFox] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+
+
 
 
   useEffect(() => {
@@ -67,6 +78,30 @@ export default function RiassuntoPage() {
     }
     return chunks;
   };
+
+  const formatText = () => {
+  const formatted = text
+    // Rimuove spazi multipli
+    .replace(/\s+/g, ' ')
+    // Gestisce i paragrafi (punto seguito da maiuscola)
+    .replace(/\.\s*([A-Z])/g, '.\n\n$1')
+    // Gestisce i due punti seguiti da maiuscola (definizioni)
+    .replace(/:\s*([A-Z])/g, ':\n$1')
+    // Gestisce separatori di pagina
+    .replace(/(=== PAGINA \d+ ===)/g, '\n\n$1\n\n')
+    // Gestisce titoli (righe corte in maiuscolo)
+    .replace(/\n([A-Z\s]{3,30})\n/g, '\n\n**$1**\n\n')
+    // Gestisce liste numerate
+    .replace(/\n(\d+[\.\)])\s*/g, '\n$1 ')
+    // Gestisce liste puntate
+    .replace(/\n([-•])\s*/g, '\n$1 ')
+    // Rimuove righe vuote multiple
+    .replace(/\n\s*\n\s*\n/g, '\n\n')
+    .trim();
+  
+  setText(formatted);
+};
+  
 
   const handleSubmitGPT = async () => {
   if (isSubmitting) return;           // blocca invii multipli
@@ -196,18 +231,33 @@ export default function RiassuntoPage() {
       return;
     }
     const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const response = await fetch("/api/estrai-testo", { method: "POST", body: formData });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Errore estrazione testo");
-      if (data.testo) {
-        setText(data.testo.trim());
-      }
-    } catch (err: any) {
-      setError(`Errore nel file ${file.name}: ${err.message}`);
-      return;
-    }
+formData.append("file", file);
+
+try {
+  // Se è un PDF, non mandarlo all’API, mostralo direttamente
+  if (file.type === "application/pdf") {
+    setSelectedPdfFile(file);
+    setIsPdfModalOpen(true);
+    return;
+  }
+
+  // Altrimenti, invia all'API per l'estrazione testo
+  const response = await fetch("/api/estrai-testo", {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Errore estrazione testo");
+
+  if (data.testo) {
+    setText(data.testo.trim());
+  }
+} catch (err: any) {
+  setError(`Errore nel file ${file.name}: ${err.message}`);
+  return;
+}
+
   };
 
   const handleExport = async () => {
@@ -226,6 +276,7 @@ export default function RiassuntoPage() {
     const blob = await Packer.toBlob(doc);
     saveAs(blob, "Riassunto_MyUniAgent.docx");
   };
+  
 
   if (!userChecked) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
 
@@ -257,10 +308,42 @@ export default function RiassuntoPage() {
 
           {modalitaFox === false && (
             <div className="mb-4">
-              <textarea className="w-full p-2 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700" rows={8} placeholder="Incolla il testo da riassumere..." value={text} onChange={(e) => setText(e.target.value)} />
-              <button onClick={handleSubmitGPT}disabled={!text || isSubmitting}className={`bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-blue-700 transition ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}>{isSubmitting ? "⏳ Generazione in corso..." : "📝 Riassumi"}</button>
+  <div className="flex flex-col">
+    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+      ✏️ Testo da riassumere
+    </label>
+    
+    <div
+      contentEditable
+      suppressContentEditableWarning
+      className="w-full p-4 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-mono text-sm leading-relaxed whitespace-pre-wrap min-h-[220px] max-h-[400px] overflow-y-auto outline-none focus:ring-2 focus:ring-blue-500"
+      onInput={(e) => setText(e.currentTarget.innerText)}
+      dangerouslySetInnerHTML={{ __html: text.replace(/\n/g, "<br>") }}
+    />
 
-            </div>
+    <div className="flex justify-between items-center mt-2">
+      <span className="text-xs text-gray-500">{text.length} caratteri • Max {MAX_CHARS} per blocco</span>
+      <button
+        onClick={() => setText("")}
+        disabled={!text.trim()}
+        className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs disabled:opacity-30"
+      >
+        🧹 Pulisci testo
+      </button>
+    </div>
+
+    <button
+      onClick={handleSubmitGPT}
+      disabled={!text || isSubmitting}
+      className={`bg-blue-600 text-white px-4 py-2 rounded mt-4 hover:bg-blue-700 transition ${
+        isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+      }`}
+    >
+      {isSubmitting ? "⏳ Generazione in corso..." : "📝 Riassumi"}
+    </button>
+  </div>
+</div>
+
           )}
 
           {modalitaFox === true && (
@@ -289,6 +372,22 @@ export default function RiassuntoPage() {
             <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 px-4 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-100 transition">📁 Carica file</button>
           </div>
 
+          {pdfUrl && (
+  <div className="mb-6 border border-gray-300 dark:border-gray-700 rounded p-2 bg-white dark:bg-gray-900">
+    <PDFDocument
+      file={pdfUrl}
+      onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+      className="w-full"
+    >
+      {Array.from(new Array(numPages), (el, index) => (
+        <Page key={`page_${index + 1}`} pageNumber={index + 1} width={600} />
+      ))}
+    </PDFDocument>
+    <p className="text-xs text-gray-500 mt-2">📄 Puoi selezionare e copiare il testo da qui, poi incollarlo nella textarea sopra per generare il riassunto.</p>
+  </div>
+)}
+
+
           {results.length > 0 && results.map((r, i) => (
             <div key={i} className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-4 rounded whitespace-pre-wrap border-l-4 border-blue-400">
               <h2 className="font-semibold mb-1">🧩 Blocco {i + 1}</h2>
@@ -305,6 +404,14 @@ export default function RiassuntoPage() {
           {error && (
             <p className="text-red-600 dark:text-red-400 mt-4 font-medium">{error}</p>
           )}
+          {selectedPdfFile && (
+  <PdfModal
+    isOpen={isPdfModalOpen}
+    onClose={() => setIsPdfModalOpen(false)}
+    file={selectedPdfFile}
+    onTextSelected={(text) => setText(text)}
+  />
+)}
         </>
       )}
     </DashboardLayout>
@@ -312,6 +419,3 @@ export default function RiassuntoPage() {
 }
 
 RiassuntoPage.requireAuth = true;
-
-
-
