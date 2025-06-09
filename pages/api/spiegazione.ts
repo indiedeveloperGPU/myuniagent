@@ -161,7 +161,7 @@ if (modelloKey === "maverick") {
   const instructStream = await openai.completions.create({
     model: modelloFinale,
     prompt: messaggiPrompt,
-    temperature: 0.3,
+    temperature: 0.2,
     max_tokens: 1000,
     stream: true,
   });
