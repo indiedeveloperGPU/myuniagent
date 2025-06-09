@@ -2,6 +2,7 @@ import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { pdfjs } from 'react-pdf';
 import { Toaster } from "react-hot-toast";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import 'katex/dist/katex.min.css';      
@@ -77,9 +78,6 @@ setIsSubscribed(hasValidSubscription);
 
   return () => mediaQuery.removeEventListener('change', applyTheme);
 }, [Component]);
-
-
-
 
   const getLayout = Component.getLayout || ((page) => page);
 
