@@ -9,7 +9,8 @@ import dynamic from "next/dynamic";
 const PdfModal = dynamic(() => import("@/components/PdfModal"), { ssr: false });
 
 
-const MAX_CHARS = 3500;
+const MAX_CHARS = 4800;
+const HARD_LIMIT = 5000;
 
 export default function RiassuntoPage() {
   const [modalitaFox, setModalitaFox] = useState<boolean | null>(null);
@@ -71,13 +72,55 @@ export default function RiassuntoPage() {
     return () => clearInterval(interval);
   }, [userChecked]);
 
-  const splitTextIntoBlocks = (input: string): string[] => {
-    const chunks: string[] = [];
-    for (let i = 0; i < input.length; i += MAX_CHARS) {
-      chunks.push(input.slice(i, i + MAX_CHARS));
+ const splitTextIntoBlocks = (input: string): string[] => {
+  const segmenter = new Intl.Segmenter("it", { granularity: "sentence" });
+  const sentences = Array.from(segmenter.segment(input)).map(s => s.segment.trim());
+
+  const blocks: string[] = [];
+  let currentBlock = "";
+
+  const pushBlock = () => {
+    if (currentBlock.trim().length > 0) {
+      blocks.push(currentBlock.trim());
+      currentBlock = "";
     }
-    return chunks;
   };
+
+  for (const sentence of sentences) {
+    const nextBlock = currentBlock + (currentBlock ? " " : "") + sentence;
+
+    if (nextBlock.length <= MAX_CHARS) {
+      currentBlock = nextBlock;
+    } else if (nextBlock.length <= HARD_LIMIT) {
+      // tolleranza massima accettata
+      currentBlock = nextBlock;
+      pushBlock();
+    } else if (sentence.length > HARD_LIMIT) {
+      // frase troppo lunga, la spezzettiamo a virgole o punti e virgola
+      const subChunks = sentence.split(/[,;](?![^\(\[]*[\)\]])/g); // evita split in parentesi
+      for (const part of subChunks) {
+        const trimmed = part.trim();
+        if (!trimmed) continue;
+        if ((currentBlock + " " + trimmed).length > MAX_CHARS) {
+          pushBlock();
+        }
+        currentBlock += (currentBlock ? " " : "") + trimmed;
+      }
+      pushBlock();
+    } else {
+      // normale push per frase che sfora oltre MAX_CHARS
+      pushBlock();
+      currentBlock = sentence;
+    }
+  }
+
+  if (currentBlock.trim()) {
+    blocks.push(currentBlock.trim());
+  }
+
+  return blocks;
+};
+
 
   const formatText = () => {
   const formatted = text
@@ -104,9 +147,8 @@ export default function RiassuntoPage() {
   
 
   const handleSubmitGPT = async () => {
-  if (isSubmitting) return;           // blocca invii multipli
-  setIsSubmitting(true);              // disattiva il pulsante
-
+  if (isSubmitting) return;
+  setIsSubmitting(true);
   setResults([]);
   setLoadingBlocks([]);
   const blocks = splitTextIntoBlocks(text.trim());
@@ -118,7 +160,7 @@ export default function RiassuntoPage() {
   const accessToken = sessionData.session?.access_token;
   if (!accessToken) {
     setError("Utente non autenticato.");
-    setIsSubmitting(false);          // riattiva se fallisce
+    setIsSubmitting(false);
     return;
   }
 
@@ -132,9 +174,24 @@ export default function RiassuntoPage() {
         },
         body: JSON.stringify({ testo: blocks[i] }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Errore nel riassunto.");
-      tempResults[i] = data.riassunto;
+
+      if (!res.ok || !res.body) {
+        throw new Error("Errore nella generazione del riassunto.");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        fullText += chunk;
+        tempResults[i] = fullText;
+        setResults([...tempResults]);
+      }
+
     } catch (err: any) {
       tempResults[i] = `❌ Errore nel blocco ${i + 1}: ${err.message}`;
     } finally {
@@ -144,9 +201,8 @@ export default function RiassuntoPage() {
     }
   }
 
-  setIsSubmitting(false);             // riattiva alla fine
+  setIsSubmitting(false);
 };
-
 
   const inviaAFox = async () => {
     const sessionResult = await supabase.auth.getSession();
@@ -296,11 +352,38 @@ try {
 
       {modalitaFox !== null && (
         <>
-          <div className="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500 text-blue-900 dark:text-blue-100 p-4 rounded mb-6">
-            <h2 className="font-semibold text-lg mb-1">ℹ️ Come funziona il riassunto</h2>
-            <p className="text-sm mb-2">Questo strumento genera <strong>riassunti dettagliati</strong> partendo da testo o file. Max 3500 caratteri in modalità classica.</p>
-            <p className="text-sm mb-2">🦊 Usa Fox per documenti lunghi!</p>
-          </div>
+          {modalitaFox !== null && (
+  modalitaFox ? (
+    <div className="bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-800 dark:to-orange-900 border-l-4 border-orange-500 text-orange-900 dark:text-orange-100 p-5 rounded-xl shadow-md transition-transform hover:scale-[1.02] mb-6">
+  <h2 className="font-bold text-lg flex items-center gap-2 mb-2">
+    <span>🦊</span>
+    <span>Modalità Agente Fox attiva</span>
+  </h2>
+  <p className="text-sm leading-relaxed mb-1">
+    In questa modalità puoi inviare <strong>documenti lunghi e complessi</strong> senza limiti rigidi. Il motore AI usato è più potente e adatto a testi accademici avanzati.
+  </p>
+  <p className="text-sm leading-relaxed mb-1">
+    Ogni richiesta viene <strong>verificata manualmente</strong> per garantire qualità e prevenire abusi.
+  </p>
+  <p className="text-sm leading-relaxed">
+    ⏳ L’elaborazione può richiedere <strong>fino a qualche ora</strong>, ma il risultato è altamente professionale.
+  </p>
+</div>
+  ) : (
+    <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-l-4 border-blue-500 text-blue-900 dark:text-blue-100 p-5 rounded-xl shadow-md transition-transform hover:scale-[1.02] mb-6">
+  <h2 className="font-bold text-lg flex items-center gap-2 mb-2">
+    <span>ℹ️</span>
+    <span>Come funziona il riassunto</span>
+  </h2>
+  <p className="text-sm leading-relaxed mb-1">
+    Puoi generare <strong>riassunti universitari avanzati</strong> incollando testo o caricando un PDF. Il sistema accetta <strong>fino a 60.000 caratteri</strong> per richiesta.
+  </p>
+  <p className="text-sm leading-relaxed">
+    🦊 Per testi lunghi e complessi, ti consigliamo di usare <strong>Agente Fox</strong>, che lavora su canali dedicati.
+  </p>
+</div>
+  )
+)}
 
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">✅ Modalità attiva: <strong>{modalitaFox ? "Riassunto avanzato con Agente Fox 🦊" : "Riassunto automatico 📝"}</strong></p>
 
