@@ -162,7 +162,7 @@ if (modelloKey === "maverick") {
     model: modelloFinale,
     prompt: messaggiPrompt,
     temperature: 0.2,
-    max_tokens: 1000,
+    max_tokens: 2000,
     stream: true,
   });
 
