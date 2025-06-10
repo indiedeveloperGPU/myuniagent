@@ -347,25 +347,29 @@ setSuggerimenti(filtrati.slice(0, 3));
         return newChat;
       });
       setRisposta(accumulatedResponse);
-      toast.custom((t) => (
-  <div
-    className={`${
-      t.visible ? "animate-enter" : "animate-leave"
-    } max-w-md w-full bg-green-600 text-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 px-4 py-3`}
-  >
-    <div className="flex-1 w-0">
-      <p className="text-sm font-medium">✅ Spiegazione salvata!</p>
-      <p className="text-sm opacity-90">Ora è disponibile nella tua sezione “Spiegazioni salvate”.</p>
-    </div>
-    <button
-      onClick={() => toast.dismiss(t.id)}
-      className="ml-4 text-white hover:text-gray-200"
-    >
-      ✖
-    </button>
-  </div>
-), { duration: 5000 });
     }
+    // ✅ CORRETTO - dopo lo stream
+if (accumulatedResponse.length > 20) {
+  toast.custom((t) => (
+    <div
+      className={`${
+        t.visible ? "animate-enter" : "animate-leave"
+      } max-w-md w-full bg-green-600 text-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 px-4 py-3`}
+    >
+      <div className="flex-1 w-0">
+        <p className="text-sm font-medium">✅ Spiegazione salvata!</p>
+        <p className="text-sm opacity-90">Ora è disponibile nella tua sezione “Spiegazioni salvate”.</p>
+      </div>
+      <button
+        onClick={() => toast.dismiss(t.id)}
+        className="ml-4 text-white hover:text-gray-200"
+      >
+        ✖
+      </button>
+    </div>
+  ), { duration: 5000 });
+}
+
 
     const finalChunk = decoder.decode();
     if (finalChunk) {
