@@ -17,7 +17,8 @@ export default function SimulazioniScrittePage() {
   const [simulazione, setSimulazione] = useState<any>(null);
   const [risposteMultiple, setRisposteMultiple] = useState<Record<number, string>>({});
   const [risposteAperte, setRisposteAperte] = useState<Record<number, string>>({});
-  const [correzione, setCorrezione] = useState("");
+  type CorrezioneItem = string | { soluzione: string };
+  const [correzione, setCorrezione] = useState<CorrezioneItem[]>([]);
   const [successo, setSuccesso] = useState(false);
   const [corso, setCorso] = useState("");
   const [erroriDomande, setErroriDomande] = useState<number[]>([]);
@@ -146,9 +147,9 @@ export default function SimulazioniScrittePage() {
   
     setLoading(true);
     setSimulazione(null);
-    setRisposteAperte("");
+    setRisposteAperte({});
     setErrore("");
-    setCorrezione("");
+    setCorrezione([]);
   
     try {
       const tabellaRisposte = categoria === "superiori"
@@ -281,10 +282,11 @@ export default function SimulazioniScrittePage() {
   
     setErroriDomande([]); // reset
   
-    if (!voto && voto !== 0) {
-      setErrore("Assegna un voto prima di correggere.");
-      return;
-    }
+    if (voto === null || voto === undefined || isNaN(voto)) {
+  setErrore("Assegna un voto prima di correggere.");
+  return;
+}
+
   
     setLoading(true);
     setErrore("");
@@ -678,6 +680,41 @@ export default function SimulazioniScrittePage() {
   />
 )}
 
+{correzione && correzione[index] && (
+  <div className="mt-3 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 text-sm">
+    <p className="mb-1">
+      <b>✅ Soluzione ideale:</b><br />
+      <span className="text-green-800 dark:text-green-300">
+        {typeof correzione[index] === "string"
+          ? correzione[index]
+          : correzione[index].soluzione}
+      </span>
+    </p>
+
+    {tipoSimulazione === "multiple" && (
+      <p
+        className={`font-semibold ${
+          risposteMultiple[index] ===
+          (typeof correzione[index] === "string"
+            ? correzione[index]
+            : correzione[index].soluzione)
+            ? "text-green-600"
+            : "text-red-600"
+        }`}
+      >
+        {risposteMultiple[index] ===
+        (typeof correzione[index] === "string"
+          ? correzione[index]
+          : correzione[index].soluzione)
+          ? "✅ Risposta corretta"
+          : "❌ Risposta errata"}
+      </p>
+    )}
+  </div>
+)}
+
+
+
           </div>
         ))}
     </div>
@@ -732,19 +769,7 @@ export default function SimulazioniScrittePage() {
   </div>
 )}
 
-{correzione && (
-  <div className="mt-8 bg-green-50 dark:bg-green-900/30 p-6 rounded border border-green-300 dark:border-green-700 text-gray-900 dark:text-gray-100">
-    <h2 className="text-lg font-semibold mb-4">✅ Soluzione Ideale:</h2>
-    <div className="space-y-2">
-      {Array.isArray(correzione) &&
-        correzione.map((item: any, index: number) => (
-          <p key={index} className="whitespace-pre-line">
-            <b>{index + 1}.</b> {item.soluzione}
-          </p>
-        ))}
-    </div>
-  </div>
-)}
+
 
     </DashboardLayout>
   );
