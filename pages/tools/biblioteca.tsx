@@ -179,3 +179,5 @@ function SpiegazioniSalvate() {
     </div>
   );
 }
+
+BibliotecaPage.requireauth = true;
