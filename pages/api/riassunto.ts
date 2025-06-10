@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import OpenAI from "openai";
+import { OpenAI } from "openai";
 import { createClient } from "@supabase/supabase-js";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.TOGETHER_API_KEY!,
+  baseURL: "https://api.together.xyz/v1",
 });
 
 const supabase = createClient(
@@ -11,69 +12,153 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Metodo non consentito" });
   }
 
   const token = req.headers.authorization?.replace("Bearer ", "");
-if (!token) {
-  return res.status(401).json({ error: "Token mancante" });
+  if (!token) return res.status(401).json({ error: "Token mancante" });
+
+  const { data: userData, error } = await supabase.auth.getUser(token);
+  if (error || !userData?.user) return res.status(401).json({ error: "Utente non autenticato" });
+
+  const user = userData.user;
+
+  const oggiInizio = new Date();
+  oggiInizio.setHours(0, 0, 0, 0);
+
+const { count, error: countError } = await supabase
+  .from("attivita")
+  .select("*", { count: "exact", head: true })
+  .eq("user_id", user.id)
+  .eq("tipo", "riassunto")
+  .gte("creato_il", oggiInizio.toISOString());
+
+if (countError) {
+  console.error("Errore conteggio riassunti:", countError);
+  return res.status(500).json({ error: "Errore controllo limite giornaliero" });
 }
 
-const { data: user, error } = await supabase.auth.getUser(token);
-if (error || !user) {
-  return res.status(401).json({ error: "Utente non autenticato" });
+const LIMITE_GIORNALIERO = 3;
+
+if ((count ?? 0) >= LIMITE_GIORNALIERO) {
+  return res.status(429).json({
+    error: `Hai raggiunto il limite di ${LIMITE_GIORNALIERO} riassunti al giorno. Riprova domani o contatta Agente Fox.`,
+  });
 }
 
 
-  const { testo } = req.body;
+  const origin = req.headers.origin || "";
+  const dominiAutorizzati = ["https://myuniagent.it", "http://localhost:3000"];
+  if (!dominiAutorizzati.includes(origin)) {
+    return res.status(403).json({ error: "Accesso non consentito da questa origine." });
+  }
+
+  const { testo } = req.body as { testo: string };
+
   if (!testo || typeof testo !== "string") {
     return res.status(400).json({ error: "Testo mancante o non valido" });
   }
 
-  if (testo.length > 10000) {
-    return res.status(400).json({ error: "Testo troppo lungo (max 10.000 caratteri)" });
+  if (testo.length > 60000) {
+    return res.status(400).json({ error: "Testo troppo lungo (max 60.000 caratteri)" });
   }
 
-  const prompt = `
-Sei MyUniAgent, un assistente AI accademico di nuova generazione, esperto nella comprensione e sintesi di testi scolastici e universitari.
+  const promptScout = `
+Agisci come MyUniAgent "Agente Speciale Fox", un'assistente accademico super intelligente che è di supporto agli studenti universitari. Devi eseguire un riassunto avanzato e completo partendo dal testo originale che ricevi.
+Utilizza sempre questa formula: Sempre il totale del testo totale diviso tre ( 1/3 del testo originale ).
+L'output non è un riassunto breve ma un vero sostituto del testo originale, deve permettere allo studente di prepararsi ad un'esame scritto o orale all'università. Leggi l'intero input per mapparne la struttura (Indice, Capitoli, Sezioni, Paragrafi). Identifica la tesi centrale, le argomentazioni secondarie e le relazioni causali tra i concetti. Massima attenzione all'aspetto critico, basati sempre sulle informazioni che sono nel testo input che leggi.
+Estrazione Esaustiva: Per ogni capitolo, estrai e cataloga internamente OGNI definizione, formula, principio, teoria, classificazione, data, nome, normativa ed esempio. Non omettere nulla che possa essere oggetto di domanda d'esame.
+Per ogni capitolo o sezione principale, genera l'output seguendo rigorosamente la seguente struttura:
+Header del Capitolo: Scrivi l'header con l'ID anchor (es. ## Capitolo 1 – Titolo {#titolo}).
+L'obiettivo è spiegare l'intera argomentazione del capitolo come farebbe un ottimo professore. Deve connettere le idee, spiegare le cause e le conseguenze e guidare lo studente attraverso il "perché" dei concetti, non solo il "cosa".
+Identifica 2-3 punti del capitolo che sono particolarmente complessi, controintuitivi, o cruciali per l'esame. Spiegane l'importanza e avvisa lo studente.
+Analizzando il testo, cita sempre esempi che possono essere pertinenti all'apprendimento.:
 
-Il tuo compito è riassumere il testo fornito in modo **chiaro, preciso, completo e dettagliato**, mantenendo uno **stile universitario e un linguaggio professionale.**
-
-Assicurati di:
-- Mantenere la **coerenza logica** del testo originale.
-- Includere tutti i **concetti chiave, le argomentazioni principali e i dettagli rilevanti** necessari per una comprensione approfondita del testo. Non tralasciare informazioni importanti.
-- Utilizzare uno **stile accademico, preciso e professionale**, adatto a un contesto universitario. Il linguaggio deve essere formale e ben strutturato.
-- Strutturare il riassunto in **paragrafi logici**, se necessario, per migliorare la leggibilità e l'organizzazione delle idee.
-- Non inventare contenuti o fare deduzioni che non siano esplicitamente supportate dal testo originale.
-- Se il testo contiene termini tecnici specifici, assicurati che siano usati correttamente nel contesto del riassunto.
-
-Ora, leggi attentamente il seguente testo e fornisci un riassunto **accurato, completo, dettagliato e accademico**:
-
-"""
-${testo}
-"""
+"""${testo}"""
   `;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", 
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3, 
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const stream = await openai.chat.completions.create({
+      model: "meta-llama/Llama-4-Scout-17B-16E-Instruct",
+      messages: [
+        { role: "system", content: promptScout }
+      ],
+      temperature: 0.15,
+      stream: true,
     });
 
-    const riassunto = completion.choices[0]?.message?.content?.trim();
+    let riassuntoCompleto = "";
 
-    if (!riassunto) {
-      throw new Error("Risposta vuota da OpenAI");
+    for await (const chunk of stream) {
+      const content = (chunk as any).choices?.[0]?.delta?.content || "";
+      if (content) {
+        riassuntoCompleto += content;
+        res.write(content);
+      }
     }
 
-    return res.status(200).json({ riassunto });
+    res.end();
+
+    // 🔒 SALVATAGGIO ASINCRONO
+setImmediate(async () => {
+  try {
+    const supabaseAuth = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user: authUser },
+      error: userError,
+    } = await supabaseAuth.auth.getUser();
+
+    if (userError || !authUser?.id) {
+      console.error("Errore nel recupero utente per salvataggio:", userError);
+      return;
+    }
+
+    const { error: insertError } = await supabaseAuth.from("attivita").insert({
+      user_id: authUser.id,
+      tipo: "riassunto",
+      input: testo.slice(0, 60000), 
+      output: riassuntoCompleto,
+      creato_il: new Date().toISOString(),
+    });
+
+    if (insertError) {
+      console.error("Errore salvataggio attivita riassunto:", insertError);
+    } else {
+      console.log("✅ Riassunto salvato su Supabase");
+    }
+  } catch (err) {
+    console.error("Errore nel salvataggio asincrono:", err);
+  }
+});
+
+
   } catch (err: any) {
-    console.error("Errore API GPT:", err);
-    return res.status(500).json({ error: "Errore durante la generazione del riassunto" });
+    console.error("Errore durante la generazione del riassunto:", err);
+    const errorMessage = err.response?.data?.error?.message || err.message || "Errore sconosciuto";
+    res.status(500).json({ error: "Errore generazione riassunto", details: errorMessage });
   }
 }
-
-
