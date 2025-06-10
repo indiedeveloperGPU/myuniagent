@@ -1,753 +1,741 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabaseClient";
+// IMPORT PRINCIPALI
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import DashboardLayout from "@/components/DashboardLayout";
-import Link from "next/link";
-import ReactMarkdown from 'react-markdown';
+import { supabase } from "@/lib/supabaseClient";
+import toast from "react-hot-toast";
+import ReactMarkdown from "react-markdown";
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeHighlight from 'rehype-highlight';
+import remarkGfm from 'remark-gfm';
+import ImageModal from "@/components/ImageModal";
+import TutorialModal from "@/components/TutorialModal";
 
-export default function SimulazioniScrittePage() {
-  const [categoria, setCategoria] = useState("superiori");
-  const [indirizzo, setIndirizzo] = useState("");
-  const [facolta, setFacolta] = useState("");
-  const [materia, setMateria] = useState("");
-  const [argomento, setArgomento] = useState("");
-  const [tipoSimulazione, setTipoSimulazione] = useState("");
-  const [materieDisponibili, setMaterieDisponibili] = useState<string[]>([]);
-  const [argomentiDisponibili, setArgomentiDisponibili] = useState<string[]>([]);
-  const [tipologieDisponibili, setTipologieDisponibili] = useState<string[]>([]);
-  const [simulazione, setSimulazione] = useState<any>(null);
-  const [risposteMultiple, setRisposteMultiple] = useState<Record<number, string>>({});
-  const [risposteAperte, setRisposteAperte] = useState<Record<number, string>>({});
-  const [correzione, setCorrezione] = useState("");
-  const [successo, setSuccesso] = useState(false);
-  const [corso, setCorso] = useState("");
-  const [erroriDomande, setErroriDomande] = useState<number[]>([]);
-  const [voto, setVoto] = useState(0);
-  const [lode, setLode] = useState(false);
-  const [user, setUser] = useState<any>(null);
+
+
+
+// COMPONENTE
+export default function Spiegazione() {
+  const [input, setInput] = useState("");
+  const [risposta, setRisposta] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errore, setErrore] = useState("");
+  const [userChecked, setUserChecked] = useState(false);
+  const [chat, setChat] = useState<{ role: string; content: string }[]>([]);
+  const [followUp, setFollowUp] = useState("");
+  const [livello, setLivello] = useState("superiori"); 
+  const concetto = chat[0]?.role === "user" ? chat[0].content : "Argomento della spiegazione";
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [suggerimenti, setSuggerimenti] = useState<string[]>([]);
+  const [mostraSuggerimenti, setMostraSuggerimenti] = useState(false);
+  const [mostraTutorial, setMostraTutorial] = useState(false);
+  const [suggerimentoLoading, setSuggerimentoLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
 
-  const getTabellaSimulazioni = () => {
-    return categoria === "superiori"
-      ? "simulazioni_scritti_superiori"
-      : "simulazioni_scritti_universita";
-  };
-  
-  
+
+
+  const [followUpLoading, setFollowUpLoading] = useState(false);
+  const [chatSalvate, setChatSalvate] = useState<{ titolo: string; creata: string; modificata: string }[]>([]);
+
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
-      if (!data.user) window.location.href = "/auth";
-      setUser(data.user);
+      if (!data.user) {
+        window.location.href = "/auth";
+        return;
+      }
+      setUserChecked(true);
     };
-    fetchUser();
+    checkUser();
   }, []);
 
   useEffect(() => {
-    const fetchMaterie = async () => {
-      const filtro = categoria === "superiori"
-          ? { categoria, indirizzo }
-          : { facolta };
-
-
-      if ((categoria === "superiori" && indirizzo) || (categoria === "università" && facolta)) {
-        const { data, error } = await supabase
-        .from(getTabellaSimulazioni())
-          .select("materia")
-          .match(filtro)
-          .neq("materia", null);
-
-        if (!error && data) {
-          const uniche = [...new Set(data.map((d) => d.materia))];
-          setMaterieDisponibili(uniche);
-        }
-      } else {
-        setMaterieDisponibili([]);
-      }
-      setMateria("");
-      setArgomento("");
-      setArgomentiDisponibili([]);
-    };
-    fetchMaterie();
-  }, [categoria, indirizzo, facolta]);
-
-  useEffect(() => {
-    if (errore) {
-      const timer = setTimeout(() => setErrore(""), 5000);
-      return () => clearTimeout(timer);
+    const concettoQuery = router.query.concetto as string;
+    if (concettoQuery) {
+      setInput(concettoQuery);
+      caricaChatOGenera(concettoQuery);
     }
-  }, [errore]);
-  
-  useEffect(() => {
-    if (successo) {
-      const timer = setTimeout(() => setSuccesso(false), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [successo]);
-  
+  }, [router.query]);
 
   useEffect(() => {
-    const fetchArgomenti = async () => {
-      if (materia) {
-        const { data, error } = await supabase
-        .from(getTabellaSimulazioni())
-          .select("argomento")
-          .eq("materia", materia)
-          .neq("argomento", null);
+    const caricaChatSalvate = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return;
 
-        if (!error && data) {
-          const unici = [...new Set(data.map((d) => d.argomento))];
-          setArgomentiDisponibili(unici);
-        }
-      } else {
-        setArgomentiDisponibili([]);
-      }
-      setArgomento("");
+      const { data } = await supabase
+        .from("chat_spiegazioni")
+  .select("titolo, creata_il, ultima_modifica")
+  .eq("user_id", user.id)
+  .order("ultima_modifica", { ascending: false });
+
+      if (data) {
+  setChatSalvate(data.map(chat => ({
+    titolo: chat.titolo,
+    creata: new Date(chat.creata_il).toLocaleDateString(),
+    modificata: new Date(chat.ultima_modifica).toLocaleString(),
+  })));
+}
     };
-    fetchArgomenti();
-  }, [materia]);
 
-  useEffect(() => {
-    const fetchTipologie = async () => {
-      if (materia && argomento) {
-        const { data, error } = await supabase
-        .from(getTabellaSimulazioni())
-          .select("tipo")
-          .eq("materia", materia)
-          .eq("argomento", argomento);
+    if (userChecked) caricaChatSalvate();
+  }, [userChecked]);
 
-        if (!error && data) {
-          const tipiUnici = [...new Set(data.map((d) => d.tipo))];
-          setTipologieDisponibili(tipiUnici);
-          if (tipiUnici.length === 1) {
-            setTipoSimulazione(tipiUnici[0]);
+  const caricaChatOGenera = async (testo: string) => {
+    setInput(testo);
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) return generaSpiegazione(testo);
+
+    const { data: chatEsistente } = await supabase
+      .from("chat_spiegazioni")
+      .select("messaggi")
+      .eq("user_id", user.id)
+      .eq("titolo", testo)
+      .maybeSingle()
+
+    if (chatEsistente?.messaggi) {
+      setChat(chatEsistente.messaggi);
+      const last = chatEsistente.messaggi
+        .slice().reverse()
+        .find((msg: any) => msg.role === "assistant")?.content;
+      if (last) setRisposta(last);
+    } else {
+      generaSpiegazione(testo);
+    }
+
+    setLoading(false);
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const url = URL.createObjectURL(file);
+  setImageUrl(url);
+  setShowImageModal(true);
+};
+
+
+  const eliminaConversazione = async (titolo: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) return;
+    await supabase
+      .from("chat_spiegazioni")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("titolo", titolo);
+
+    setChatSalvate(prev => prev.filter(c => c.titolo !== titolo));
+    if (input === titolo) {
+      setInput(""); setChat([]); setRisposta("");
+    }
+  };
+
+  const normalizeLatex = (text: string): string => {
+  let normalized = text
+    .replace(/\\\\\[/g, '\\[')
+    .replace(/\\\\\]/g, '\\]')
+    .replace(/\\\\\(/g, '\\(')
+    .replace(/\\\\\)/g, '\\)')
+    .replace(/\\\[/g, '$$')
+    .replace(/\\\]/g, '$$')
+    .replace(/\\\(/g, '$')
+    .replace(/\\\)/g, '$');
+  normalized = normalized.replace(/(^|[^$\\])([a-zA-Z0-9]+)\^(\([^)]+\)|[a-zA-Z0-9]+)/g, (match, before, base, exp) => {
+    return `${before}$${base}^{${exp.replace(/^\(|\)$/g, '')}}$`;
+  });
+
+  return normalized;
+};
+
+
+
+
+  const generaSpiegazione = async (testo: string) => {
+    if (!testo || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setLoading(true);
+    setRisposta(""); // Pulisci la risposta precedente
+    // Aggiungi subito il messaggio dell'utente e un segnaposto per l'assistente
+    const userMessage = { role: "user" as const, content: testo };
+    const assistantPlaceholder = { role: "assistant" as const, content: "" }; // Inizia vuoto
+    setChat([userMessage, assistantPlaceholder]);
+
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+
+    try {
+      const res = await fetch("/api/spiegazione", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          concetto: testo,
+          livelloStudente: livello, // Assicurati che 'livello' sia lo stato corretto
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        // Se la risposta non è ok (es. errore 500, 400 prima dello stream)
+        // o se non c'è un corpo della risposta, gestisci l'errore.
+        const errorData = await res.json().catch(() => ({ error: "Errore sconosciuto nel leggere la risposta" }));
+        toast.error(errorData.error || "Errore durante la generazione della spiegazione.");
+        setChat(prevChat => prevChat.slice(0, prevChat.length -1)); // Rimuovi il placeholder dell'assistente
+        setLoading(false);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 🔥 Inizio gestione dello stream
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedResponse = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break; // Lo stream è terminato
+
+        const chunk = decoder.decode(value, { stream: true });
+        accumulatedResponse += chunk;
+
+        // Aggiorna l'ultimo messaggio (quello dell'assistente) nella chat
+        setChat(prevChat => {
+          const newChat = [...prevChat];
+          if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+            newChat[newChat.length - 1].content = accumulatedResponse;
           }
+          return newChat;
+        });
+        setRisposta(accumulatedResponse); // Aggiorna anche lo stato 'risposta' se lo usi per display separato
+      }
+      // Assicurati che l'ultimo pezzetto sia processato se il decoder ha bufferizzato qualcosa
+      const finalChunk = decoder.decode();
+       if (finalChunk) {
+           accumulatedResponse += finalChunk;
+           setChat(prevChat => {
+               const newChat = [...prevChat];
+               if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+                   newChat[newChat.length - 1].content = accumulatedResponse;
+               }
+               return newChat;
+           });
+           setRisposta(accumulatedResponse);
+       }
+      // 🔥 Fine gestione dello stream
+
+    } catch (error) {
+      console.error("Errore nel fetch o nello streaming:", error);
+      toast.error("Si è verificato un errore durante la richiesta.");
+      // Potresti voler rimuovere il placeholder dell'assistente anche qui
+       setChat(prevChat => {
+           if (prevChat.length > 0 && prevChat[prevChat.length -1].role === "assistant" && prevChat[prevChat.length -1].content === "") {
+               return prevChat.slice(0, prevChat.length -1);
+           }
+           return prevChat;
+       });
+    } finally {
+      setLoading(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const ottimizzaPrompt = async () => {
+  if (!input.trim()) {
+    toast.error("Inserisci una domanda prima.");
+    return;
+  }
+
+  setSuggerimentoLoading(true);
+  toast.loading("Analisi in corso... ✨", { id: "ottimizza" });
+  setMostraSuggerimenti(false);
+
+  const session = await supabase.auth.getSession();
+  const token = session.data.session?.access_token;
+
+  try {
+    const res = await fetch("/api/ottimizzaPrompt", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ domanda: input }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.suggestions) {
+      if (Array.isArray(data.suggestions)) {
+  const suggeriti = data.suggestions
+    .map((s: string) => s.trim())
+    .filter((s: string) => s.length > 10);
+  const filtrati = suggeriti.filter((s: string) => !s.toLowerCase().startsWith("ecco alcune"));
+setSuggerimenti(filtrati.slice(0, 3));
+} else {
+  console.warn("Suggerimenti in formato inatteso:", data.suggestions);
+  toast.error("Errore nel ricevere i suggerimenti.");
+}
+
+      setMostraSuggerimenti(true);
+    } else {
+      toast.error("Nessun suggerimento disponibile.");
+    }
+  } catch (error) {
+    console.error("Errore ottimizzazione:", error);
+    toast.error("Errore durante l'analisi della domanda.");
+  } finally {
+    setSuggerimentoLoading(false);
+    toast.dismiss("ottimizza");
+  }
+};
+
+
+  const generaSpiegazioneFox = async (testo: string) => {
+  if (!testo || isSubmitting) return;
+
+  setIsSubmitting(true);
+  setLoading(true);
+  setRisposta("");
+  const userMessage = { role: "user" as const, content: testo };
+  const assistantPlaceholder = { role: "assistant" as const, content: "" };
+  setChat([userMessage, assistantPlaceholder]);
+
+  const session = await supabase.auth.getSession();
+  const token = session.data.session?.access_token;
+
+  try {
+    const res = await fetch("/api/spiegazione", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        concetto: testo,
+        livelloStudente: livello,
+      }),
+    });
+
+    if (!res.ok || !res.body) {
+      const errorData = await res.json().catch(() => ({ error: "Errore sconosciuto nel leggere la risposta" }));
+      toast.error(errorData.error || "Errore durante la richiesta ad Agente Fox.");
+      setChat(prevChat => prevChat.slice(0, prevChat.length - 1));
+      setLoading(false);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedResponse = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      accumulatedResponse += chunk;
+      setChat(prevChat => {
+        const newChat = [...prevChat];
+        if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+          newChat[newChat.length - 1].content = accumulatedResponse;
         }
-      } else {
-        setTipologieDisponibili([]);
-      }
-    };
-    fetchTipologie();
-  }, [materia, argomento]);
-
-  const generaSimulazione = async () => {
-    if (
-      !categoria ||
-      (!indirizzo && !facolta) ||
-      (categoria === "università" && !corso) ||
-      !materia ||
-      !argomento ||
-      !tipoSimulazione
-    ) {
-      setErrore("Inserisci tutti i campi richiesti.");
-      return;
+        return newChat;
+      });
+      setRisposta(accumulatedResponse);
+      toast.custom((t) => (
+  <div
+    className={`${
+      t.visible ? "animate-enter" : "animate-leave"
+    } max-w-md w-full bg-green-600 text-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 px-4 py-3`}
+  >
+    <div className="flex-1 w-0">
+      <p className="text-sm font-medium">✅ Spiegazione salvata!</p>
+      <p className="text-sm opacity-90">Ora è disponibile nella tua sezione “Spiegazioni salvate”.</p>
+    </div>
+    <button
+      onClick={() => toast.dismiss(t.id)}
+      className="ml-4 text-white hover:text-gray-200"
+    >
+      ✖
+    </button>
+  </div>
+), { duration: 5000 });
     }
+
+    const finalChunk = decoder.decode();
+    if (finalChunk) {
+      accumulatedResponse += finalChunk;
+      setChat(prevChat => {
+        const newChat = [...prevChat];
+        if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+          newChat[newChat.length - 1].content = accumulatedResponse;
+        }
+        return newChat;
+      });
+      setRisposta(accumulatedResponse);
+    }
+
+  } catch (error) {
+    console.error("Errore con Fox:", error);
+    toast.error("Errore durante la richiesta ad Agente Fox.");
+    setChat(prevChat => {
+      if (prevChat.length > 0 && prevChat[prevChat.length - 1].role === "assistant" && prevChat[prevChat.length - 1].content === "") {
+        return prevChat.slice(0, prevChat.length - 1);
+      }
+      return prevChat;
+    });
+  } finally {
+    setLoading(false);
+    setIsSubmitting(false);
+  }
+};
+
+
+  const inviaAgenteFox = async () => {
+  if (!input.trim()) {
+    toast.error("Inserisci prima una domanda o un concetto.");
+    return;
+  }
+
+  toast.success("🦊 Agente Fox sta generando la spiegazione...");
+  await generaSpiegazioneFox(input);
+};
+
   
-    setLoading(true);
-    setSimulazione(null);
-    setRisposteAperte("");
-    setErrore("");
-    setCorrezione("");
-  
+
+  const inviaFollowUp = async () => {
+    if (!followUp.trim() || isSubmitting || followUpLoading) return; // Aggiunto followUpLoading al controllo
+
+    setIsSubmitting(true);
+    setFollowUpLoading(true);
+
+    const userMessageContent = followUp;
+    // Aggiungi subito il messaggio dell'utente alla chat
+    const newChatWithMessage = [...chat, { role: "user" as const, content: userMessageContent }];
+    // Aggiungi un segnaposto per la risposta dell'assistente
+    const assistantPlaceholder = { role: "assistant" as const, content: "" };
+    setChat([...newChatWithMessage, assistantPlaceholder]);
+    setFollowUp(""); // Svuota l'input del follow-up
+    setRisposta(""); // Pulisci la risposta precedente
+
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+
     try {
-      const tabellaRisposte = categoria === "superiori"
-        ? "simulazioni_scritti_risposte_superiori"
-        : "simulazioni_scritti_risposte_universita";
-  
-      // Recupera versioni già svolte
-      let queryRisposte = supabase
-        .from(tabellaRisposte)
-        .select(
-          categoria === "superiori"
-            ? "versione, indirizzo"
-            : "versione, facolta, corso"
-        )
-        .eq("user_id", user.id)
-        .eq("materia", materia)
-        .eq("argomento", argomento)
-        .eq("tipo", tipoSimulazione);
-  
-      const { data: svolteRaw, error: erroreSvolte } = await queryRisposte;
-  
-      let versioniSvolte: string[] = [];
-  
-      if (erroreSvolte) {
-        console.error("Errore recupero versioni svolte:", erroreSvolte.message);
-      } else if (Array.isArray(svolteRaw)) {
-        versioniSvolte = svolteRaw
-          .filter((r: any) =>
-            categoria === "superiori"
-              ? r.indirizzo === indirizzo
-              : r.facolta === facolta && r.corso === corso
-          )
-          .map((r: any) => r.versione)
-          .filter(Boolean);
+      const res = await fetch("/api/spiegazione", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          concetto: chat[0]?.content || "Argomento sconosciuto", // Usa il primo messaggio come concetto base
+          followUp: newChatWithMessage, // Invia la cronologia fino al messaggio dell'utente corrente
+          livelloStudente: livello,
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        const errorData = await res.json().catch(() => ({ error: "Errore sconosciuto nel leggere la risposta del follow-up" }));
+        toast.error(errorData.error || "Errore durante l'invio del follow-up.");
+        setChat(prevChat => prevChat.slice(0, prevChat.length -1)); // Rimuovi il placeholder dell'assistente
+        setFollowUpLoading(false);
+        setIsSubmitting(false);
+        return;
       }
-  
-      // Query simulazioni escluse quelle già fatte
-      let query = supabase
-        .from(getTabellaSimulazioni())
-        .select("*")
-        .eq("materia", materia)
-        .eq("argomento", argomento)
-        .eq("tipo", tipoSimulazione);
-  
-      if (categoria === "superiori") {
-        query = query.eq("indirizzo", indirizzo);
-      } else {
-        query = query.eq("facolta", facolta).eq("corso", corso);
+
+      // 🔥 Inizio gestione dello stream per follow-up
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedResponse = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        accumulatedResponse += chunk;
+
+        setChat(prevChat => {
+          const newChat = [...prevChat];
+          if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+            newChat[newChat.length - 1].content = accumulatedResponse;
+          }
+          return newChat;
+        });
+        setRisposta(accumulatedResponse);
       }
-  
-      if (versioniSvolte.length > 0) {
-        query = query.not("versione", "in", `(${versioniSvolte.join(",")})`);
+      
+      const finalChunk = decoder.decode();
+      if (finalChunk) {
+          accumulatedResponse += finalChunk;
+          setChat(prevChat => {
+              const newChat = [...prevChat];
+              if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+                  newChat[newChat.length - 1].content = accumulatedResponse;
+              }
+              return newChat;
+          });
+          setRisposta(accumulatedResponse);
       }
-  
-      const { data, error } = await query;
-  
-      if (error || !data || data.length === 0) {
-        throw new Error("Hai già svolto tutte le simulazioni disponibili per questo argomento.");
-      }
-  
-      const randomSimulazione = data[Math.floor(Math.random() * data.length)];
-      setSimulazione(randomSimulazione);
-    } catch (err: any) {
-      setErrore(err.message || "Errore durante il caricamento della simulazione.");
+      // 🔥 Fine gestione dello stream per follow-up
+
+    } catch (error) {
+      console.error("Errore nel fetch o nello streaming del follow-up:", error);
+      toast.error("Si è verificato un errore durante la richiesta di follow-up.");
+       setChat(prevChat => {
+           if (prevChat.length > 0 && prevChat[prevChat.length -1].role === "assistant" && prevChat[prevChat.length -1].content === "") {
+               return prevChat.slice(0, prevChat.length -1);
+           }
+           return prevChat;
+       });
     } finally {
-      setLoading(false);
+      setFollowUpLoading(false);
+      setIsSubmitting(false);
     }
   };
   
-  const RiepilogoScelte = () => (
-    <>
-      <h3 className="text-sm font-semibold mb-1 text-gray-600">📎 Riepilogo scelte</h3>
-      <div className="mb-4 text-sm text-gray-700 bg-gray-100 p-3 rounded-lg border border-gray-200">
-        <p className="flex flex-wrap gap-2 items-center">
-          {categoria === "superiori" ? "🏫 Scuola Superiore" : "🎓 Università"}
-          {categoria === "superiori" && indirizzo && <>· 🎒 {indirizzo}</>}
-          {categoria === "università" && facolta && <>· 🏛️ {facolta}</>}
-          {categoria === "università" && corso && <>· 🎓 {corso}</>}
-          {materia && <>· 📘 {materia}</>}
-          {argomento && <>· 📂 {argomento}</>}
-          {tipoSimulazione && (
-            <>
-              · 🧪{" "}
-              {tipoSimulazione === "multiple"
-                ? "Risposte Multiple"
-                : tipoSimulazione === "aperte"
-                ? "Domande Aperte"
-                : "Misto"}
-            </>
-          )}
-        </p>
-      </div>
-    </>
-  );
-  
-
-  const correggiRisposte = async () => {
-    const risposteFinali = tipoSimulazione === "multiple" ? risposteMultiple : risposteAperte;
-  
-    if (!simulazione) {
-      setErrore("Simulazione non trovata.");
-      return;
-    }
-  
-    const totaleDomande = simulazione.contenuto_simulazione?.length || 0;
-    const errori: number[] = [];
-  
-    // Validazione per multiple
-    if (tipoSimulazione === "multiple") {
-      for (let i = 0; i < totaleDomande; i++) {
-        if (!risposteMultiple[i]) errori.push(i);
-      }
-    }
-  
-    // Validazione per aperte
-    if (tipoSimulazione === "aperte") {
-      for (let i = 0; i < totaleDomande; i++) {
-        const risposta = risposteAperte[i];
-        if (!risposta || risposta.trim().length < 10) errori.push(i);
-      }
-    }
-  
-    if (errori.length > 0) {
-      setErrore("Compila correttamente tutte le domande prima di correggere.");
-      setErroriDomande(errori);
-      const el = document.getElementById(`domanda-${errori[0]}`);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-  
-    setErroriDomande([]); // reset
-  
-    if (!voto && voto !== 0) {
-      setErrore("Assegna un voto prima di correggere.");
-      return;
-    }
-  
-    setLoading(true);
-    setErrore("");
-    setSuccesso(false);
-  
-    try {
-      const tabellaRisposte = categoria === "superiori"
-  ? "simulazioni_scritti_risposte_superiori" 
-  : "simulazioni_scritti_risposte_universita";
-
-  const datiRisposta: any = {
-    user_id: user.id,
-    simulazione_id: simulazione.id,
-    materia: simulazione.materia,
-    argomento: simulazione.argomento,
-    tipo: simulazione.tipo,
-    risposte_utente: JSON.stringify(risposteFinali),
-    voto,
-    correzione: simulazione.soluzione_esempio,
-    lode: categoria === "università" ? lode : null,
-    ...(categoria === "superiori" && { indirizzo, categoria, versione: simulazione.versione }),
-    ...(categoria === "università" && { facolta, corso, versione: simulazione.versione })
-  };
-  
-  const { error } = await supabase.from(tabellaRisposte).insert(datiRisposta);
-  
-      if (error) throw new Error("Errore nel salvataggio della simulazione.");
-  
-      setCorrezione(simulazione.soluzione_esempio);
-      setSuccesso(true);
-      setRisposteAperte({});
-      setRisposteMultiple({});
-      setVoto(0);
-      setLode(false);
-    } catch (err: any) {
-      setErrore(err.message || "Errore durante la correzione.");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-
-  if (!user) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
+  if (!userChecked) return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
 
   return (
     <DashboardLayout>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">✍️ Simulazione Esame Scritto</h1>
-        <Link href="/tools/storico-simulazioni" className="text-blue-600 hover:underline font-medium">
-          📚 Vai al tuo Storico
-        </Link>
-      </div>
+      <h1 className="text-2xl font-bold mb-4">📘 Spiegazione completa</h1>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-4 rounded-2xl shadow-sm mb-6 text-gray-700 dark:text-gray-100 text-sm animate-fadein">
-  <div className="flex items-center gap-2">
-    <span className="text-green-500 text-lg">📝</span>
-    <p>
-      <strong>Info:</strong> Scegli {categoria === "superiori" ? "categoria, indirizzo" : "categoria, facoltà"}, materia e argomento per generare una simulazione.
-    </p>
-  </div>
+      {/* Box Aiuto */}
+<div className="mb-6 flex justify-center">
+  <button
+    onClick={() => setMostraTutorial(true)}
+    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-transform duration-300 text-sm font-medium"
+  >
+    ℹ️ Scopri come funziona la sezione <em>“Spiegazione”</em>
+  </button>
 </div>
 
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-  {/* Categoria */}
-  <div>
-    <label className="font-medium">Categoria</label>
-    <select
-      value={categoria}
-      onChange={(e) => {
-        setCategoria(e.target.value);
-        setIndirizzo("");
-        setFacolta("");
-        setMateria("");
-        setArgomento("");
-        setTipologieDisponibili([]);
-        setMaterieDisponibili([]);
-        setArgomentiDisponibili([]);
-      }}
-      className="w-full border rounded p-2"
-    >
-      <option value="superiori">🏫 Scuola Superiore</option>
-      <option value="università">🎓 Università</option>
-    </select>
-  </div>
-
-  {/* Indirizzo (solo se superiori) */}
-  {categoria === "superiori" && (
-    <div>
-      <label className="font-medium">Indirizzo</label>
-      <select
-        value={indirizzo}
-        onChange={(e) => setIndirizzo(e.target.value)}
-        className="w-full border rounded p-2"
-      >
-        <option value="">-- Seleziona Indirizzo --</option>
-        <option value="scientifico">🔬 Liceo Scientifico</option>
-        <option value="classico">📚 Liceo Classico</option>
-        <option value="linguistico">🌎 Liceo Linguistico</option>
-        <option value="scienze-umane">🧠 Liceo Scienze Umane</option>
-        <option value="artistico">🎨 Liceo Artistico</option>
-        <option value="musicale-coreutico">🎵 Liceo Musicale/Coreutico</option>
-        <option value="istituto-tecnico-economico">💼 Tecnico Economico</option>
-        <option value="istituto-tecnico-tecnologico">⚙️ Tecnico Tecnologico</option>
-        <option value="istituto-professionale">🔧 Istituto Professionale</option>
-      </select>
-    </div>
-  )}
-
-  {/* Facoltà (solo se università) */}
-  {categoria === "università" && (
-    <div>
-      <label className="font-medium">Facoltà</label>
-      <select
-        value={facolta}
-        onChange={(e) => setFacolta(e.target.value)}
-        className="w-full border rounded p-2"
-      >
-        <option value="">-- Seleziona Facoltà --</option>
-        <option value="giurisprudenza">⚖️ Giurisprudenza</option>
-        <option value="medicina">🧬 Medicina</option>
-        <option value="ingegneria">🔧 Ingegneria</option>
-        <option value="psicologia">🧠 Psicologia</option>
-        <option value="economia">💼 Economia</option>
-        <option value="lettere">📚 Lettere</option>
-        <option value="lingue">🌍 Lingue</option>
-        <option value="scienze-politiche">🏛️ Scienze Politiche</option>
-        <option value="scienze-della-comunicazione">🗣️ Scienze Della Comunicazione</option>
-        <option value="lingue-e-comunicazione">🌐 Lingue e Comunicazione</option>
-        <option value="architettura">🏗️ Architettura</option>
-      </select>
-    </div>
-  )}
-
-{categoria === "università" && (
-  <div>
-    <label className="font-medium">Corso di Laurea</label>
-    <select
-      value={corso}
-      onChange={(e) => setCorso(e.target.value)}
-      className="w-full border rounded p-2"
-    >
-      <option value="">-- Seleziona Corso --</option>
-      {facolta === "economia" && (
-        <>
-          <option value="Economia e Management">📊 Economia e Management</option>
-          <option value="Economia Aziendale">📈 Economia Aziendale</option>
-        </>
-      )}
-      {facolta === "scienze-della-comunicazione" && (
-        <>
-          <option value="Media e Comunicazione Digitale">Media e Comunicazione Digitale</option>
-          <option value="Comunicazione Istituzionale e d’Impresa">Comunicazione Istituzionale e d’Impresa</option>
-        </>
-      )}
-      {facolta === "lingue-e-comunicazione" && (
-        <>
-          <option value="Comunicazione D'impresa e Relazioni Pubbliche">Comunicazione D'impresa e Relazioni Pubbliche</option>
-        </>
-      )}
-      {facolta === "ingegneria" && (
-        <>
-          <option value="Ingegneria Gestionale">Ingegneria Gestionale</option>
-        </>
-      )}
-      {/* Aggiungi altri corsi per le altre facoltà */}
-    </select>
-  </div>
-)}
-
-
-  {/* Materia */}
-  <div>
-    <label className="font-medium">Materia</label>
-    <select
-      value={materia}
-      onChange={(e) => setMateria(e.target.value)}
-      className="w-full border rounded p-2"
-    >
-      <option value="">-- Seleziona Materia --</option>
-      {materieDisponibili.map((m) => (
-        <option key={m} value={m}>{m}</option>
-      ))}
-    </select>
-  </div>
-
-  {/* Argomento */}
-  <div>
-    <label className="font-medium">Argomento</label>
-    <select
-      value={argomento}
-      onChange={(e) => setArgomento(e.target.value)}
-      className="w-full border rounded p-2"
-    >
-      <option value="">-- Seleziona Argomento --</option>
-      {argomentiDisponibili.map((a) => (
-        <option key={a} value={a}>{a}</option>
-      ))}
-    </select>
-  </div>
-
-  {/* Tipo simulazione */}
-  <div>
-    <label className="font-medium">Tipo Simulazione</label>
-    <select
-      value={tipoSimulazione}
-      onChange={(e) => setTipoSimulazione(e.target.value)}
-      className="w-full border rounded p-2"
-    >
-      <option value="">-- Seleziona Tipo --</option>
-      {tipologieDisponibili.map((tipo) => (
-        <option key={tipo} value={tipo}>
-          {tipo === "aperte" && "📄 Domande Aperte"}
-          {tipo === "multiple" && "✅ Risposte Multiple"}
-          {tipo === "misto" && "🔀 Misto"}
-        </option>
-      ))}
-    </select>
-  </div>
-</div>
-
-{!simulazione && categoria && (materia || argomento || tipoSimulazione) && (
-  <>
-    <h3 className="text-sm font-semibold mb-1 text-gray-600">📎 Riepilogo scelte</h3>
-    <div className="mb-4 text-sm text-gray-700 bg-gray-100 p-3 rounded-lg border border-gray-200">
-      <p className="flex flex-wrap gap-2 items-center">
-        {categoria === "superiori" ? "🏫 Scuola Superiore" : "🎓 Università"}
-        {categoria === "superiori" && indirizzo && <>· 🎒 {indirizzo}</>}
-        {categoria === "università" && facolta && <>· 🏛️ {facolta}</>}
-        {materia && <>· 📘 {materia}</>}
-        {argomento && <>· 📂 {argomento}</>}
-        {tipoSimulazione && (
-          <>
-            · 🧪{" "}
-            {tipoSimulazione === "multiple"
-              ? "Risposte Multiple"
-              : tipoSimulazione === "aperte"
-              ? "Domande Aperte"
-              : "Misto"}
-          </>
-        )}
-      </p>
-    </div>
-  </>
-)}
-
-
-
-
-
-<button
-  onClick={generaSimulazione}
-  disabled={loading}
-  className="bg-green-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-green-700 hover:scale-105 flex items-center gap-2"
->
-  {loading ? (
-    <>
-      <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
-        <circle
-          className="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          strokeWidth="4"
-          fill="none"
+      <div className="flex flex-col gap-3 mb-4">
+        <textarea className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
+          placeholder="Inserisci il concetto da spiegare..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
         />
+
+        <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 items-start sm:items-center">
+  <label htmlFor="livello" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+    🎓 Seleziona il livello:
+  </label>
+  <select
+    id="livello"
+    value={livello}
+    onChange={(e) => setLivello(e.target.value)}
+    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
+  >
+    <option value="medie">Medie</option>
+    <option value="superiori">Superiori</option>
+    <option value="universita">Università</option>
+  </select>
+</div>
+
+        <button
+  onClick={() => generaSpiegazioneFox(input)}
+  disabled={!input.trim() || isSubmitting}
+  className={`relative bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800 text-white px-4 py-2 rounded transition flex items-center justify-center ${
+    isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+  }`}
+>
+  {isSubmitting ? (
+    <>
+      <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
         <path
           className="opacity-75"
           fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+          d="M4 12a8 8 0 018-8v8H4z"
         />
       </svg>
-      Caricamento...
+      Attendi, Fox sta pensando...
     </>
   ) : (
-    "Genera Simulazione"
+    <>
+      🦊 Chiedi supporto all’Agente Fox
+    </>
   )}
 </button>
 
-
-      {errore && (
-  <div className="mt-4 p-3 rounded-lg bg-red-100 text-red-700 border border-red-300 flex items-start gap-2 text-sm">
-    <span className="text-lg">❌</span>
-    <span>{errore}</span>
-  </div>
-)}
-
-{successo && (
-  <div className="mt-4 p-3 rounded-lg bg-green-100 text-green-700 border border-green-300 flex items-start gap-2 text-sm">
-    <span className="text-lg">✅</span>
-    <span>Simulazione salvata con successo! Puoi visualizzarla nello storico.</span>
-  </div>
-)}
-
-
-
-     
-
-      {simulazione && ( 
-  <div className="mt-8 bg-gray-50 dark:bg-gray-900 p-6 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-    <RiepilogoScelte />
-    <h2 className="text-lg font-semibold mb-4">📝 Simulazione</h2>
-
-
-    {simulazione.testo_base && (
-      <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg border border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-bold mb-2">📖 Testo da Analizzare</h2>
-        <p className="whitespace-pre-line">{simulazione.testo_base}</p>
-      </div>
-    )}
-
-    <div className="space-y-4">
-      {Array.isArray(simulazione.contenuto_simulazione) &&
-        simulazione.contenuto_simulazione.map((item: any, index: number) => (
-          <div
-  key={index}
-  id={`domanda-${index}`}
-  className={`mb-4 p-4 rounded border ${
-    erroriDomande.includes(index)
-      ? "border-red-500 bg-red-50 dark:bg-red-900/30"
-      : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-  } text-gray-900 dark:text-gray-100`}
+        <button
+  onClick={ottimizzaPrompt}
+  disabled={!input.trim() || suggerimentoLoading}
+  className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 text-white px-4 py-2 rounded relative group transition-all"
+  title="Analizza e migliora la tua domanda per ottenere spiegazioni più precise"
 >
+  ✨ Ottimizza domanda
+  <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max text-xs text-white bg-gray-900 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+    Ricevi 1–3 versioni migliorate
+  </span>
+</button>
+<div className="flex items-center gap-3">
+  <label htmlFor="image-upload" className="flex items-center gap-2 cursor-pointer px-4 py-2 rounded bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 border border-blue-300 dark:border-blue-600 hover:bg-blue-200 dark:hover:bg-blue-700 transition-all text-sm">
+    🖼️ Carica immagine
+    <input
+      id="image-upload"
+      type="file"
+      accept="image/*"
+      onChange={handleImageUpload}
+      className="hidden"
+    />
+  </label>
+  <span className="text-sm text-muted-foreground">Puoi caricare una foto di un testo stampato o scritto</span>
+</div>
 
+      </div>
+      {mostraSuggerimenti && suggerimenti.length > 0 && (
+  <div className="relative bg-white/80 dark:bg-[#1e1e1e]/80 backdrop-blur-md border border-gray-200 dark:border-gray-700 p-6 rounded-xl shadow-lg mb-6 transition-all">
+    <button
+      onClick={() => setMostraSuggerimenti(false)}
+      className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-sm transition"
+      title="Chiudi suggerimenti"
+    >
+      ✖
+    </button>
+    <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
+      <span className="text-blue-500">💡</span>
+      <span>Migliora la tua domanda</span>
+    </h2>
 
-<p className="font-medium mb-1 flex items-center gap-2">
-  <b>{index + 1}.</b> {item.domanda}
-  {!erroriDomande.includes(index) && (
-    <span className="text-green-600 text-sm">✅</span>
-  )}
-</p>
-
-
-{item.opzioni && Array.isArray(item.opzioni) ? (
-  <div className="space-y-1">
-    {item.opzioni.map((opzione: string, opIndex: number) => {
-      const rispostaUtente = risposteMultiple[index];
-      const rispostaCorretta = item.risposta_corretta;
-      const isCorretto = rispostaUtente === rispostaCorretta;
-      const isSelezionata = rispostaUtente === opzione;
-      const èRispostaCorretta = opzione === rispostaCorretta;
-
-      const showCorretto = correzione && isSelezionata && isCorretto;
-      const showSbagliato = correzione && isSelezionata && !isCorretto;
-      const showCorrettaNonScelta = correzione && !isSelezionata && èRispostaCorretta && !isCorretto;
-
-      return (
-        <label
-          key={opIndex}
-          className={`flex items-center gap-2 p-2 rounded cursor-pointer
-            ${showCorretto ? "bg-green-100 border border-green-400" : ""}
-            ${showSbagliato ? "bg-red-100 border border-red-400" : ""}
-            ${showCorrettaNonScelta ? "bg-green-50 border border-green-300" : ""}
-          `}
+    <div className="grid gap-4">
+      {suggerimenti.map((sugg, i) => (
+        <div
+          key={i}
+          className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-white dark:bg-gray-800 shadow-sm transition hover:shadow-md flex justify-between items-start"
         >
-          <input
-            type="radio"
-            name={`domanda-${index}`}
-            value={opzione}
-            disabled={!!correzione}
-            checked={isSelezionata}
-            onChange={(e) =>
-              setRisposteMultiple((prev) => ({
-                ...prev,
-                [index]: e.target.value,
-              }))
-            }
-          />
-          <span>{opzione}</span>
-
-          {showCorretto && <span className="text-green-600 text-sm">✅ Corretta</span>}
-          {showSbagliato && <span className="text-red-600 text-sm">❌ Sbagliata</span>}
-          {showCorrettaNonScelta && <span className="text-green-600 text-sm">✔️ Corretta</span>}
-        </label>
-      );
-    })}
+          <p className="text-sm text-gray-800 dark:text-gray-100 max-w-[80%]">{sugg}</p>
+          <button
+            className="text-sm bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-3 py-1.5 rounded-md shadow-sm transition"
+            onClick={() => {
+              setInput(sugg);
+              setMostraSuggerimenti(false);
+              toast.success("Domanda ottimizzata selezionata.");
+            }}
+          >
+            Usa
+          </button>
+        </div>
+      ))}
+    </div>
   </div>
-) : (
-  <textarea
-    value={risposteAperte[index] || ""}
-    onChange={(e) =>
-      setRisposteAperte((prev) => ({
-        ...prev,
-        [index]: e.target.value,
-      }))
-    }
-    className="w-full border rounded p-2 mt-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
-    rows={3}
-    placeholder="Scrivi la tua risposta qui..."
+)}
+
+      {chatSalvate.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold mb-2">🗂️ Le mie conversazioni salvate</h2>
+          <div className="flex flex-col gap-2">
+            {chatSalvate.map((c, i) => (
+              <div key={i} className="flex justify-between items-center bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 p-2 rounded">
+                <div onClick={() => caricaChatOGenera(c.titolo)} className="cursor-pointer flex-1">
+                <div className="font-medium text-blue-700 dark:text-blue-300">{c.titolo}</div>
+<div className="text-sm text-gray-500 dark:text-gray-400">Creata: {c.creata} • Ultima modifica: {c.modificata}</div>
+                </div>
+                <button onClick={() => eliminaConversazione(c.titolo)} className="text-red-500 hover:text-red-700 text-sm ml-4">
+                  🗑
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
+<div className="mb-4">{loading && (
+  <div className="mb-4 transition-opacity duration-500 opacity-100">
+    <div className="flex items-center gap-3 bg-gray-100 dark:bg-gray-800 p-4 rounded shadow">
+      <svg className="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+      </svg>
+      <span className="text-sm text-gray-700 dark:text-gray-200">
+        Sto elaborando la spiegazione…
+      </span>
+    </div>
+  </div>
+)}
+</div>
+      {chat.length > 0 && (
+  <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded shadow">
+    <h2 className="font-semibold mb-4 text-xl text-gray-800 dark:text-gray-100">📄 Conversazione:</h2>
+    <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto">
+      {chat.map((msg, i) => (
+        <div
+          key={i}
+          className={`w-full p-4 rounded-md border text-base leading-relaxed shadow-sm ${
+            msg.role === "user"
+              ? "bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+              : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+          }`}
+        >
+          <div className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
+            {msg.role === "user" ? "🙋‍♂️ Tu" : "🎓 MyUniAgent"}
+          </div>
+          <div className="max-w-none text-base leading-relaxed text-gray-900 dark:text-gray-100">
+<div className="prose prose-sm md:prose-base lg:prose-lg dark:prose-invert max-w-none markdown-table">
+  <ReactMarkdown
+   remarkPlugins={[remarkMath, remarkGfm]}
+   rehypePlugins={[rehypeKatex, rehypeHighlight]}
+  >
+    {normalizeLatex(msg.content)}
+  </ReactMarkdown>
+  </div>
+</div>
+
+
+        </div>
+      ))}
+    </div>
+
+    {/* Campo follow-up */}
+    <div className="flex gap-2 mt-4">
+      <input
+        type="text"
+        className="flex-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
+        placeholder="Fai una domanda di approfondimento..."
+        value={followUp}
+        onChange={(e) => setFollowUp(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && inviaFollowUp()}
+      />
+      <button
+        onClick={inviaFollowUp}
+        disabled={!followUp.trim() || followUpLoading || isSubmitting}
+        className={`bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 transition ${
+          followUpLoading || isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+        }`}
+      >
+        {followUpLoading || isSubmitting ? "⏳ Invio in corso..." : "✉️ Invia"}
+      </button>
+    </div>
+  </div>
+)}
+
+<TutorialModal isOpen={mostraTutorial} onClose={() => setMostraTutorial(false)} />
+
+{showImageModal && imageUrl && (
+  <ImageModal
+    open={showImageModal}
+    onClose={() => setShowImageModal(false)}
+    imageUrl={imageUrl}
+    onExtractedText={(text) => {
+      setInput((prev) => `${prev ? prev + "\n\n" : ""}${text}`);
+      setShowImageModal(false);
+    }}
   />
 )}
 
-          </div>
-        ))}
-    </div>
-
-    <div className="mt-6">
-      <label className="font-medium block mb-2">🎯 Assegna il tuo voto:</label>
-      <input
-        type="number"
-        min={0}
-        max={categoria === "università" ? 30 : 10}
-        value={voto}
-        onChange={(e) => setVoto(Number(e.target.value))}
-        className="w-full border rounded p-2 mb-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700"
-      />
-      {categoria === "università" && (
-        <div className="flex items-center gap-2">
-          <input type="checkbox" checked={lode} onChange={(e) => setLode(e.target.checked)} />
-          <span>Con Lode</span>
-        </div>
-      )}
-    </div>
-
-    <button
-  onClick={correggiRisposte}
-  disabled={loading}
-  className="bg-blue-600 text-white px-4 py-2 rounded-lg transition-transform duration-200 hover:bg-blue-700 hover:scale-105 flex items-center gap-2 mt-4"
->
-  {loading ? (
-    <>
-      <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
-        <circle
-          className="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          strokeWidth="4"
-          fill="none"
-        />
-        <path
-          className="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-        />
-      </svg>
-      Salvataggio...
-    </>
-  ) : (
-    "Correggi e Salva"
-  )}
-</button>
-  </div>
-)}
-
-{correzione && (
-  <div className="mt-8 bg-green-50 dark:bg-green-900/30 p-6 rounded border border-green-300 dark:border-green-700 text-gray-900 dark:text-gray-100">
-    <h2 className="text-lg font-semibold mb-4">✅ Soluzione Ideale:</h2>
-    <div className="space-y-2">
-      {Array.isArray(correzione) &&
-        correzione.map((item: any, index: number) => (
-          <p key={index} className="whitespace-pre-line">
-            <b>{index + 1}.</b> {item.soluzione}
-          </p>
-        ))}
-    </div>
-  </div>
-)}
 
     </DashboardLayout>
   );
 }
 
-SimulazioniScrittePage.requireAuth = true;
+
+Spiegazione.requireAuth = true;
