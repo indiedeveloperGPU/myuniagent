@@ -9,6 +9,8 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
+import ImageModal from "@/components/ImageModal";
+
 
 
 // COMPONENTE
@@ -25,6 +27,9 @@ export default function Spiegazione() {
   const [suggerimenti, setSuggerimenti] = useState<string[]>([]);
   const [mostraSuggerimenti, setMostraSuggerimenti] = useState(false);
   const [suggerimentoLoading, setSuggerimentoLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+
 
 
   const [followUpLoading, setFollowUpLoading] = useState(false);
@@ -99,6 +104,16 @@ export default function Spiegazione() {
 
     setLoading(false);
   };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const url = URL.createObjectURL(file);
+  setImageUrl(url);
+  setShowImageModal(true);
+};
+
 
   const eliminaConversazione = async (titolo: string) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -470,32 +485,36 @@ setSuggerimenti(filtrati.slice(0, 3));
       <h1 className="text-2xl font-bold mb-4">📘 Spiegazione completa</h1>
 
       {/* Box Aiuto */}
-<div className="bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-500 dark:border-blue-400 text-blue-900 dark:text-blue-100 p-4 rounded mb-6">
-  <h2 className="font-semibold text-lg mb-2">🎯 Come funziona la sezione "Spiegazione"</h2>
-  <p className="text-sm mb-2">
-    In questa sezione puoi ricevere spiegazioni dettagliate e personalizzate su un concetto specifico.
+<div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-l-4 border-blue-500 text-blue-900 dark:text-blue-100 p-6 rounded-xl shadow-md transition-transform hover:scale-[1.01] space-y-4 mb-6">
+  <h2 className="text-lg font-bold flex items-center gap-2">
+    🎯 <span>Come funziona la sezione <span className="italic">"Spiegazione"</span></span>
+  </h2>
+
+  <p className="text-sm leading-relaxed">
+    In questa sezione puoi ricevere <strong>spiegazioni personalizzate, dettagliate e intelligenti</strong> su qualunque argomento. Puoi inserire testo manualmente oppure <strong>caricare immagini</strong> per estrarre automaticamente il contenuto (OCR incluso).
   </p>
-  <ul className="list-disc ml-5 text-sm mb-3">
-    <li>📝 Inserisci un <strong>concetto, argomento o domanda</strong> nel campo in alto.</li>
-    <li>🎓 <strong>Seleziona il tuo livello scolastico</strong> (Medie, Superiori, Università) per adattare il linguaggio e la profondità della spiegazione.</li>
-    <li>📘 Clicca su <em>“Genera spiegazione”</em> per ricevere una risposta completa.</li>
-    <li>🗨️ Puoi fare domande di approfondimento per continuare la conversazione con l’AI.</li>
-    <li>🦊 Se non sei soddisfatto o vuoi un approfondimento da un altro agente, puoi cliccare su <strong>“Chiedi supporto all’Agente Fox”</strong> (senza livello scolastico).</li>
+
+  <ul className="list-disc ml-5 text-sm space-y-1 leading-relaxed">
+    <li>📝 <strong>Scrivi un concetto, argomento o domanda</strong> nel campo apposito.</li>
+    <li>🎓 <strong>Seleziona il tuo livello scolastico</strong>: il linguaggio si adatterà (Medie, Superiori, Università).</li>
+    <li>📎 <strong>Carica una foto</strong> per ottenere spiegazioni a partire dal testo contenuto nell’immagine.</li>
+    <li>🔁 <strong>Continua la conversazione</strong>: puoi chiedere chiarimenti, esempi o confronti.</li>
   </ul>
-  <p className="text-sm mb-2">
-    Per ottenere risultati di alta qualità, ti consigliamo di essere il più preciso possibile nella formulazione della tua richiesta:
-  </p>
-  <ul className="list-disc ml-5 text-sm mb-3">
-    <li>❌ <span className="italic">Domanda generica:</span> “Spiegami il marketing”</li>
-    <li>✅ <span className="italic">Domanda mirata:</span> “Quali sono le 4P del marketing secondo Kotler?”</li>
-    <li>✅ <span className="italic">Domanda tecnica:</span> “Come si calcola il VAN in un’analisi di investimento?”</li>
-    <li>✅ <span className="italic">Domanda accademica:</span> “Qual è il ruolo della giurisprudenza nella dottrina penalistica?”</li>
-  </ul>
-  <p className="text-sm">
-    Più la tua richiesta è <strong>chiara, specifica e contestualizzata</strong>, più la spiegazione sarà utile ed efficace.
+
+  <div className="border-t border-blue-300 dark:border-blue-700 pt-3">
+    <p className="text-sm font-semibold">💡 Esempi di domande efficaci:</p>
+    <ul className="list-disc ml-5 text-sm space-y-1 leading-relaxed mt-1">
+      <li>❌ <span className="italic text-red-700 dark:text-red-300">Domanda troppo generica:</span> “Spiegami il diritto”</li>
+      <li>✅ <span className="italic text-green-700 dark:text-green-300">Domanda mirata:</span> “Qual è la differenza tra diritto oggettivo e soggettivo nel sistema italiano?”</li>
+      <li>✅ <span className="italic text-green-700 dark:text-green-300">Domanda tecnica:</span> “Come si calcola l'elasticità della domanda rispetto al prezzo?”</li>
+      <li>✅ <span className="italic text-green-700 dark:text-green-300">Domanda accademica:</span> “Qual è l'approccio di Rawls alla giustizia distributiva?”</li>
+    </ul>
+  </div>
+
+  <p className="text-sm leading-relaxed">
+    🎓 Più la tua richiesta è <strong>chiara, precisa e ben contestualizzata</strong>, migliore sarà la spiegazione. Questo strumento è pensato per aiutarti concretamente nello studio, negli esami e nel colmare lacune.
   </p>
 </div>
-
 
 
       <div className="flex flex-col gap-3 mb-4">
@@ -558,6 +577,20 @@ setSuggerimenti(filtrati.slice(0, 3));
     Ricevi 1–3 versioni migliorate
   </span>
 </button>
+<div className="flex items-center gap-3">
+  <label htmlFor="image-upload" className="flex items-center gap-2 cursor-pointer px-4 py-2 rounded bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 border border-blue-300 dark:border-blue-600 hover:bg-blue-200 dark:hover:bg-blue-700 transition-all text-sm">
+    🖼️ Carica immagine
+    <input
+      id="image-upload"
+      type="file"
+      accept="image/*"
+      onChange={handleImageUpload}
+      className="hidden"
+    />
+  </label>
+  <span className="text-sm text-muted-foreground">Puoi caricare una foto di un testo stampato o scritto</span>
+</div>
+
       </div>
       {mostraSuggerimenti && suggerimenti.length > 0 && (
   <div className="relative bg-white/80 dark:bg-[#1e1e1e]/80 backdrop-blur-md border border-gray-200 dark:border-gray-700 p-6 rounded-xl shadow-lg mb-6 transition-all">
@@ -684,6 +717,19 @@ setSuggerimenti(filtrati.slice(0, 3));
     </div>
   </div>
 )}
+
+{showImageModal && imageUrl && (
+  <ImageModal
+    open={showImageModal}
+    onClose={() => setShowImageModal(false)}
+    imageUrl={imageUrl}
+    onExtractedText={(text) => {
+      setInput((prev) => `${prev ? prev + "\n\n" : ""}${text}`);
+      setShowImageModal(false);
+    }}
+  />
+)}
+
 
     </DashboardLayout>
   );
