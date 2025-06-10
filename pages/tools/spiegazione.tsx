@@ -10,6 +10,8 @@ import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
 import ImageModal from "@/components/ImageModal";
+import TutorialModal from "@/components/TutorialModal";
+
 
 
 
@@ -26,6 +28,7 @@ export default function Spiegazione() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [suggerimenti, setSuggerimenti] = useState<string[]>([]);
   const [mostraSuggerimenti, setMostraSuggerimenti] = useState(false);
+  const [mostraTutorial, setMostraTutorial] = useState(false);
   const [suggerimentoLoading, setSuggerimentoLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -33,7 +36,7 @@ export default function Spiegazione() {
 
 
   const [followUpLoading, setFollowUpLoading] = useState(false);
-  const [chatSalvate, setChatSalvate] = useState<{ titolo: string; data: string }[]>([]);
+  const [chatSalvate, setChatSalvate] = useState<{ titolo: string; creata: string; modificata: string }[]>([]);
 
   const router = useRouter();
 
@@ -64,16 +67,17 @@ export default function Spiegazione() {
 
       const { data } = await supabase
         .from("chat_spiegazioni")
-        .select("titolo, ultima_modifica")
-        .eq("user_id", user.id)
-        .order("ultima_modifica", { ascending: false });
+  .select("titolo, creata_il, ultima_modifica")
+  .eq("user_id", user.id)
+  .order("ultima_modifica", { ascending: false });
 
       if (data) {
-        setChatSalvate(data.map(chat => ({
-          titolo: chat.titolo,
-          data: new Date(chat.ultima_modifica).toLocaleString()
-        })));
-      }
+  setChatSalvate(data.map(chat => ({
+    titolo: chat.titolo,
+    creata: new Date(chat.creata_il).toLocaleDateString(),
+    modificata: new Date(chat.ultima_modifica).toLocaleString(),
+  })));
+}
     };
 
     if (userChecked) caricaChatSalvate();
@@ -343,6 +347,24 @@ setSuggerimenti(filtrati.slice(0, 3));
         return newChat;
       });
       setRisposta(accumulatedResponse);
+      toast.custom((t) => (
+  <div
+    className={`${
+      t.visible ? "animate-enter" : "animate-leave"
+    } max-w-md w-full bg-green-600 text-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5 px-4 py-3`}
+  >
+    <div className="flex-1 w-0">
+      <p className="text-sm font-medium">✅ Spiegazione salvata!</p>
+      <p className="text-sm opacity-90">Ora è disponibile nella tua sezione “Spiegazioni salvate”.</p>
+    </div>
+    <button
+      onClick={() => toast.dismiss(t.id)}
+      className="ml-4 text-white hover:text-gray-200"
+    >
+      ✖
+    </button>
+  </div>
+), { duration: 5000 });
     }
 
     const finalChunk = decoder.decode();
@@ -485,35 +507,13 @@ setSuggerimenti(filtrati.slice(0, 3));
       <h1 className="text-2xl font-bold mb-4">📘 Spiegazione completa</h1>
 
       {/* Box Aiuto */}
-<div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-l-4 border-blue-500 text-blue-900 dark:text-blue-100 p-6 rounded-xl shadow-md transition-transform hover:scale-[1.01] space-y-4 mb-6">
-  <h2 className="text-lg font-bold flex items-center gap-2">
-    🎯 <span>Come funziona la sezione <span className="italic">"Spiegazione"</span></span>
-  </h2>
-
-  <p className="text-sm leading-relaxed">
-    In questa sezione puoi ricevere <strong>spiegazioni personalizzate, dettagliate e intelligenti</strong> su qualunque argomento. Puoi inserire testo manualmente oppure <strong>caricare immagini</strong> per estrarre automaticamente il contenuto (OCR incluso).
-  </p>
-
-  <ul className="list-disc ml-5 text-sm space-y-1 leading-relaxed">
-    <li>📝 <strong>Scrivi un concetto, argomento o domanda</strong> nel campo apposito.</li>
-    <li>🎓 <strong>Seleziona il tuo livello scolastico</strong>: il linguaggio si adatterà (Medie, Superiori, Università).</li>
-    <li>📎 <strong>Carica una foto</strong> per ottenere spiegazioni a partire dal testo contenuto nell’immagine.</li>
-    <li>🔁 <strong>Continua la conversazione</strong>: puoi chiedere chiarimenti, esempi o confronti.</li>
-  </ul>
-
-  <div className="border-t border-blue-300 dark:border-blue-700 pt-3">
-    <p className="text-sm font-semibold">💡 Esempi di domande efficaci:</p>
-    <ul className="list-disc ml-5 text-sm space-y-1 leading-relaxed mt-1">
-      <li>❌ <span className="italic text-red-700 dark:text-red-300">Domanda troppo generica:</span> “Spiegami il diritto”</li>
-      <li>✅ <span className="italic text-green-700 dark:text-green-300">Domanda mirata:</span> “Qual è la differenza tra diritto oggettivo e soggettivo nel sistema italiano?”</li>
-      <li>✅ <span className="italic text-green-700 dark:text-green-300">Domanda tecnica:</span> “Come si calcola l'elasticità della domanda rispetto al prezzo?”</li>
-      <li>✅ <span className="italic text-green-700 dark:text-green-300">Domanda accademica:</span> “Qual è l'approccio di Rawls alla giustizia distributiva?”</li>
-    </ul>
-  </div>
-
-  <p className="text-sm leading-relaxed">
-    🎓 Più la tua richiesta è <strong>chiara, precisa e ben contestualizzata</strong>, migliore sarà la spiegazione. Questo strumento è pensato per aiutarti concretamente nello studio, negli esami e nel colmare lacune.
-  </p>
+<div className="mb-6 flex justify-center">
+  <button
+    onClick={() => setMostraTutorial(true)}
+    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-transform duration-300 text-sm font-medium"
+  >
+    ℹ️ Scopri come funziona la sezione <em>“Spiegazione”</em>
+  </button>
 </div>
 
 
@@ -637,7 +637,7 @@ setSuggerimenti(filtrati.slice(0, 3));
               <div key={i} className="flex justify-between items-center bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 p-2 rounded">
                 <div onClick={() => caricaChatOGenera(c.titolo)} className="cursor-pointer flex-1">
                 <div className="font-medium text-blue-700 dark:text-blue-300">{c.titolo}</div>
-                <div className="text-sm text-gray-500 dark:text-gray-400">Ultima modifica: {c.data}</div>
+<div className="text-sm text-gray-500 dark:text-gray-400">Creata: {c.creata} • Ultima modifica: {c.modificata}</div>
                 </div>
                 <button onClick={() => eliminaConversazione(c.titolo)} className="text-red-500 hover:text-red-700 text-sm ml-4">
                   🗑
@@ -717,6 +717,8 @@ setSuggerimenti(filtrati.slice(0, 3));
     </div>
   </div>
 )}
+
+<TutorialModal isOpen={mostraTutorial} onClose={() => setMostraTutorial(false)} />
 
 {showImageModal && imageUrl && (
   <ImageModal
