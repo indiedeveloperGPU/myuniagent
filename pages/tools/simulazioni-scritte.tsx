@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
+import ReactMarkdown from 'react-markdown';
 
 export default function SimulazioniScrittePage() {
   const [categoria, setCategoria] = useState("superiori");
@@ -444,10 +445,9 @@ export default function SimulazioniScrittePage() {
           <option value="Comunicazione D'impresa e Relazioni Pubbliche">Comunicazione D'impresa e Relazioni Pubbliche</option>
         </>
       )}
-      {facolta === "giurisprudenza" && (
+      {facolta === "ingegneria" && (
         <>
-          <option value="Diritto Privato">⚖️ Diritto Privato</option>
-          <option value="Diritto Penale">🚓 Diritto Penale</option>
+          <option value="Ingegneria Gestionale">Ingegneria Gestionale</option>
         </>
       )}
       {/* Aggiungi altri corsi per le altre facoltà */}
