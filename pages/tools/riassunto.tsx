@@ -24,6 +24,7 @@ export default function RiassuntoPage() {
   const [filePathFox, setFilePathFox] = useState<string | null>(null);
   const [allegatoFox, setAllegatoFox] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
@@ -32,6 +33,15 @@ export default function RiassuntoPage() {
   const [caricamentoFile, setCaricamentoFile] = useState(false);
 
 
+
+useEffect(() => {
+  // Sincronizza il contenuto del div solo se è diverso dallo stato 'text'.
+  // Questo evita di aggiornare il DOM mentre l'utente sta scrivendo,
+  // risolvendo il bug del cursore e della direzione RTL.
+  if (editorRef.current && editorRef.current.innerText !== text) {
+    editorRef.current.innerText = text;
+  }
+}, [text]); // Esegui questo effetto ogni volta che lo stato 'text' cambia.
 
 
   useEffect(() => {
@@ -418,13 +428,21 @@ export default function RiassuntoPage() {
     </label>
     
     <div
-      contentEditable
-      suppressContentEditableWarning
-      dir="ltr"
-      className="w-full p-4 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-mono text-sm leading-relaxed whitespace-pre-wrap min-h-[220px] max-h-[400px] overflow-y-auto outline-none focus:ring-2 focus:ring-blue-500"
-      onInput={(e) => setText(e.currentTarget.innerText)}
-      dangerouslySetInnerHTML={{ __html: text.replace(/\n/g, "<br>") }}
-    />
+  ref={editorRef}
+  contentEditable
+  suppressContentEditableWarning
+  dir="ltr"
+  style={{
+    textAlign: 'left',
+    unicodeBidi: 'plaintext'
+  }}
+  className="w-full p-4 border rounded bg-white dark:bg-gray-900
+             text-gray-900 dark:text-gray-100 font-mono text-sm leading-relaxed
+             whitespace-pre-wrap min-h-[220px] max-h-[400px] overflow-y-auto
+             outline-none focus:ring-2 focus:ring-blue-500"
+  onInput={(e) => setText(e.currentTarget.innerText)}
+/>
+
 
     <div className="flex justify-between items-center mt-2">
       <span className="text-xs text-gray-500">{text.length} caratteri • Max {MAX_CHARS} per blocco</span>
