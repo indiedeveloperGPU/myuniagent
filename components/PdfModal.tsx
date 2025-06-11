@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@radix-ui/react-dialog';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { useEffect, useRef, useState } from 'react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -165,7 +165,7 @@ export default function PdfModal({ isOpen, onClose, file, onTextSelected }: PdfM
         forceMount
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
-        className="max-w-7xl max-h-[95vh] overflow-hidden bg-white rounded-lg shadow-md p-4"
+        className="max-w-7xl max-h-[95vh] overflow-hidden data-[state=closed]:hidden"
       >
         <DialogTitle className="text-lg font-semibold text-gray-800">
           Visualizzazione PDF
@@ -290,12 +290,14 @@ export default function PdfModal({ isOpen, onClose, file, onTextSelected }: PdfM
             />
             
             <div className="flex justify-between items-center mt-2">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-              >
-                Annulla
-              </button>
+              <DialogClose asChild>
+  <button
+    type="button"   
+    className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+  >
+    Annulla
+  </button>
+</DialogClose>
               <button
                 onClick={() => {
                   if (tempSelection.trim()) {
