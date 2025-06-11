@@ -420,6 +420,7 @@ export default function RiassuntoPage() {
     <div
       contentEditable
       suppressContentEditableWarning
+      dir="ltr"
       className="w-full p-4 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-mono text-sm leading-relaxed whitespace-pre-wrap min-h-[220px] max-h-[400px] overflow-y-auto outline-none focus:ring-2 focus:ring-blue-500"
       onInput={(e) => setText(e.currentTarget.innerText)}
       dangerouslySetInnerHTML={{ __html: text.replace(/\n/g, "<br>") }}
