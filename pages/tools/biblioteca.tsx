@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/router";
+import ReactMarkdown from "react-markdown";
+import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
+import rehypeKatex from 'rehype-katex';
+import rehypeHighlight from 'rehype-highlight';
+
+
 
 export default function BibliotecaPage() {
   const [sezioneAttiva, setSezioneAttiva] = useState<"biblioteca" | "spiegazioni">("biblioteca");
@@ -9,6 +16,9 @@ export default function BibliotecaPage() {
   const [filtroFacolta, setFiltroFacolta] = useState("");
   const [filtroArgomento, setFiltroArgomento] = useState("");
   const [categoria, setCategoria] = useState("articoli");
+  const [chatAttiva, setChatAttiva] = useState<any | null>(null);
+  const [mostraModale, setMostraModale] = useState(false);
+
 
   const handleCerca = () => {
     console.log("Categoria:", categoria);
@@ -115,6 +125,9 @@ function SpiegazioniSalvate() {
     { titolo: string; creata_il: string; ultima_modifica: string }[]
   >([]);
   const router = useRouter();
+  const [spiegazioneAttiva, setSpiegazioneAttiva] = useState<any | null>(null);
+  const [mostraModale, setMostraModale] = useState(false);
+
 
   useEffect(() => {
     const caricaSpiegazioni = async () => {
@@ -123,17 +136,19 @@ function SpiegazioniSalvate() {
 
       const { data, error } = await supabase
         .from("chat_spiegazioni")
-        .select("titolo, creata_il, ultima_modifica")
-        .eq("user_id", user.id)
-        .order("ultima_modifica", { ascending: false });
+        .select("titolo, creato_il, messaggi")
+        .eq("user_id", user?.id)
+        .order("creato_il", { ascending: false })
 
       if (data) {
         setSpiegazioni(
           data.map((s) => ({
-            titolo: s.titolo,
-            creata_il: new Date(s.creata_il).toLocaleDateString(),
-            ultima_modifica: new Date(s.ultima_modifica).toLocaleString(),
-          }))
+  titolo: s.titolo,
+  creata_il: new Date(s.creato_il).toLocaleDateString(),
+  ultima_modifica: new Date(s.creato_il).toLocaleString(),
+  messaggi: s.messaggi,
+}))
+
         );
       } else {
         console.error("Errore nel caricamento spiegazioni:", error);
@@ -165,13 +180,61 @@ function SpiegazioniSalvate() {
                 </div>
               </div>
               <button
-                className="text-sm text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded transition"
-                onClick={() =>
-                  router.push(`/spiegazione?concetto=${encodeURIComponent(s.titolo)}`)
-                }
+  onClick={() => {
+    setSpiegazioneAttiva(s);
+    setMostraModale(true);
+  }}
+  className="ml-4 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+>
+  Visualizza
+</button>
+{mostraModale && spiegazioneAttiva && (
+  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+    <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-6 space-y-6 transition-all">
+
+      <button
+        className="absolute top-3 right-3 text-gray-500 hover:text-red-500 text-xl"
+        onClick={() => setMostraModale(false)}
+      >
+        ✖
+      </button>
+
+      <h2 className="text-2xl font-bold text-blue-600 dark:text-blue-300">
+        💬 {spiegazioneAttiva.titolo}
+      </h2>
+
+      <div className="flex flex-col gap-4">
+        {spiegazioneAttiva.messaggi?.map((msg: any, index: number) => (
+          <div
+            key={index}
+            className={`p-4 rounded-xl border text-base leading-relaxed shadow-sm ${
+              msg.role === "user"
+                ? "bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+                : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+            }`}
+          >
+            <div className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">
+              {msg.role === "user" ? "🙋‍♂️ Tu" : "🎓 MyUniAgent"}
+            </div>
+            <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none markdown-table">
+              <ReactMarkdown
+                remarkPlugins={[remarkMath, remarkGfm]}
+  rehypePlugins={[rehypeKatex, rehypeHighlight]}
               >
-                ↩️ Riprendi
-              </button>
+                {msg.content}
+              </ReactMarkdown>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-2 text-sm text-gray-400 dark:text-gray-500 text-right">
+        Ultima modifica: {spiegazioneAttiva.ultima_modifica}
+      </div>
+    </div>
+  </div>
+)}
+
             </div>
           ))}
         </div>
