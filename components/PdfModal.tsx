@@ -160,7 +160,7 @@ export default function PdfModal({ isOpen, onClose, file, onTextSelected }: PdfM
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => open ? null : onClose()} modal={false}>
+    <Dialog open={isOpen} onOpenChange={(open) => {if (!open) onClose();}} modal={false}>
       <DialogContent
         forceMount
         onPointerDownOutside={(e) => e.preventDefault()}
