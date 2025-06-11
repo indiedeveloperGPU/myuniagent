@@ -23,6 +23,7 @@ export default function SimulazioniScrittePage() {
   type CorrezioneItem = string | { soluzione: string };
   const [correzione, setCorrezione] = useState<CorrezioneItem[]>([]);
   const [successo, setSuccesso] = useState(false);
+  const [soluzioniVisibili, setSoluzioniVisibili] = useState<Record<number, boolean>>({});
   const [corso, setCorso] = useState("");
   const [erroriDomande, setErroriDomande] = useState<number[]>([]);
   const [voto, setVoto] = useState(0);
@@ -134,6 +135,14 @@ export default function SimulazioniScrittePage() {
     };
     fetchTipologie();
   }, [materia, argomento]);
+
+  const toggleSoluzione = (index: number) => {
+  setSoluzioniVisibili((prev) => ({
+    ...prev,
+    [index]: !prev[index],
+  }));
+};
+
 
   const generaSimulazione = async () => {
     if (
@@ -271,7 +280,7 @@ export default function SimulazioniScrittePage() {
     if (tipoSimulazione === "aperte") {
       for (let i = 0; i < totaleDomande; i++) {
         const risposta = risposteAperte[i];
-        if (!risposta || risposta.trim().length < 10) errori.push(i);
+        if (risposta === undefined) errori.push(i);
       }
     }
   
@@ -624,19 +633,23 @@ export default function SimulazioniScrittePage() {
 >
 
 
-<div className="font-medium mb-1 flex items-start gap-2">
-  <b>{index + 1}.</b>
-  <div className="prose prose-sm md:prose-base dark:prose-invert">
-    <ReactMarkdown
-      remarkPlugins={[remarkMath]}
-      rehypePlugins={[rehypeKatex]}
-    >
-      {item.domanda}
-    </ReactMarkdown>
+<div className="flex justify-between items-start mb-2 gap-4">
+  <div className="flex items-start gap-2">
+    <b>{index + 1}.</b>
+    <div className="prose prose-sm md:prose-base dark:prose-invert">
+      <ReactMarkdown>{item.domanda}</ReactMarkdown>
+    </div>
+    {!erroriDomande.includes(index) && (
+      <span className="text-green-600 text-sm mt-1">✅</span>
+    )}
   </div>
-  {!erroriDomande.includes(index) && (
-    <span className="text-green-600 text-sm mt-1">✅</span>
-  )}
+
+  <button
+    onClick={() => toggleSoluzione(index)}
+    className="text-sm px-3 py-1 border border-blue-500 text-blue-600 rounded hover:bg-blue-50 transition whitespace-nowrap"
+  >
+    {soluzioniVisibili[index] ? "🔽 Nascondi Soluzione" : "🔍 Mostra Soluzione"}
+  </button>
 </div>
 
 
@@ -708,7 +721,7 @@ export default function SimulazioniScrittePage() {
   />
 )}
 
-{correzione && correzione[index] && (
+{((correzione && correzione[index]) || soluzioniVisibili[index]) && (
   <div className="mt-3 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 text-sm">
     <p className="mb-1">
       <b>✅ Soluzione ideale:</b><br />
@@ -717,9 +730,14 @@ export default function SimulazioniScrittePage() {
     remarkPlugins={[remarkMath]}
     rehypePlugins={[rehypeKatex]}
   >
-    {typeof correzione[index] === "string"
-      ? correzione[index]
-      : correzione[index].soluzione}
+    {(() => {
+  const sol = correzione && correzione[index]
+    ? correzione[index]
+    : simulazione?.soluzione_esempio?.[index];
+
+  return typeof sol === "string" ? sol : sol?.soluzione || "Nessuna soluzione disponibile.";
+})()}
+
   </ReactMarkdown>
 </div>
 
