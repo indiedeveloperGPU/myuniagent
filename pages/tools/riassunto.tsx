@@ -29,6 +29,7 @@ export default function RiassuntoPage() {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+  const [caricamentoFile, setCaricamentoFile] = useState(false);
 
 
 
@@ -248,73 +249,93 @@ export default function RiassuntoPage() {
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) {
-      setError("⚠️ Nessun file selezionato.");
-      return;
-    }
-    if (files.length > 1) {
-      alert("📎 Puoi inviare un solo file per volta. Per più documenti, invia più richieste separate.");
-    }
-    const file = files[0];
-    if (!file) {
-      setError("⚠️ File non valido.");
-      return;
-    }
-    e.target.value = "";
-    setError("");
-    setResults([]);
-    setLoadingBlocks([]);
-    if (modalitaFox) {
-      const sessionResult = await supabase.auth.getSession();
-      const accessToken = sessionResult.data.session?.access_token;
-      const user = sessionResult.data.session?.user;
-      if (!accessToken || !user?.id) {
-        setError("⚠️ Sessione scaduta o utente non autenticato. Effettua di nuovo l’accesso.");
-        return;
-      }
-      const safeName = file.name.replace(/\s+/g, "_").replace(/[^\w.]/gi, "");
-      const filePath = `${user.id}/${Date.now()}_${safeName}`;
-      const { error: uploadError } = await supabase.storage.from("uploads").upload(filePath, file);
-      if (uploadError) {
-        setError(`Errore nel caricamento del file ${file.name}: ${uploadError.message}`);
-        return;
-      }
-      const { data: urlData } = supabase.storage.from("uploads").getPublicUrl(filePath);
-      setAllegatoFox(urlData.publicUrl);
-      setFilePathFox(filePath);
-      alert("✅ File caricato correttamente! Ora puoi aggiungere un commento e inviare la richiesta.");
-      return;
-    }
-    const formData = new FormData();
-formData.append("file", file);
+  const files = e.target.files;
+  if (!files || files.length === 0) {
+    setError("⚠️ Nessun file selezionato.");
+    return;
+  }
+  if (files.length > 1) {
+    alert("📎 Puoi inviare un solo file per volta. Per più documenti, invia più richieste separate.");
+  }
 
-try {
-  // Se è un PDF, non mandarlo all’API, mostralo direttamente
-  if (file.type === "application/pdf") {
-    setSelectedPdfFile(file);
-    setIsPdfModalOpen(true);
+  const file = files[0];
+
+  if (!file) {
+    setError("⚠️ File non valido.");
     return;
   }
 
-  // Altrimenti, invia all'API per l'estrazione testo
-  const response = await fetch("/api/estrai-testo", {
-    method: "POST",
-    body: formData,
-  });
-
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Errore estrazione testo");
-
-  if (data.testo) {
-    setText(data.testo.trim());
+  // ✅ Limite di 25MB solo per la modalità automatica
+  if (!modalitaFox && file.size > 25 * 1024 * 1024) {
+    setError("❌ File troppo grande. Il limite massimo è 25MB.");
+    return;
   }
-} catch (err: any) {
-  setError(`Errore nel file ${file.name}: ${err.message}`);
-  return;
-}
 
-  };
+  e.target.value = "";
+  setError("");
+  setResults([]);
+  setLoadingBlocks([]);
+  setCaricamentoFile(true); // ⏳ Attiva loader
+
+  if (modalitaFox) {
+    const sessionResult = await supabase.auth.getSession();
+    const accessToken = sessionResult.data.session?.access_token;
+    const user = sessionResult.data.session?.user;
+    if (!accessToken || !user?.id) {
+      setError("⚠️ Sessione scaduta o utente non autenticato. Effettua di nuovo l’accesso.");
+      setCaricamentoFile(false);
+      return;
+    }
+
+    const safeName = file.name.replace(/\s+/g, "_").replace(/[^\w.]/gi, "");
+    const filePath = `${user.id}/${Date.now()}_${safeName}`;
+
+    const { error: uploadError } = await supabase.storage.from("uploads").upload(filePath, file);
+    if (uploadError) {
+      setError(`Errore nel caricamento del file ${file.name}: ${uploadError.message}`);
+      setCaricamentoFile(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("uploads").getPublicUrl(filePath);
+    setAllegatoFox(urlData.publicUrl);
+    setFilePathFox(filePath);
+    alert("✅ File caricato correttamente! Ora puoi aggiungere un commento e inviare la richiesta.");
+    setCaricamentoFile(false);
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    // Se è un PDF, mostra la modale
+    if (file.type === "application/pdf") {
+      setSelectedPdfFile(file);
+      setIsPdfModalOpen(true);
+      setCaricamentoFile(false);
+      return;
+    }
+
+    // Altrimenti, invia all'API per l'estrazione testo
+    const response = await fetch("/api/estrai-testo", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Errore estrazione testo");
+
+    if (data.testo) {
+      setText(data.testo.trim());
+    }
+  } catch (err: any) {
+    setError(`Errore nel file ${file.name}: ${err.message}`);
+  } finally {
+    setCaricamentoFile(false); // 🔚 Chiude il loader in ogni caso
+  }
+};
+
 
   const handleExport = async () => {
     const doc = new Document({
@@ -453,6 +474,12 @@ try {
           <div className="mb-6">
             <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.txt,.png,.jpg,.jpeg" onChange={handleFileUpload} className="hidden" />
             <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 px-4 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-100 transition">📁 Carica file</button>
+            {caricamentoFile && (
+  <div className="w-full mt-3 h-2 rounded bg-gray-200 dark:bg-gray-700 overflow-hidden">
+    <div className="h-full bg-blue-500 dark:bg-blue-400 animate-loading-bar"></div>
+  </div>
+)}
+
           </div>
 
           {pdfUrl && (
