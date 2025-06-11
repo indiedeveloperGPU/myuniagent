@@ -33,11 +33,16 @@ type CustomData = {
   onBlur: () => void;
 };
 
-function CustomNode({ data }: NodeProps<CustomData>) {
+function CustomNode({ data, selected }: NodeProps<CustomData>) {
   return (
     <div
       onDoubleClick={data.onDoubleClick}
-      className="bg-blue-100 dark:bg-blue-900 text-black dark:text-white p-2 rounded shadow text-sm text-center min-w-[100px]"
+      className={`
+        p-2 rounded shadow text-sm text-center min-w-[100px]
+        bg-blue-100 dark:bg-blue-900 text-black dark:text-white
+        ${selected ? "ring-2 ring-blue-500" : ""}
+        hover:ring-2 hover:ring-indigo-400 hover:shadow-md transition
+      `}
     >
       {data.isEditing ? (
         <input
@@ -55,6 +60,8 @@ function CustomNode({ data }: NodeProps<CustomData>) {
     </div>
   );
 }
+
+
 
 
 const nodeTypes = { custom: CustomNode };
@@ -513,6 +520,8 @@ useEffect(() => {
     style: {
       stroke: edge.id === selectedEdgeId ? "#ef4444" : "#777",
       strokeWidth: edge.id === selectedEdgeId ? 3 : 1.5,
+      strokeDasharray: edge.id === selectedEdgeId ? "5,5" : "none",
+      filter: edge.id === selectedEdgeId ? "drop-shadow(0 0 3px red)" : "none",
     },
   }));
 
@@ -602,8 +611,24 @@ useEffect(() => {
     <button onClick={handleUndo} disabled={history.length === 0} className="...">↩️ Indietro</button>
     <button onClick={handleRedo} disabled={future.length === 0} className="...">↪️ Avanti</button>
     <button onClick={handleSave} className="...">💾 Salva</button>
-    <button onClick={deleteSelectedNode} disabled={!selectedNodeId} className="...">🗑️ Nodo</button>
-    <button onClick={deleteSelectedEdge} disabled={!selectedEdgeId} className="...">🗑️ Connessione</button>
+    <button
+  onClick={deleteSelectedNode}
+  disabled={!selectedNodeId}
+  className={`px-3 py-2 rounded transition text-white 
+    ${selectedNodeId ? "bg-red-600 hover:bg-red-700" : "bg-gray-400 cursor-not-allowed"}`}
+>
+  🗑️ Nodo
+</button>
+
+    <button
+  onClick={deleteSelectedEdge}
+  disabled={!selectedEdgeId}
+  className={`px-3 py-2 rounded transition text-white 
+    ${selectedEdgeId ? "bg-red-500 hover:bg-red-600" : "bg-gray-400 cursor-not-allowed"}`}
+>
+  🗑️ Connessione
+</button>
+
     <button onClick={handleExportPDF} className="...">📄 PDF</button>
     <button onClick={() => {
       const newNodes = layoutGraph(nodes, edges);
