@@ -3,6 +3,9 @@ import { supabase } from "@/lib/supabaseClient";
 import DashboardLayout from "@/components/DashboardLayout";
 import Link from "next/link";
 import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 export default function SimulazioniScrittePage() {
   const [categoria, setCategoria] = useState("superiori");
@@ -595,7 +598,15 @@ export default function SimulazioniScrittePage() {
     {simulazione.testo_base && (
       <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg border border-gray-200 dark:border-gray-700">
         <h2 className="text-lg font-bold mb-2">📖 Testo da Analizzare</h2>
-        <p className="whitespace-pre-line">{simulazione.testo_base}</p>
+        <div className="prose prose-sm dark:prose-invert">
+  <ReactMarkdown
+    remarkPlugins={[remarkMath]}
+    rehypePlugins={[rehypeKatex]}
+  >
+    {simulazione.testo_base}
+  </ReactMarkdown>
+</div>
+
       </div>
     )}
 
@@ -613,12 +624,21 @@ export default function SimulazioniScrittePage() {
 >
 
 
-<p className="font-medium mb-1 flex items-center gap-2">
-  <b>{index + 1}.</b> {item.domanda}
+<div className="font-medium mb-1 flex items-start gap-2">
+  <b>{index + 1}.</b>
+  <div className="prose prose-sm md:prose-base dark:prose-invert">
+    <ReactMarkdown
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+    >
+      {item.domanda}
+    </ReactMarkdown>
+  </div>
   {!erroriDomande.includes(index) && (
-    <span className="text-green-600 text-sm">✅</span>
+    <span className="text-green-600 text-sm mt-1">✅</span>
   )}
-</p>
+</div>
+
 
 
 {item.opzioni && Array.isArray(item.opzioni) ? (
@@ -656,7 +676,15 @@ export default function SimulazioniScrittePage() {
               }))
             }
           />
-          <span>{opzione}</span>
+          <div className="prose prose-sm dark:prose-invert">
+  <ReactMarkdown
+    remarkPlugins={[remarkMath]}
+    rehypePlugins={[rehypeKatex]}
+  >
+    {opzione}
+  </ReactMarkdown>
+</div>
+
 
           {showCorretto && <span className="text-green-600 text-sm">✅ Corretta</span>}
           {showSbagliato && <span className="text-red-600 text-sm">❌ Sbagliata</span>}
@@ -684,11 +712,17 @@ export default function SimulazioniScrittePage() {
   <div className="mt-3 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-700 text-sm">
     <p className="mb-1">
       <b>✅ Soluzione ideale:</b><br />
-      <span className="text-green-800 dark:text-green-300">
-        {typeof correzione[index] === "string"
-          ? correzione[index]
-          : correzione[index].soluzione}
-      </span>
+      <div className="prose prose-sm dark:prose-invert text-green-800 dark:text-green-300">
+  <ReactMarkdown
+    remarkPlugins={[remarkMath]}
+    rehypePlugins={[rehypeKatex]}
+  >
+    {typeof correzione[index] === "string"
+      ? correzione[index]
+      : correzione[index].soluzione}
+  </ReactMarkdown>
+</div>
+
     </p>
 
     {tipoSimulazione === "multiple" && (
