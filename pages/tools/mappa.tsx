@@ -12,18 +12,17 @@ import ReactFlow, {
   NodeProps,
   Handle,
   Position,
+  useReactFlow,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { saveAs } from "file-saver";
-import * as htmlToImage from 'html-to-image';
-import jsPDF from 'jspdf';
-import { useReactFlow } from "reactflow";
+import * as htmlToImage from "html-to-image";
+import jsPDF from "jspdf";
 import { supabase } from "@/lib/supabaseClient";
-import toast, { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from "react-hot-toast";
 import dagre from "dagre";
-
 
 type CustomData = {
   label: string;
@@ -61,9 +60,6 @@ function CustomNode({ data, selected }: NodeProps<CustomData>) {
   );
 }
 
-
-
-
 const nodeTypes = { custom: CustomNode };
 
 export default function MappaConcettuale() {
@@ -91,8 +87,6 @@ export default function MappaConcettuale() {
     setFuture([]);
   };
 
-
-
   const handleUndo = () => {
     if (history.length === 0) return;
     const prev = history[history.length - 1];
@@ -103,40 +97,39 @@ export default function MappaConcettuale() {
   };
 
   const toggleFullscreen = () => {
-  const el = document.getElementById("reactflow-wrapper");
-  if (!el) return;
+    const el = document.getElementById("reactflow-wrapper");
+    if (!el) return;
 
-  if (!document.fullscreenElement) {
-    el.requestFullscreen?.();
-  } else {
-    document.exitFullscreen?.();
-  }
-};
-
+    if (!document.fullscreenElement) {
+      el.requestFullscreen?.();
+    } else {
+      document.exitFullscreen?.();
+    }
+  };
 
   const layoutGraph = (nodes: Node[], edges: Edge[]): Node[] => {
-  const g = new dagre.graphlib.Graph();
-  g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: layoutDirection });
+    const g = new dagre.graphlib.Graph();
+    g.setDefaultEdgeLabel(() => ({}));
+    g.setGraph({ rankdir: layoutDirection });
 
-  nodes.forEach((node) => {
-    g.setNode(node.id, { width: 150, height: 60 });
-  });
+    nodes.forEach((node) => {
+      g.setNode(node.id, { width: 150, height: 60 });
+    });
 
-  edges.forEach((edge) => {
-    g.setEdge(edge.source, edge.target);
-  });
+    edges.forEach((edge) => {
+      g.setEdge(edge.source, edge.target);
+    });
 
-  dagre.layout(g);
+    dagre.layout(g);
 
-  return nodes.map((node) => {
-    const pos = g.node(node.id);
-    return {
-      ...node,
-      position: { x: pos.x - 75, y: pos.y - 30 }, // centra i nodi
-    };
-  });
-};
+    return nodes.map((node) => {
+      const pos = g.node(node.id);
+      return {
+        ...node,
+        position: { x: pos.x - 75, y: pos.y - 30 }, // centra i nodi
+      };
+    });
+  };
 
   const handleRedo = () => {
     if (future.length === 0) return;
@@ -162,72 +155,69 @@ export default function MappaConcettuale() {
   }, []);
 
   useEffect(() => {
-  const handleKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape" && presentazioneAttiva) {
-      setPresentazioneAttiva(false);
-      document.exitFullscreen?.();
-    }
-  };
-
-  window.addEventListener("keydown", handleKey);
-  return () => window.removeEventListener("keydown", handleKey);
-}, [presentazioneAttiva]);
-
-useEffect(() => {
-  if (nodes.length && edges.length) {
-    const newNodes = layoutGraph(nodes, edges);
-    setNodes(newNodes);
-  }
-}, [layoutDirection]);
-
-
-
-  useEffect(() => {
-  const saved = localStorage.getItem("autosave-mappa");
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      if (parsed.nodes && parsed.edges) {
-        setNodes(parsed.nodes);
-        setEdges(parsed.edges);
-        setTitoloMappa(parsed.titoloMappa || "Mappa senza titolo");
-        setNodeCount((parsed.nodes?.length || 0) + 1);
-        console.log("✔️ Mappa recuperata da auto-save");
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && presentazioneAttiva) {
+        setPresentazioneAttiva(false);
+        document.exitFullscreen?.();
       }
-    } catch (e) {
-      console.error("Errore nel parsing autosave", e);
-    }
-  }
-}, []);
+    };
 
-useEffect(() => {
-  const handleFullscreenChange = () => {
-    const isFullscreen = !!document.fullscreenElement;
-    if (!isFullscreen) {
-      // Se esco dal fullscreen manualmente, aggiorno React
-      setPresentazioneAttiva(false);
-    }
-  };
-
-  document.addEventListener("fullscreenchange", handleFullscreenChange);
-  return () => {
-    document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  };
-}, []);
-
-
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [presentazioneAttiva]);
 
   useEffect(() => {
-  const timeout = setTimeout(() => {
-    if (nodes.length || edges.length) {
-      localStorage.setItem("autosave-mappa", JSON.stringify({ nodes, edges, titoloMappa }));
-      toast.success("💾 Mappa salvata automaticamente", { duration: 1500 });
+    if (nodes.length && edges.length) {
+      const newNodes = layoutGraph(nodes, edges);
+      setNodes(newNodes);
     }
-  }, 8000); // salva dopo 8s da ogni modifica
+  }, [layoutDirection]);
 
-  return () => clearTimeout(timeout);
-}, [nodes, edges, titoloMappa]);
+  useEffect(() => {
+    const saved = localStorage.getItem("autosave-mappa");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.nodes && parsed.edges) {
+          setNodes(parsed.nodes);
+          setEdges(parsed.edges);
+          setTitoloMappa(parsed.titoloMappa || "Mappa senza titolo");
+          setNodeCount((parsed.nodes?.length || 0) + 1);
+          console.log("✔️ Mappa recuperata da auto-save");
+        }
+      } catch (e) {
+        console.error("Errore nel parsing autosave", e);
+      }
+    }
+  }, []);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFullscreen = !!document.fullscreenElement;
+      if (!isFullscreen) {
+        setPresentazioneAttiva(false);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (nodes.length || edges.length) {
+        localStorage.setItem(
+          "autosave-mappa",
+          JSON.stringify({ nodes, edges, titoloMappa })
+        );
+        toast.success("💾 Mappa salvata automaticamente", { duration: 1500 });
+      }
+    }, 8000);
+
+    return () => clearTimeout(timeout);
+  }, [nodes, edges, titoloMappa]);
 
   const fetchMappeUtente = async (userId: string) => {
     const { data } = await supabase
@@ -301,8 +291,8 @@ useEffect(() => {
   };
 
   const handleExportDocx = () => {
-    const paragraphs = nodes.map((node) =>
-      new Paragraph({ children: [new TextRun(`${node.data.label}`)] })
+    const paragraphs = nodes.map(
+      (node) => new Paragraph({ children: [new TextRun(`${node.data.label}`)] })
     );
     const doc = new Document({
       sections: [
@@ -314,66 +304,67 @@ useEffect(() => {
         },
       ],
     });
-    Packer.toBlob(doc).then((blob) => saveAs(blob, "mappa-concettuale.docx"));
+    Packer.toBlob(doc).then((blob) =>
+      saveAs(blob, "mappa-concettuale.docx")
+    );
   };
 
   const handleExportPDF = async () => {
-    const flowWrapper = document.getElementById('reactflow-wrapper');
-  
-    if (!flowWrapper) {
-      toast.success("✅ Mappa salvata!");
-      toast.error("Errore durante l'esportazione!");
+    const flowWrapper = document.getElementById("reactflow-wrapper");
 
+    if (!flowWrapper) {
+      toast.error("Errore durante l'esportazione!");
       return;
     }
-  
-    setLoading(true); // Loading state
-  
+
+    setLoading(true);
+
     try {
-      const dataUrl = await htmlToImage.toPng(flowWrapper, { pixelRatio: 2 }); // pixelRatio a 2 per una buona qualità nel PDF
-  
+      const dataUrl = await htmlToImage.toPng(flowWrapper, { pixelRatio: 2 });
       const pdf = new jsPDF({
-        orientation: 'landscape', // o 'portrait'
-        unit: 'px', // unità di misura
-        // format: 'a4' // Puoi specificare un formato, o lasciare che si adatti all'immagine
+        orientation: "landscape",
+        unit: "px",
       });
-  
-      // Per determinare le dimensioni dell'immagine e adattare il PDF:
-      const imgProps = await new Promise<{width: number, height: number}>(resolve => {
-        const img = new Image();
-        img.onload = () => {
-          resolve({width: img.width, height: img.height});
-        };
-        img.src = dataUrl;
-      });
-  
+
+      const imgProps = await new Promise<{ width: number; height: number }>(
+        (resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            resolve({ width: img.width, height: img.height });
+          };
+          img.src = dataUrl;
+        }
+      );
+
       let pdfWidth = pdf.internal.pageSize.getWidth();
       let pdfHeight = pdf.internal.pageSize.getHeight();
-  
-      // Calcola il rapporto per adattare l'immagine mantenendo le proporzioni
       const imgRatio = imgProps.width / imgProps.height;
       const pdfRatio = pdfWidth / pdfHeight;
-  
+
       let finalImgWidth, finalImgHeight;
-  
-      if (imgRatio > pdfRatio) { // L'immagine è più "larga" del PDF
-          finalImgWidth = pdfWidth;
-          finalImgHeight = pdfWidth / imgRatio;
-      } else { // L'immagine è più "alta" o ha lo stesso rapporto del PDF
-          finalImgHeight = pdfHeight;
-          finalImgWidth = pdfHeight * imgRatio;
+      if (imgRatio > pdfRatio) {
+        finalImgWidth = pdfWidth;
+        finalImgHeight = pdfWidth / imgRatio;
+      } else {
+        finalImgHeight = pdfHeight;
+        finalImgWidth = pdfHeight * imgRatio;
       }
-  
-      // Centra l'immagine nella pagina (opzionale)
+
       const xOffset = (pdfWidth - finalImgWidth) / 2;
       const yOffset = (pdfHeight - finalImgHeight) / 2;
-  
-      pdf.addImage(dataUrl, 'PNG', xOffset, yOffset, finalImgWidth, finalImgHeight);
+
+      pdf.addImage(
+        dataUrl,
+        "PNG",
+        xOffset,
+        yOffset,
+        finalImgWidth,
+        finalImgHeight
+      );
       pdf.save(`${titoloMappa || "mappa-concettuale"}.pdf`);
-  
+      toast.success("✅ Mappa esportata in PDF!");
     } catch (error) {
       console.error("Errore durante la generazione del PDF:", error);
-      toast.success("✅ Mappa esportata in PDF!");
       toast.error("Errore durante l'esportazione in PDF!");
     } finally {
       setLoading(false);
@@ -381,46 +372,33 @@ useEffect(() => {
   };
 
   const handleExportPNG = async () => {
-    const flowWrapper = document.getElementById('reactflow-wrapper'); // O l'elemento che hai scelto
-  
+    const flowWrapper = document.getElementById("reactflow-wrapper");
     if (!flowWrapper) {
-      toast.success("✅ Mappa esportata correttamente in PNG");
-      toast.error("Errore: Impossibile trovare l'area della mappa per l'esportazione.");
+      toast.error(
+        "Errore: Impossibile trovare l'area della mappa per l'esportazione."
+      );
       return;
     }
-  
-    setLoading(true); // Potresti voler usare un loading state specifico per l'export
-  
+    setLoading(true);
     try {
-      const dataUrl = await htmlToImage.toPng(flowWrapper, {
-        // Opzioni per migliorare la qualità, se necessario:
-        // quality: 0.98, // Qualità dell'immagine (per formati lossy come JPEG, meno rilevante per PNG)
-        // pixelRatio: 2, // Aumenta la risoluzione (utile per display retina)
-        // backgroundColor: '#ffffff', // Se vuoi forzare uno sfondo (es. se lo sfondo di ReactFlow è trasparente)
-                                    // Il tuo bg-white/dark:bg-gray-900 dovrebbe essere catturato automaticamente
-      });
-  
+      const dataUrl = await htmlToImage.toPng(flowWrapper);
       saveAs(dataUrl, `${titoloMappa || "mappa-concettuale"}.png`);
-  
+      toast.success("✅ Mappa esportata correttamente in PNG");
     } catch (error) {
       console.error("Errore durante la generazione del PNG:", error);
-      toast.success("✅ Mappa salvata correttamente in PNG");
       toast.error("Si è verificato un errore durante l'esportazione in PNG");
     } finally {
       setLoading(false);
     }
   };
 
-
   const handleSave = async () => {
-    if (!userId) return toast.success("Utente non loggato");
-
+    if (!userId) return toast.error("Utente non loggato");
     await supabase.from("mappe_concettuali").insert({
       user_id: userId,
       titolo: titoloMappa,
       data: { nodes, edges },
     });
-
     toast.success("✅ Mappa salvata!");
     fetchMappeUtente(userId);
   };
@@ -449,8 +427,27 @@ useEffect(() => {
   const handleRinominaMappa = async (id: string) => {
     const nuovoTitolo = prompt("Nuovo titolo:");
     if (!nuovoTitolo) return;
-    await supabase.from("mappe_concettuali").update({ titolo: nuovoTitolo }).eq("id", id);
+    await supabase
+      .from("mappe_concettuali")
+      .update({ titolo: nuovoTitolo })
+      .eq("id", id);
     fetchMappeUtente(userId!);
+  };
+
+  // NUOVA FUNZIONE PER IL RESET
+  const handleResetSessione = () => {
+    if (!confirm("Vuoi davvero cancellare la mappa attuale non salvata? Questa azione non può essere annullata.")) return;
+    
+    // Rimuove l'autosave dal browser
+    localStorage.removeItem("autosave-mappa");
+    
+    // Resetta lo stato della mappa nell'applicazione
+    setNodes([]);
+    setEdges([]);
+    setTitoloMappa("Mappa senza titolo");
+    setHistory([]);
+    setFuture([]);
+    toast.success("🧹 Sessione pulita. Puoi ricominciare da capo.");
   };
 
   const handleGeneraMappa = async () => {
@@ -478,14 +475,15 @@ useEffect(() => {
       }));
 
       const connessioni = nodiGenerati
-  .slice(0, -1)
-  .map((_l: string, idx: number): Edge => ({
-    id: `e-${idx}`,
-    source: `g-${idx}`,
-    target: `g-${idx + 1}`,
-    type: "default",
-  }));
-
+        .slice(0, -1)
+        .map(
+          (_l: string, idx: number): Edge => ({
+            id: `e-${idx}`,
+            source: `g-${idx}`,
+            target: `g-${idx + 1}`,
+            type: "default",
+          })
+        );
 
       setNodes(generati);
       setEdges(connessioni);
@@ -521,65 +519,88 @@ useEffect(() => {
       stroke: edge.id === selectedEdgeId ? "#ef4444" : "#777",
       strokeWidth: edge.id === selectedEdgeId ? 3 : 1.5,
       strokeDasharray: edge.id === selectedEdgeId ? "5,5" : "none",
-      filter: edge.id === selectedEdgeId ? "drop-shadow(0 0 3px red)" : "none",
+      filter:
+        edge.id === selectedEdgeId ? "drop-shadow(0 0 3px red)" : "none",
     },
   }));
 
   if (!userChecked) {
-    return <DashboardLayout><p>Caricamento...</p></DashboardLayout>;
+    return (
+      <DashboardLayout>
+        <p>Caricamento...</p>
+      </DashboardLayout>
+    );
   }
-
+  const buttonStyle =
+    "px-4 py-2 rounded text-white transition-transform transform hover:-translate-y-1 hover:shadow-lg duration-200";
+  const enabledButtonStyle = "bg-indigo-600 hover:bg-indigo-700";
+  const disabledButtonStyle = "bg-gray-400 cursor-not-allowed";
 
   return (
     <DashboardLayout>
       <Toaster position="top-right" />
       {presentazioneAttiva && (
-        <button onClick={() => {setPresentazioneAttiva(false);document.exitFullscreen?.();}}
-        className="fixed top-4 right-4 z-50 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded shadow-lg">
-        ✖ Esci
+        <button
+          onClick={() => {
+            setPresentazioneAttiva(false);
+            document.exitFullscreen?.();
+          }}
+          className="fixed top-4 right-4 z-50 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded shadow-lg"
+        >
+          ✖ Esci
         </button>
       )}
 
       <h1 className="text-2xl font-bold mb-4">🧠 Mappa Concettuale</h1>
 
       <div className="flex items-start justify-between mb-4 gap-4">
-  <div className="flex items-center gap-2">
-    <input
-      type="text"
-      value={titoloMappa}
-      onChange={(e) => setTitoloMappa(e.target.value)}
-      placeholder="Titolo mappa"
-      className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 rounded w-full max-w-md"
-    />
-    <button
-      onClick={() => setShowGuida(true)}
-      className="text-blue-600 text-xl font-bold border border-blue-400 rounded-full w-7 h-7 flex items-center justify-center hover:bg-blue-100"
-      title="Mostra guida"
-    >
-      ?
-    </button>
-  </div>
-</div>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={titoloMappa}
+            onChange={(e) => setTitoloMappa(e.target.value)}
+            placeholder="Titolo mappa"
+            className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 rounded w-full max-w-md"
+          />
+          <button
+            onClick={() => setShowGuida(true)}
+            className="text-blue-600 text-xl font-bold border border-blue-400 rounded-full w-7 h-7 flex items-center justify-center hover:bg-blue-100"
+            title="Mostra guida"
+          >
+            ?
+          </button>
+        </div>
+      </div>
 
-{showGuida && (
-  <div className="bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 dark:border-yellow-300 text-yellow-900 dark:text-yellow-100 p-4 rounded mb-4 relative max-w-2xl">
-    <button
-      onClick={() => setShowGuida(false)}
-      className="absolute top-2 right-2 text-yellow-900 font-bold hover:text-red-500"
-      title="Chiudi"
-    >
-      ×
-    </button>
-    <h2 className="font-semibold text-base mb-2">ℹ️ Come funziona la sezione Mappe</h2>
-    <ul className="list-disc list-inside space-y-1 text-sm">
-      <li>Genera automaticamente una mappa da un argomento oppure crea nodi manualmente.</li>
-      <li>Doppio clic su un nodo per modificarne il testo.</li>
-      <li>Collega nodi trascinandoli, elimina nodi o connessioni selezionandoli.</li>
-      <li>Puoi salvare, esportare in PDF o DOCX e annullare/ripristinare modifiche.</li>
-    </ul>
-  </div>
-)}
-
+      {showGuida && (
+        <div className="bg-yellow-100 dark:bg-yellow-900 border-l-4 border-yellow-500 dark:border-yellow-300 text-yellow-900 dark:text-yellow-100 p-4 rounded mb-4 relative max-w-2xl">
+          <button
+            onClick={() => setShowGuida(false)}
+            className="absolute top-2 right-2 text-yellow-900 font-bold hover:text-red-500"
+            title="Chiudi"
+          >
+            ×
+          </button>
+          <h2 className="font-semibold text-base mb-2">
+            ℹ️ Come funziona la sezione Mappe
+          </h2>
+          <ul className="list-disc list-inside space-y-1 text-sm">
+            <li>
+              Genera automaticamente una mappa da un argomento oppure crea nodi
+              manualmente.
+            </li>
+            <li>Doppio clic su un nodo per modificarne il testo.</li>
+            <li>
+              Collega nodi trascinandoli, elimina nodi o connessioni
+              selezionandoli.
+            </li>
+            <li>
+              Puoi salvare, esportare in PDF o DOCX e annullare/ripristinare
+              modifiche.
+            </li>
+          </ul>
+        </div>
+      )}
 
       <div className="flex flex-col md:flex-row gap-2 mb-4">
         <input
@@ -591,141 +612,218 @@ useEffect(() => {
         />
         <button
           onClick={handleGeneraMappa}
-          className="bg-indigo-600 text-white px-4 py-2 rounded transition-transform transform hover:-translate-y-1 hover:shadow-lg duration-200"
+          className={`${buttonStyle} ${enabledButtonStyle}`}
         >
           {loading ? "Generazione..." : "✨ Genera mappa"}
         </button>
       </div>
 
-      <select value={layoutDirection} onChange={(e) => setLayoutDirection(e.target.value as "TB" | "LR")} className="border border-gray-300 dark:border-gray-600 text-sm rounded px-2 py-1" title="Direzione layout">
+      <select
+        value={layoutDirection}
+        onChange={(e) =>
+          setLayoutDirection(e.target.value as "TB" | "LR")
+        }
+        className="border border-gray-300 dark:border-gray-600 text-sm rounded px-2 py-1 mb-4"
+        title="Direzione layout"
+      >
         <option value="TB">⬇️ Albero verticale</option>
         <option value="LR">➡️ Albero orizzontale</option>
       </select>
 
-
       {!presentazioneAttiva && (
-  <div className="mb-4 flex flex-wrap gap-2">
-    <button onClick={addNewNode} className="...">➕ Nodo</button>
-    <button onClick={handleExportPNG} className="...">🖼️ PNG</button>
-    <button onClick={handleExportDocx} className="...">📄 DOCX</button>
-    <button onClick={handleUndo} disabled={history.length === 0} className="...">↩️ Indietro</button>
-    <button onClick={handleRedo} disabled={future.length === 0} className="...">↪️ Avanti</button>
-    <button onClick={handleSave} className="...">💾 Salva</button>
-    <button
-  onClick={deleteSelectedNode}
-  disabled={!selectedNodeId}
-  className={`px-3 py-2 rounded transition text-white 
-    ${selectedNodeId ? "bg-red-600 hover:bg-red-700" : "bg-gray-400 cursor-not-allowed"}`}
->
-  🗑️ Nodo
-</button>
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            onClick={addNewNode}
+            className={`${buttonStyle} bg-blue-600 hover:bg-blue-700`}
+          >
+            ➕ Nodo
+          </button>
+          <button
+            onClick={handleExportPNG}
+            className={`${buttonStyle} bg-teal-600 hover:bg-teal-700`}
+          >
+            🖼️ PNG
+          </button>
+          <button
+            onClick={handleExportDocx}
+            className={`${buttonStyle} bg-sky-600 hover:bg-sky-700`}
+          >
+            📄 DOCX
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className={`${buttonStyle} bg-orange-600 hover:bg-orange-700`}
+          >
+            📄 PDF
+          </button>
+          <button
+            onClick={handleUndo}
+            disabled={history.length === 0}
+            className={`${buttonStyle} ${
+              history.length > 0 ? enabledButtonStyle : disabledButtonStyle
+            }`}
+          >
+            ↩️ Indietro
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={future.length === 0}
+            className={`${buttonStyle} ${
+              future.length > 0 ? enabledButtonStyle : disabledButtonStyle
+            }`}
+          >
+            ↪️ Avanti
+          </button>
+          <button
+            onClick={handleSave}
+            className={`${buttonStyle} bg-green-600 hover:bg-green-700`}
+          >
+            💾 Salva
+          </button>
+          <button
+            onClick={() => {
+              const newNodes = layoutGraph(nodes, edges);
+              saveToHistory();
+              setNodes(newNodes);
+            }}
+            className={`${buttonStyle} bg-purple-600 hover:bg-purple-700`}
+          >
+            🧭 Riordina
+          </button>
+          <button
+            onClick={() => {
+              const attiva = !presentazioneAttiva;
+              setPresentazioneAttiva(attiva);
+              if (attiva) toggleFullscreen();
+              else document.exitFullscreen?.();
+            }}
+            className={`${buttonStyle} bg-yellow-600 hover:bg-yellow-700`}
+          >
+            {presentazioneAttiva ? "💼 Normale" : "🎥 Presentazione"}
+          </button>
+          <button
+            onClick={deleteSelectedNode}
+            disabled={!selectedNodeId}
+            className={`${buttonStyle} ${
+              selectedNodeId
+                ? "bg-red-600 hover:bg-red-700"
+                : disabledButtonStyle
+            }`}
+          >
+            🗑️ Nodo
+          </button>
+          <button
+            onClick={deleteSelectedEdge}
+            disabled={!selectedEdgeId}
+            className={`${buttonStyle} ${
+              selectedEdgeId
+                ? "bg-red-500 hover:bg-red-600"
+                : disabledButtonStyle
+            }`}
+          >
+            🗑️ Connessione
+          </button>
+          {/* NUOVO PULSANTE RESET */}
+          <button
+            onClick={handleResetSessione}
+            className={`${buttonStyle} bg-pink-600 hover:bg-pink-700`}
+          >
+            🧹 Pulisci sessione
+          </button>
+        </div>
+      )}
 
-    <button
-  onClick={deleteSelectedEdge}
-  disabled={!selectedEdgeId}
-  className={`px-3 py-2 rounded transition text-white 
-    ${selectedEdgeId ? "bg-red-500 hover:bg-red-600" : "bg-gray-400 cursor-not-allowed"}`}
->
-  🗑️ Connessione
-</button>
-
-    <button onClick={handleExportPDF} className="...">📄 PDF</button>
-    <button onClick={() => {
-      const newNodes = layoutGraph(nodes, edges);
-      saveToHistory();
-      setNodes(newNodes);
-    }} className="...">🧭 Riordina automatico</button>
-    <button
-  onClick={() => {
-    const attiva = !presentazioneAttiva;
-    setPresentazioneAttiva(attiva);
-    if (attiva) toggleFullscreen();
-    else document.exitFullscreen?.();
-  }}
-  className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded"
->
-  {presentazioneAttiva ? "💼 Modalità normale" : "🎥 Presentazione"}
-</button>
-
-  </div>
-)}
-
-{selectedEdgeId && (
-  <input
-    type="text"
-    placeholder="Etichetta connessione"
-    onChange={(e) => {
-      const text = e.target.value;
-      setEdges((eds) =>
-        eds.map((edge) =>
-          edge.id === selectedEdgeId ? { ...edge, label: text } : edge
-        )
-      );
-    }}
-    className="border px-2 py-1 rounded"
-  />
-)}
-
-
+      {selectedEdgeId && (
+        <input
+          type="text"
+          placeholder="Etichetta connessione"
+          onChange={(e) => {
+            const text = e.target.value;
+            setEdges((eds) =>
+              eds.map((edge) =>
+                edge.id === selectedEdgeId ? { ...edge, label: text } : edge
+              )
+            );
+          }}
+          className="border px-2 py-1 rounded mb-4"
+        />
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {mappeSalvate.map((mappa) => (
-          <div key={mappa.id} className="p-3 bg-white dark:bg-gray-800 rounded shadow border border-gray-300 dark:border-gray-700">
+          <div
+            key={mappa.id}
+            className="p-3 bg-white dark:bg-gray-800 rounded shadow border border-gray-300 dark:border-gray-700"
+          >
             <p className="font-semibold">{mappa.titolo}</p>
             <div className="mt-2 flex gap-2 flex-wrap">
-              <button onClick={() => handleLoad(mappa.id)} className="bg-blue-600 text-white px-2 py-1 rounded">Carica</button>
-              <button onClick={() => handleRinominaMappa(mappa.id)} className="bg-yellow-500 text-white px-2 py-1 rounded">Rinomina</button>
-              <button onClick={() => handleEliminaMappa(mappa.id)} className="bg-red-600 text-white px-2 py-1 rounded">Elimina</button>
+              <button
+                onClick={() => handleLoad(mappa.id)}
+                className="bg-blue-600 text-white px-2 py-1 rounded"
+              >
+                Carica
+              </button>
+              <button
+                onClick={() => handleRinominaMappa(mappa.id)}
+                className="bg-yellow-500 text-white px-2 py-1 rounded"
+              >
+                Rinomina
+              </button>
+              <button
+                onClick={() => handleEliminaMappa(mappa.id)}
+                className="bg-red-600 text-white px-2 py-1 rounded"
+              >
+                Elimina
+              </button>
             </div>
           </div>
         ))}
       </div>
 
       <div
-  className="h-[70vh] w-full border rounded bg-white dark:bg-gray-900 shadow border-gray-300 dark:border-gray-700"
-  id="reactflow-wrapper"
-  onDoubleClick={(event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const { project } = useReactFlow();
-    const position = project({
-      x: event.clientX - bounds.left,
-      y: event.clientY - bounds.top,
-    });
+        className="h-[70vh] w-full border rounded bg-white dark:bg-gray-900 shadow border-gray-300 dark:border-gray-700"
+        id="reactflow-wrapper"
+        onDoubleClick={(event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+          const bounds = event.currentTarget.getBoundingClientRect();
+          const { project } = useReactFlow();
+          const position = project({
+            x: event.clientX - bounds.left,
+            y: event.clientY - bounds.top,
+          });
 
-    const newNode: Node = {
-      id: nodeCount.toString(),
-      type: "custom",
-      position,
-      data: { label: `Nuovo Nodo ${nodeCount}` },
-    };
+          const newNode: Node = {
+            id: nodeCount.toString(),
+            type: "custom",
+            position,
+            data: { label: `Nuovo Nodo ${nodeCount}` },
+          };
 
-    saveToHistory();
-    setNodes((nds) => [...nds, newNode]);
-    setNodeCount((prev) => prev + 1);
-  }}
->
-  <ReactFlow
-    nodes={nodesWithEdit}
-    edges={styledEdges}
-    onNodesChange={onNodesChange}
-    onEdgesChange={onEdgesChange}
-    onConnect={onConnect}
-    onNodeClick={onNodeClick}
-    onEdgeClick={onEdgeClick}
-    nodeTypes={nodeTypes}
-    fitView
-    snapToGrid={true}
-    snapGrid={[20, 20]}
-    selectNodesOnDrag={true}
-  >
-    <MiniMap />
-    <Controls />
-    <Background />
-  </ReactFlow>
-</div>
-
+          saveToHistory();
+          setNodes((nds) => [...nds, newNode]);
+          setNodeCount((prev) => prev + 1);
+        }}
+      >
+        <ReactFlow
+          nodes={nodesWithEdit}
+          edges={styledEdges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
+          nodeTypes={nodeTypes}
+          fitView
+          snapToGrid={true}
+          snapGrid={[20, 20]}
+          selectNodesOnDrag={true}
+        >
+          <MiniMap />
+          <Controls />
+          <Background />
+        </ReactFlow>
+      </div>
     </DashboardLayout>
   );
 }
 
-MappaConcettuale.requireAuth = true
+MappaConcettuale.requireAuth = true;
