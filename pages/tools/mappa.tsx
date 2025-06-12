@@ -454,11 +454,18 @@ export default function MappaConcettuale() {
     if (!topic || !userId) return;
     setLoading(true);
 
-    const res = await fetch("/api/mappa", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ argomento: topic }),
-    });
+    const session = await supabase.auth.getSession();
+const token = session.data.session?.access_token;
+
+const res = await fetch("/api/mappa", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  },
+  body: JSON.stringify({ argomento: topic }),
+});
+
 
     const data = await res.json();
     const { nodiGenerati } = data;
