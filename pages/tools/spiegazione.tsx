@@ -26,6 +26,7 @@ export default function Spiegazione() {
   const [followUp, setFollowUp] = useState("");
   const [livello, setLivello] = useState("superiori"); 
   const concetto = chat[0]?.role === "user" ? chat[0].content : "Argomento della spiegazione";
+  const [tipoAssistente, setTipoAssistente] = useState<"generale" | "ingegnere">("generale");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [suggerimenti, setSuggerimenti] = useState<string[]>([]);
   const [mostraSuggerimenti, setMostraSuggerimenti] = useState(false);
@@ -88,7 +89,7 @@ export default function Spiegazione() {
     setInput(testo);
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.id) return generaSpiegazione(testo);
+    if (!user?.id) return generaSpiegazioneFox(testo);
 
     const { data: chatEsistente } = await supabase
       .from("chat_spiegazioni")
@@ -104,7 +105,7 @@ export default function Spiegazione() {
         .find((msg: any) => msg.role === "assistant")?.content;
       if (last) setRisposta(last);
     } else {
-      generaSpiegazione(testo);
+      generaSpiegazioneFox(testo);
     }
 
     setLoading(false);
@@ -150,99 +151,90 @@ export default function Spiegazione() {
 };
 
 
+const generaSpiegazioneIngegnere = async (testo: string) => {
+  if (!testo || isSubmitting) return;
+  setTipoAssistente("ingegnere");
+  setIsSubmitting(true);
+  setLoading(true);
+  setRisposta("");
+  const userMessage = { role: "user" as const, content: testo };
+  const assistantPlaceholder = { role: "assistant" as const, content: "" };
+  setChat([userMessage, assistantPlaceholder]);
 
+  const session = await supabase.auth.getSession();
+  const token = session.data.session?.access_token;
 
+  try {
+    const res = await fetch("/api/spiegazione", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        concetto: testo,
+        livelloStudente: livello,
+        isFirst: true,
+        isRisolutore: true
+      }),
+    });
 
-  const generaSpiegazione = async (testo: string) => {
-    if (!testo || isSubmitting) return;
-
-    setIsSubmitting(true);
-    setLoading(true);
-    setRisposta(""); // Pulisci la risposta precedente
-    // Aggiungi subito il messaggio dell'utente e un segnaposto per l'assistente
-    const userMessage = { role: "user" as const, content: testo };
-    const assistantPlaceholder = { role: "assistant" as const, content: "" }; // Inizia vuoto
-    setChat([userMessage, assistantPlaceholder]);
-
-    const session = await supabase.auth.getSession();
-    const token = session.data.session?.access_token;
-
-    try {
-      const res = await fetch("/api/spiegazione", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          concetto: testo,
-          livelloStudente: livello, // Assicurati che 'livello' sia lo stato corretto
-        }),
-      });
-
-      if (!res.ok || !res.body) {
-        // Se la risposta non è ok (es. errore 500, 400 prima dello stream)
-        // o se non c'è un corpo della risposta, gestisci l'errore.
-        const errorData = await res.json().catch(() => ({ error: "Errore sconosciuto nel leggere la risposta" }));
-        toast.error(errorData.error || "Errore durante la generazione della spiegazione.");
-        setChat(prevChat => prevChat.slice(0, prevChat.length -1)); // Rimuovi il placeholder dell'assistente
-        setLoading(false);
-        setIsSubmitting(false);
-        return;
-      }
-
-      // 🔥 Inizio gestione dello stream
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedResponse = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break; // Lo stream è terminato
-
-        const chunk = decoder.decode(value, { stream: true });
-        accumulatedResponse += chunk;
-
-        // Aggiorna l'ultimo messaggio (quello dell'assistente) nella chat
-        setChat(prevChat => {
-          const newChat = [...prevChat];
-          if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
-            newChat[newChat.length - 1].content = accumulatedResponse;
-          }
-          return newChat;
-        });
-        setRisposta(accumulatedResponse); // Aggiorna anche lo stato 'risposta' se lo usi per display separato
-      }
-      // Assicurati che l'ultimo pezzetto sia processato se il decoder ha bufferizzato qualcosa
-      const finalChunk = decoder.decode();
-       if (finalChunk) {
-           accumulatedResponse += finalChunk;
-           setChat(prevChat => {
-               const newChat = [...prevChat];
-               if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
-                   newChat[newChat.length - 1].content = accumulatedResponse;
-               }
-               return newChat;
-           });
-           setRisposta(accumulatedResponse);
-       }
-      // 🔥 Fine gestione dello stream
-
-    } catch (error) {
-      console.error("Errore nel fetch o nello streaming:", error);
-      toast.error("Si è verificato un errore durante la richiesta.");
-      // Potresti voler rimuovere il placeholder dell'assistente anche qui
-       setChat(prevChat => {
-           if (prevChat.length > 0 && prevChat[prevChat.length -1].role === "assistant" && prevChat[prevChat.length -1].content === "") {
-               return prevChat.slice(0, prevChat.length -1);
-           }
-           return prevChat;
-       });
-    } finally {
+    if (!res.ok || !res.body) {
+      const errorData = await res.json().catch(() => ({ error: "Errore sconosciuto con l'ingegnere" }));
+      toast.error(errorData.error || "Errore durante la richiesta all'ingegnere.");
+      setChat(prevChat => prevChat.slice(0, prevChat.length - 1));
       setLoading(false);
       setIsSubmitting(false);
+      return;
     }
-  };
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedResponse = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      accumulatedResponse += chunk;
+      setChat(prevChat => {
+        const newChat = [...prevChat];
+        if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+          newChat[newChat.length - 1].content = accumulatedResponse;
+        }
+        return newChat;
+      });
+      setRisposta(accumulatedResponse);
+    }
+
+    const finalChunk = decoder.decode();
+    if (finalChunk) {
+      accumulatedResponse += finalChunk;
+      setChat(prevChat => {
+        const newChat = [...prevChat];
+        if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant") {
+          newChat[newChat.length - 1].content = accumulatedResponse;
+        }
+        return newChat;
+      });
+      setRisposta(accumulatedResponse);
+    }
+
+  } catch (error) {
+    console.error("Errore con ingegnere:", error);
+    toast.error("Errore durante la richiesta all'ingegnere.");
+    setChat(prevChat => {
+      if (prevChat.length > 0 && prevChat[prevChat.length - 1].role === "assistant" && prevChat[prevChat.length - 1].content === "") {
+        return prevChat.slice(0, prevChat.length - 1);
+      }
+      return prevChat;
+    });
+  } finally {
+    setLoading(false);
+    setIsSubmitting(false);
+  }
+};
+
 
   const ottimizzaPrompt = async () => {
   if (!input.trim()) {
@@ -296,7 +288,7 @@ setSuggerimenti(filtrati.slice(0, 3));
 
   const generaSpiegazioneFox = async (testo: string) => {
   if (!testo || isSubmitting) return;
-
+  setTipoAssistente("generale");
   setIsSubmitting(true);
   setLoading(true);
   setRisposta("");
@@ -317,6 +309,8 @@ setSuggerimenti(filtrati.slice(0, 3));
       body: JSON.stringify({
         concetto: testo,
         livelloStudente: livello,
+        isFirst: true,
+        isRisolutore: false
       }),
     });
 
@@ -440,6 +434,8 @@ if (accumulatedResponse.length > 20) {
           concetto: chat[0]?.content || "Argomento sconosciuto", // Usa il primo messaggio come concetto base
           followUp: newChatWithMessage, // Invia la cronologia fino al messaggio dell'utente corrente
           livelloStudente: livello,
+          isFirst: false,
+          isRisolutore: tipoAssistente === "ingegnere"
         }),
       });
 
@@ -550,6 +546,29 @@ if (accumulatedResponse.length > 20) {
     isSubmitting ? "opacity-50 cursor-not-allowed" : ""
   }`}
 >
+
+<button
+  onClick={() => generaSpiegazioneIngegnere(input)}
+  disabled={!input.trim() || isSubmitting}
+  className={`relative bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white px-4 py-2 rounded transition flex items-center justify-center ${
+    isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+  }`}
+>
+  {isSubmitting ? (
+    <>
+      <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+      </svg>
+      L’ingegnere sta elaborando...
+    </>
+  ) : (
+    <>
+      🧠 Usa assistente Ingegnere STEM
+    </>
+  )}
+</button>
+
   {isSubmitting ? (
     <>
       <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
