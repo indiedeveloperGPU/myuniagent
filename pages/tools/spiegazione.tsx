@@ -11,7 +11,8 @@ import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
 import ImageModal from "@/components/ImageModal";
 import TutorialModal from "@/components/TutorialModal";
-
+import { InlineMath, BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
 
 
 
@@ -134,22 +135,20 @@ export default function Spiegazione() {
     }
   };
 
-  const normalizeLatex = (text: string): string => {
+ const normalizeLatex = (text: string): string => {
   let normalized = text
     .replace(/\\\\\[/g, '\\[')
     .replace(/\\\\\]/g, '\\]')
     .replace(/\\\\\(/g, '\\(')
     .replace(/\\\\\)/g, '\\)')
-    .replace(/\\\[/g, '$$')
-    .replace(/\\\]/g, '$$')
-    .replace(/\\\(/g, '$')
-    .replace(/\\\)/g, '$');
-  normalized = normalized.replace(/(^|[^$\\])([a-zA-Z0-9]+)\^(\([^)]+\)|[a-zA-Z0-9]+)/g, (match, before, base, exp) => {
-    return `${before}$${base}^{${exp.replace(/^\(|\)$/g, '')}}$`;
-  });
+    // NON trasformare in $$ o $ → mantieni \[ \] e \( \)
+    .replace(/(^|[^\\])([a-zA-Z0-9]+)\^(\([^)]+\)|[a-zA-Z0-9]+)/g, (match, before, base, exp) => {
+      return `${before}${base}^{${exp.replace(/^\(|\)$/g, '')}}`;
+    });
 
   return normalized;
 };
+
 
 
 
