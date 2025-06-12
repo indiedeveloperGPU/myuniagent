@@ -90,11 +90,13 @@ Analizzando il testo, cita sempre esempi che possono essere pertinenti all'appre
     res.setHeader("Transfer-Encoding", "chunked");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
 
     const stream = await openai.chat.completions.create({
       model: "meta-llama/Llama-4-Scout-17B-16E-Instruct",
       messages: [
-        { role: "system", content: promptScout }
+        { role: "system", content: promptScout },
+        { role: "user", content: "Procedi con il riassunto del testo fornito." }
       ],
       temperature: 0.15,
       stream: true,
@@ -137,13 +139,13 @@ setImmediate(async () => {
       return;
     }
 
-    const { error: insertError } = await supabaseAuth.from("attivita").insert({
-      user_id: authUser.id,
-      tipo: "riassunto",
-      input: testo.slice(0, 60000), 
-      output: riassuntoCompleto,
-      creato_il: new Date().toISOString(),
-    });
+    const { error: insertError } = await supabaseAuth.from("riassunti_generati").insert({
+  user_id: authUser.id,
+  titolo: testo.slice(0, 100), // opzionale: anteprima titolo
+  input: testo.slice(0, 60000),
+  output: riassuntoCompleto,
+});
+
 
     if (insertError) {
       console.error("Errore salvataggio attivita riassunto:", insertError);
