@@ -3,8 +3,8 @@ import { OpenAI } from "openai";
 import { createClient } from "@supabase/supabase-js";
 
 const openai = new OpenAI({
-  apiKey: process.env.TOGETHER_API_KEY!,
-  baseURL: "https://api.together.xyz/v1",
+  apiKey: process.env.GROQ_API_KEY!, // la tua vera API Key Groq
+  baseURL: "https://api.groq.com/openai/v1", // Groq usa endpoint OpenAI-compatible
 });
 
 const supabase = createClient(
@@ -23,7 +23,7 @@ type ModelloRichiesto = "scout" | "maverick";
 
 const modelliDisponibili: Record<ModelloRichiesto, string> = {
   scout: "meta-llama/Llama-4-Scout-17B-16E-Instruct",
-  maverick: "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+  maverick: "meta-llama/llama-4-maverick-17b-128e-instruct",
 };
 
 function calcolaCosto(
