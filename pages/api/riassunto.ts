@@ -14,7 +14,7 @@ const supabase = createClient(
 
 export const config = {
   api: {
-    bodyParser: true,
+    bodyParser: false,
   },
 };
 
