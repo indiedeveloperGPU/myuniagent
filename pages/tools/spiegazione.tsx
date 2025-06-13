@@ -523,95 +523,99 @@ if (accumulatedResponse.length > 20) {
           onChange={(e) => setInput(e.target.value)}
         />
 
-        <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 items-start sm:items-center">
-  <label htmlFor="livello" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-    🎓 Seleziona il livello:
-  </label>
-  <select
-    id="livello"
-    value={livello}
-    onChange={(e) => setLivello(e.target.value)}
-    className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
-  >
-    <option value="medie">Medie</option>
-    <option value="superiori">Superiori</option>
-    <option value="universita">Università</option>
-  </select>
+        <div className="flex flex-col gap-4 w-full">
+  {/* Riga compatta: livello + pulsanti principali + ottimizza */}
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start flex-wrap gap-3">
+    {/* Selezione livello */}
+    <div className="flex items-center gap-2">
+      <label htmlFor="livello" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        🎓 Seleziona il livello:
+      </label>
+      <select
+        id="livello"
+        value={livello}
+        onChange={(e) => setLivello(e.target.value)}
+        className="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded p-2"
+      >
+        <option value="medie">Medie</option>
+        <option value="superiori">Superiori</option>
+        <option value="universita">Università</option>
+      </select>
+    </div>
+
+    {/* Pulsante Fox */}
+    <button
+      onClick={() => generaSpiegazioneFox(input)}
+      disabled={!input.trim() || isSubmitting}
+      className={`relative bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800 text-white px-4 py-2 rounded transition flex items-center justify-center ${
+        isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+      }`}
+    >
+      {isSubmitting ? (
+        <>
+          <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          Attendi, Fox sta pensando...
+        </>
+      ) : (
+        <>🦊 Chiedi supporto all’Agente Fox</>
+      )}
+    </button>
+
+    {/* Pulsante Ingegnere */}
+    <button
+      onClick={() => generaSpiegazioneIngegnere(input)}
+      disabled={!input.trim() || isSubmitting}
+      className={`relative bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white px-4 py-2 rounded transition flex items-center justify-center ${
+        isSubmitting ? "opacity-50 cursor-not-allowed" : ""
+      }`}
+    >
+      {isSubmitting ? (
+        <>
+          <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+          L’ingegnere sta elaborando...
+        </>
+      ) : (
+        <>🧠 Usa assistente Ingegnere STEM</>
+      )}
+    </button>
+
+    {/* Pulsante Ottimizza */}
+    <button
+      onClick={ottimizzaPrompt}
+      disabled={!input.trim() || suggerimentoLoading}
+      className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 text-white px-6 py-2 rounded relative group transition-all"
+      title="Analizza e migliora la tua domanda per ottenere spiegazioni più precise"
+    >
+      ✨ Ottimizza domanda
+      <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max text-xs text-white bg-gray-900 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        Ricevi 1–3 versioni migliorate
+      </span>
+    </button>
+  </div>
+
+  {/* Carica immagine */}
+  <div className="flex items-center gap-3">
+    <label htmlFor="image-upload" className="flex items-center gap-2 cursor-pointer px-4 py-2 rounded bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 border border-blue-300 dark:border-blue-600 hover:bg-blue-200 dark:hover:bg-blue-700 transition-all text-sm">
+      🖼️ Carica immagine
+      <input
+        id="image-upload"
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+      />
+    </label>
+    <span className="text-sm text-muted-foreground">Puoi caricare una foto di un testo stampato o scritto</span>
+  </div>
 </div>
 
-        <button
-  onClick={() => generaSpiegazioneFox(input)}
-  disabled={!input.trim() || isSubmitting}
-  className={`relative bg-orange-600 hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-800 text-white px-4 py-2 rounded transition flex items-center justify-center ${
-    isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-  }`}
->
 
-<button
-  onClick={() => generaSpiegazioneIngegnere(input)}
-  disabled={!input.trim() || isSubmitting}
-  className={`relative bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white px-4 py-2 rounded transition flex items-center justify-center ${
-    isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-  }`}
->
-  {isSubmitting ? (
-    <>
-      <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-      </svg>
-      L’ingegnere sta elaborando...
-    </>
-  ) : (
-    <>
-      🧠 Usa assistente Ingegnere STEM
-    </>
-  )}
-</button>
-
-  {isSubmitting ? (
-    <>
-      <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path
-          className="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8v8H4z"
-        />
-      </svg>
-      Attendi, Fox sta pensando...
-    </>
-  ) : (
-    <>
-      🦊 Chiedi supporto all’Agente Fox
-    </>
-  )}
-</button>
-
-        <button
-  onClick={ottimizzaPrompt}
-  disabled={!input.trim() || suggerimentoLoading}
-  className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-700 dark:hover:bg-purple-800 text-white px-4 py-2 rounded relative group transition-all"
-  title="Analizza e migliora la tua domanda per ottenere spiegazioni più precise"
->
-  ✨ Ottimizza domanda
-  <span className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-max text-xs text-white bg-gray-900 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-    Ricevi 1–3 versioni migliorate
-  </span>
-</button>
-<div className="flex items-center gap-3">
-  <label htmlFor="image-upload" className="flex items-center gap-2 cursor-pointer px-4 py-2 rounded bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 border border-blue-300 dark:border-blue-600 hover:bg-blue-200 dark:hover:bg-blue-700 transition-all text-sm">
-    🖼️ Carica immagine
-    <input
-      id="image-upload"
-      type="file"
-      accept="image/*"
-      onChange={handleImageUpload}
-      className="hidden"
-    />
-  </label>
-  <span className="text-sm text-muted-foreground">Puoi caricare una foto di un testo stampato o scritto</span>
-</div>
 
       </div>
       {mostraSuggerimenti && suggerimenti.length > 0 && (
