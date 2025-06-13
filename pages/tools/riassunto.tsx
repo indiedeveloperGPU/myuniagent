@@ -193,15 +193,28 @@ useEffect(() => {
       const reader = res.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let fullText = "";
+let lastUpdate = Date.now();
+const updateInterval = 100; // millisecondi
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        fullText += chunk;
-        tempResults[i] = fullText;
-        setResults([...tempResults]);
-      }
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  const chunk = decoder.decode(value, { stream: true });
+  fullText += chunk;
+
+  const now = Date.now();
+  if (now - lastUpdate >= updateInterval) {
+    tempResults[i] = fullText;
+    setResults([...tempResults]);
+    lastUpdate = now;
+  }
+}
+
+// aggiornamento finale
+tempResults[i] = fullText;
+setResults([...tempResults]);
+
 
     } catch (err: any) {
       tempResults[i] = `❌ Errore nel blocco ${i + 1}: ${err.message}`;
