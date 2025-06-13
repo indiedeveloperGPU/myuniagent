@@ -14,7 +14,7 @@ const supabase = createClient(
 
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: true,
   },
 };
 
@@ -61,27 +61,7 @@ if ((count ?? 0) >= LIMITE_GIORNALIERO) {
     return res.status(403).json({ error: "Accesso non consentito da questa origine." });
   }
 
-  const rawBody = await new Promise<string>((resolve, reject) => {
-  let data = "";
-  req.on("data", chunk => {
-    data += chunk;
-  });
-  req.on("end", () => {
-    resolve(data);
-  });
-  req.on("error", err => {
-    reject(err);
-  });
-});
-
-let parsedBody: { testo: string };
-try {
-  parsedBody = JSON.parse(rawBody);
-} catch (err) {
-  return res.status(400).json({ error: "Body non è un JSON valido." });
-}
-
-const { testo } = parsedBody;
+  const { testo } = req.body;
 
 
   if (!testo || typeof testo !== "string") {
