@@ -3,8 +3,8 @@ import { OpenAI } from "openai";
 import { createClient } from "@supabase/supabase-js";
 
 const openai = new OpenAI({
-  apiKey: process.env.TOGETHER_API_KEY!,
-  baseURL: "https://api.together.xyz/v1",
+  apiKey: process.env.GROQ_API_KEY!, // la tua vera API Key Groq
+  baseURL: "https://api.groq.com/openai/v1", // Groq usa endpoint OpenAI-compatible
 });
 
 const supabase = createClient(
