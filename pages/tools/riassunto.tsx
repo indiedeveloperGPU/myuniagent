@@ -2,11 +2,12 @@ import { useEffect, useState, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
 import { saveAs } from "file-saver";
+import { SemanticChunker } from '@/lib/semanticChunker';
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import { pdfjs, Document as PDFDocument, Page } from "react-pdf";
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf-worker/pdf.worker.min.js";
 import dynamic from "next/dynamic";
-const PdfModal = dynamic(() => import("@/components/PdfModal"), { ssr: false });
+const SmartPdfReader = dynamic(() => import("@/components/smartPdfReader"), { ssr: false });
 
 
 const MAX_CHARS = 4800;
@@ -31,6 +32,8 @@ export default function RiassuntoPage() {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
   const [caricamentoFile, setCaricamentoFile] = useState(false);
+  const [facolta, setFacolta] = useState("");
+  const [materia, setMateria] = useState("");
 
 
 
@@ -84,52 +87,18 @@ useEffect(() => {
   }, [userChecked]);
 
  const splitTextIntoBlocks = (input: string): string[] => {
-  const segmenter = new Intl.Segmenter("it", { granularity: "sentence" });
-  const sentences = Array.from(segmenter.segment(input)).map(s => s.segment.trim());
-
-  const blocks: string[] = [];
-  let currentBlock = "";
-
-  const pushBlock = () => {
-    if (currentBlock.trim().length > 0) {
-      blocks.push(currentBlock.trim());
-      currentBlock = "";
-    }
-  };
-
-  for (const sentence of sentences) {
-    const nextBlock = currentBlock + (currentBlock ? " " : "") + sentence;
-
-    if (nextBlock.length <= MAX_CHARS) {
-      currentBlock = nextBlock;
-    } else if (nextBlock.length <= HARD_LIMIT) {
-      // tolleranza massima accettata
-      currentBlock = nextBlock;
-      pushBlock();
-    } else if (sentence.length > HARD_LIMIT) {
-      // frase troppo lunga, la spezzettiamo a virgole o punti e virgola
-      const subChunks = sentence.split(/[,;](?![^\(\[]*[\)\]])/g); // evita split in parentesi
-      for (const part of subChunks) {
-        const trimmed = part.trim();
-        if (!trimmed) continue;
-        if ((currentBlock + " " + trimmed).length > MAX_CHARS) {
-          pushBlock();
-        }
-        currentBlock += (currentBlock ? " " : "") + trimmed;
-      }
-      pushBlock();
-    } else {
-      // normale push per frase che sfora oltre MAX_CHARS
-      pushBlock();
-      currentBlock = sentence;
-    }
-  }
-
-  if (currentBlock.trim()) {
-    blocks.push(currentBlock.trim());
-  }
-
-  return blocks;
+  // Usa il nuovo chunker semantico
+  const chunker = new SemanticChunker();
+  const semanticChunks = chunker.chunkText(input);
+  
+  // Log per debug (rimuovi in produzione)
+  console.log(`📊 Creati ${semanticChunks.length} chunk semantici:`);
+  semanticChunks.forEach((chunk, i) => {
+    console.log(`Chunk ${i + 1}: ${chunk.metadata.type}, ${chunk.tokenCount} token, pagine: ${chunk.metadata.pageReferences?.join(', ') || 'N/A'}`);
+  });
+  
+  // Estrai solo il testo dai chunk
+  return semanticChunks.map(chunk => chunk.text);
 };
 
 
@@ -468,15 +437,41 @@ setResults([...tempResults]);
       </button>
     </div>
 
+    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div>
+    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">🏛️ Facoltà (obbligatoria)</label>
+    <input
+      type="text"
+      value={facolta}
+      onChange={(e) => setFacolta(e.target.value)}
+      placeholder="Es. Giurisprudenza"
+      className="w-full p-2 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+    />
+  </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">📘 Materia (obbligatoria)</label>
+    <input
+      type="text"
+      value={materia}
+      onChange={(e) => setMateria(e.target.value)}
+      placeholder="Es. Diritto Privato"
+      className="w-full p-2 border rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+    />
+  </div>
+</div>
+
+
+
     <button
-      onClick={handleSubmitGPT}
-      disabled={!text || isSubmitting}
-      className={`bg-blue-600 text-white px-4 py-2 rounded mt-4 hover:bg-blue-700 transition ${
-        isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-      }`}
-    >
-      {isSubmitting ? "⏳ Generazione in corso..." : "📝 Riassumi"}
-    </button>
+  onClick={handleSubmitGPT}
+  disabled={!text || isSubmitting || !facolta || !materia}
+  className={`bg-blue-600 text-white px-4 py-2 rounded mt-4 hover:bg-blue-700 transition ${
+    isSubmitting || !facolta || !materia ? "opacity-50 cursor-not-allowed" : ""
+  }`}
+>
+  {isSubmitting ? "⏳ Generazione in corso..." : "📝 Riassumi"}
+</button>
+
   </div>
 </div>
 
@@ -547,12 +542,12 @@ setResults([...tempResults]);
             <p className="text-red-600 dark:text-red-400 mt-4 font-medium">{error}</p>
           )}
           {selectedPdfFile && (
-  <PdfModal
-    isOpen={isPdfModalOpen}
-    onClose={() => setIsPdfModalOpen(false)}
-    file={selectedPdfFile}
-    onTextSelected={(text) => setText(text)}
-  />
+  <SmartPdfReader
+  isOpen={isPdfModalOpen}
+  onClose={() => setIsPdfModalOpen(false)}
+  file={selectedPdfFile}
+  onTextSelected={(text) => setText(text)}
+/>
 )}
         </>
       )}
