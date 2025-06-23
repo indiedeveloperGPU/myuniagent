@@ -10,7 +10,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
-import SmartPdfReader from "@/components/smartPdfReader";
+import SmartPdfReader from "@/components/SmartPdfReader";
 import TutorialModal from "@/components/TutorialModal";
 import { InlineMath, BlockMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
