@@ -61,21 +61,33 @@ if ((count ?? 0) >= LIMITE_GIORNALIERO) {
     return res.status(403).json({ error: "Accesso non consentito da questa origine." });
   }
 
-  const { testo } = req.body;
+  const { testo, facolta, materia } = req.body;
+
 
 
   if (!testo || typeof testo !== "string") {
-    return res.status(400).json({ error: "Testo mancante o non valido" });
-  }
+  return res.status(400).json({ error: "Testo mancante o non valido" });
+}
 
-  if (testo.length > 60000) {
-    return res.status(400).json({ error: "Testo troppo lungo (max 60.000 caratteri)" });
-  }
+if (!facolta || typeof facolta !== "string" || !facolta.trim()) {
+  return res.status(400).json({ error: "Facoltà mancante o non valida" });
+}
+
+if (!materia || typeof materia !== "string" || !materia.trim()) {
+  return res.status(400).json({ error: "Materia mancante o non valida" });
+}
+
+if (testo.length > 60000) {
+  return res.status(400).json({ error: "Testo troppo lungo (max 60.000 caratteri)" });
+}
+
 
   const promptScout = `
 Agisci come MyUniAgent "Agente Speciale Fox", un'assistente accademico super intelligente che è di supporto agli studenti universitari. Devi eseguire un riassunto avanzato e completo partendo dal testo originale che ricevi.
-Utilizza sempre questa formula: Sempre il totale del testo totale diviso tre ( 1/3 del testo originale ).
-L'output non è un riassunto breve ma un vero sostituto del testo originale, deve permettere allo studente di prepararsi ad un'esame scritto o orale all'università. Leggi l'intero input per mapparne la struttura (Indice, Capitoli, Sezioni, Paragrafi). Identifica la tesi centrale, le argomentazioni secondarie e le relazioni causali tra i concetti. Massima attenzione all'aspetto critico, basati sempre sulle informazioni che sono nel testo input che leggi.
+La lunghezza del testo generato non deve mai superare 1/3 dei token del testo originale. In caso contrario unifica le ripetizioni.
+Basati esclusivamente sul testo che ricevi e non citare fonti esterne.
+L'output non è un riassunto breve ma un vero sostituto del testo originale, deve permettere allo studente di prepararsi ad un'esame scritto o orale all'università. Leggi l'intero input per mapparne la struttura (Indice, Capitoli, Sezioni, Paragrafi).
+Identifica la tesi centrale, le argomentazioni secondarie e le relazioni causali tra i concetti.
 Estrazione Esaustiva: Per ogni capitolo, estrai e cataloga internamente OGNI definizione, formula, principio, teoria, classificazione, data, nome, normativa ed esempio. Non omettere nulla che possa essere oggetto di domanda d'esame.
 Per ogni capitolo o sezione principale, genera l'output seguendo rigorosamente la seguente struttura:
 Header del Capitolo: Scrivi l'header con l'ID anchor (es. ## Capitolo 1 – Titolo {#titolo}).
@@ -142,10 +154,14 @@ setImmediate(async () => {
 
     const { error: insertError } = await supabaseAuth.from("riassunti_generati").insert({
   user_id: authUser.id,
-  titolo: testo.slice(0, 100), // opzionale: anteprima titolo
+  titolo: testo.slice(0, 100),
   input: testo.slice(0, 60000),
   output: riassuntoCompleto,
+  facolta,
+  materia,
+  is_public: true
 });
+
 
 
     if (insertError) {
