@@ -3,7 +3,9 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { TablePreview } from '@/components/TablePreview';
 import { PdfTableExtractor } from '@/lib/pdfTableExtractor';
 import { useTableDetection } from '@/lib/useTableDetection';
-import Tesseract from "tesseract.js";
+import { useOCRWorker } from '@/lib/useOCRWorker';
+import { useProgressiveLoading } from '@/lib/useProgressiveLoading';
+import ProgressivePageLoader from '@/components/ProgressivePageLoader';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -35,10 +37,44 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const [allPagesText, setAllPagesText] = useState<{[key: number]: string}>({});
   
-  // OCR States
+  // Progressive Loading Hook con auto-mode
+  const {
+    loadingMode,
+    shouldRenderPage,
+    getPageQuality,
+    shouldRenderTextLayer,
+    shouldRenderAnnotationLayer,
+    observePage,
+    visiblePages,
+    getStats
+  } = useProgressiveLoading(numPages, pageNumber, {
+    preloadRadius: 2,
+    maxCachedPages: 15,
+    fastModeQuality: 0.85, // Leggermente più alta visto che è automatica
+    fullModeQuality: 1.0
+  });
+
+  // Auto-set loading mode basato su dimensione documento
+  useEffect(() => {
+    if (numPages) {
+      // Nessun toggle manuale, tutto automatico
+      console.log(`📊 PDF con ${numPages} pagine - ${numPages > 20 ? 'Fast' : 'Full'} mode automatico`);
+    }
+  }, [numPages]);
+  
+  // OCR States con Web Worker
   const [ocrPages, setOcrPages] = useState<{[key: number]: string}>({});
-  const [isOCRLoading, setIsOCRLoading] = useState<{[key: number | string]: boolean}>({});
-  const [ocrProgress, setOcrProgress] = useState<{[key: number | string]: number}>({});
+  const { 
+    startOCR, 
+    isWorkerReady, 
+    getJobStatus, 
+    isJobRunning, 
+    isJobCompleted,
+    getJobResult,
+    workerError,
+    jobs,
+    clearCompletedJobs
+  } = useOCRWorker();
   
   // Selection States
   const [tempSelection, setTempSelection] = useState<string>("");
@@ -51,8 +87,48 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
   // UI States
   const [fileType, setFileType] = useState<'pdf' | 'image' | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  // Rimosso viewMode - solo single mode
   
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // useEffect per gestire automaticamente i risultati OCR
+  useEffect(() => {
+    const completedJobs = jobs.filter((job: any) => job.status === 'completed' && job.result);
+    
+    completedJobs.forEach((job: any) => {
+      const jobAlreadyProcessed = selections.find(s => 
+        s.id === `ocr-${job.id}-processed` || s.text === job.result
+      );
+      
+      if (jobAlreadyProcessed) {
+        return;
+      }
+      
+      const isPageJob = job.id.startsWith('page-');
+      
+      if (isPageJob) {
+        const pageNum = parseInt(job.id.replace('page-', ''));
+        setOcrPages(prev => ({ ...prev, [pageNum]: job.result! }));
+        setAllPagesText(prev => ({ ...prev, [pageNum]: formatPageText(job.result!) }));
+      }
+
+      const newSelection: Selection = {
+        id: `ocr-${job.id}-processed`,
+        text: job.result!,
+        page: isPageJob ? parseInt(job.id.replace('page-', '')) : undefined,
+        timestamp: Date.now(),
+        type: 'ocr'
+      };
+
+      setSelections(prev => [...prev, newSelection]);
+      setTempSelection(prev => {
+        const prefix = isPageJob 
+          ? `\n\n=== PAGINA ${job.id.replace('page-', '')} (OCR) ===\n` 
+          : '\n\n=== IMMAGINE (OCR) ===\n';
+        return prev + prefix + job.result;
+      });
+    });
+  }, [jobs]);
 
   // Detect file type on file change
   useEffect(() => {
@@ -69,12 +145,13 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
       const url = URL.createObjectURL(file);
       setImageUrl(url);
       
-      // Auto-start OCR for images
-      performOCR(url, 'image');
+      if (isWorkerReady) {
+        performOCR(url, 'image');
+      }
       
       return () => URL.revokeObjectURL(url);
     }
-  }, [file]);
+  }, [file, isWorkerReady]);
 
   // Table detection for PDF pages
   useEffect(() => {
@@ -110,48 +187,23 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
     setTempSelection(prev => prev + '\n\n' + tableMarkdown);
   };
 
-  // OCR function for both images and PDF pages
+  // OCR function con Web Worker
   const performOCR = async (source: string, sourceType: 'image' | 'pdf', pageNum?: number) => {
-    const key = sourceType === 'image' ? 'image' : pageNum!;
+    const jobId = sourceType === 'image' ? 'image' : `page-${pageNum}`;
     
-    setIsOCRLoading(prev => ({ ...prev, [key]: true }));
-    setOcrProgress(prev => ({ ...prev, [key]: 0 }));
+    if (!isWorkerReady) {
+      console.warn('OCR Worker not ready');
+      return;
+    }
 
-    try {
-      const result = await Tesseract.recognize(source, "ita", {
-        logger: (m) => {
-          if (m.status === 'recognizing text') {
-            setOcrProgress(prev => ({ ...prev, [key]: Math.round(m.progress * 100) }));
-          }
-        },
-      });
+    const success = startOCR(source, jobId, {
+      pageSegMode: '1',
+      ocrEngineMode: '2'
+    });
 
-      const extractedText = result.data.text.trim();
-      
-      if (sourceType === 'pdf' && pageNum) {
-        setOcrPages(prev => ({ ...prev, [pageNum]: extractedText }));
-        setAllPagesText(prev => ({ ...prev, [pageNum]: formatPageText(extractedText) }));
-      }
-
-      const newSelection: Selection = {
-        id: Date.now().toString(),
-        text: extractedText,
-        page: sourceType === 'pdf' ? pageNum : undefined,
-        timestamp: Date.now(),
-        type: 'ocr'
-      };
-
-      setSelections(prev => [...prev, newSelection]);
-      setTempSelection(prev => {
-        const prefix = sourceType === 'pdf' ? `\n\n=== PAGINA ${pageNum} (OCR) ===\n` : '\n\n=== IMMAGINE (OCR) ===\n';
-        return prev + prefix + extractedText;
-      });
-
-    } catch (error) {
-      console.error('Errore OCR:', error);
-    } finally {
-      setIsOCRLoading(prev => ({ ...prev, [key]: false }));
-      setOcrProgress(prev => ({ ...prev, [key]: 0 }));
+    if (!success) {
+      console.error('Failed to start OCR job');
+      return;
     }
   };
 
@@ -202,12 +254,6 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
     } catch (error) {
       console.error('Errore OCR pagina PDF:', error);
     }
-  };
-
-  // Check if current page has selectable text
-  const hasSelectableText = async (pageNum: number): Promise<boolean> => {
-    const text = await extractPageText(pageNum);
-    return text.trim().length > 20;
   };
 
   // Search in document
@@ -317,6 +363,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
     setTempSelection("");
     setSelections([]);
     setIsFormatted(false);
+    clearCompletedJobs();
   };
 
   // Page range selection
@@ -353,10 +400,25 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
     return () => clearTimeout(timer);
   }, [searchTerm, searchInDocument, fileType]);
 
-  // Check if current page has OCR
+  // OCR status variables
   const currentPageHasOCR = Boolean(pageNumber && ocrPages[pageNumber]);
-  const currentPageOCRLoading = Boolean(pageNumber && isOCRLoading[pageNumber]);
-  const currentPageOCRProgress = pageNumber ? (ocrProgress[pageNumber] || 0) : 0;
+  const currentPageJobId = `page-${pageNumber}`;
+  const currentPageOCRLoading = isJobRunning(currentPageJobId);
+  const currentPageJob = getJobStatus(currentPageJobId);
+  const currentPageOCRProgress = currentPageJob?.progress || 0;
+
+  const imageJobId = 'image';
+  const imageOCRLoading = isJobRunning(imageJobId);
+  const imageJob = getJobStatus(imageJobId);
+  const imageOCRProgress = imageJob?.progress || 0;
+
+  // Render single page only (continuous mode removed)
+  const renderCurrentPage = () => {
+    return pageNumber;
+  };
+
+  // Performance stats for development
+  const stats = getStats();
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {if (!open) onClose();}} modal={false}>
@@ -368,10 +430,16 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
       >
         <DialogTitle className="text-lg font-semibold text-gray-800">
           Smart PDF & Image Reader
+          {workerError && (
+            <span className="ml-2 text-sm text-red-600">⚠️ OCR Worker Error</span>
+          )}
+          {isWorkerReady && (
+            <span className="ml-2 text-sm text-green-600">🧠 OCR Ready</span>
+          )}
         </DialogTitle>
         <DialogDescription className="text-sm text-gray-500 mb-4">
           {fileType === 'pdf' 
-            ? "Naviga, cerca, evidenzia testo e usa OCR per pagine scansionate"
+            ? "Navigazione ottimizzata con caricamento intelligente"
             : "Estrazione automatica del testo dall'immagine con OCR"
           }
         </DialogDescription>
@@ -381,9 +449,10 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
           {/* Content Section - PDF or Image */}
           <div className="w-1/2 flex flex-col">
             
-            {/* Toolbar - Only for PDF */}
+            {/* Simplified Toolbar - Only for PDF */}
             {fileType === 'pdf' && (
               <div className="flex gap-2 items-center mb-2 p-2 bg-gray-50 rounded">
+                {/* Zoom Controls */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => setScale(prev => Math.max(prev - 0.25, 0.5))}
@@ -400,6 +469,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
                   </button>
                 </div>
 
+                {/* Search */}
                 <div className="flex-1 flex gap-2">
                   <input
                     type="text"
@@ -437,7 +507,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
               </div>
             )}
 
-            {/* Content Viewer */}
+            {/* Content Viewer with Progressive Loading */}
             <div 
               ref={containerRef} 
               onMouseUp={fileType === 'pdf' ? handleTextSelection : undefined}
@@ -447,17 +517,20 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
                 <Document
                   file={file}
                   onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                  loading="Caricamento PDF..."
+                  loading="⚡ Caricamento PDF con Progressive Loading..."
                   error="Errore nel caricamento del PDF"
                 >
-                  {numPages && (
-                    <Page 
-                      pageNumber={pageNumber} 
-                      scale={scale}
-                      renderTextLayer={true}
-                      renderAnnotationLayer={true}
-                    />
-                  )}
+                  {/* Single Page Mode con Progressive Loading */}
+                  <ProgressivePageLoader
+                    pageNumber={pageNumber}
+                    scale={scale}
+                    quality={getPageQuality(pageNumber)}
+                    shouldRender={shouldRenderPage(pageNumber)}
+                    shouldRenderTextLayer={shouldRenderTextLayer(pageNumber)}
+                    shouldRenderAnnotationLayer={shouldRenderAnnotationLayer(pageNumber)}
+                    onPageRender={observePage}
+                    isCurrentPage={true}
+                  />
                 </Document>
               )}
 
@@ -473,7 +546,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
             </div>
 
             {/* OCR Button for PDF pages */}
-            {fileType === 'pdf' && pageNumber && !currentPageHasOCR && (
+            {fileType === 'pdf' && pageNumber && !currentPageHasOCR && !currentPageOCRLoading && (
               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
@@ -486,23 +559,38 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
                   </div>
                   <button
                     onClick={runOCRForCurrentPage}
-                    disabled={Boolean(currentPageOCRLoading)}
+                    disabled={!isWorkerReady}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm flex items-center"
                   >
-                    {currentPageOCRLoading ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        {currentPageOCRProgress}%
-                      </>
-                    ) : (
-                      <>
-                        🧠 Attiva OCR
-                      </>
-                    )}
+                    🧠 Attiva OCR
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* OCR Progress for PDF pages */}
+            {fileType === 'pdf' && currentPageOCRLoading && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">
+                      🧠 OCR in corso per pagina {pageNumber}
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      UI non-blocking attiva - continua a navigare!
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium text-blue-900">
+                      {currentPageOCRProgress}%
+                    </div>
+                    <div className="w-24 bg-blue-200 rounded-full h-2 mt-1">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${currentPageOCRProgress}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -520,7 +608,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
             )}
 
             {/* OCR Progress for Image */}
-            {fileType === 'image' && isOCRLoading['image'] && (
+            {fileType === 'image' && imageOCRLoading && (
               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm font-medium text-blue-900">
                   🧠 Estrazione testo in corso...
@@ -528,11 +616,11 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
                 <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
                   <div 
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(ocrProgress['image'] || 0)}%` }}
+                    style={{ width: `${imageOCRProgress}%` }}
                   ></div>
                 </div>
                 <p className="text-xs text-blue-700 mt-1">
-                  {(ocrProgress['image'] || 0)}% completato
+                  {imageOCRProgress}% completato - UI utilizzabile durante l'elaborazione
                 </p>
               </div>
             )}
