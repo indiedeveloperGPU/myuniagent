@@ -255,6 +255,29 @@ export default function UltimateLanding() {
 
   return (
     <div className="relative overflow-hidden text-white min-h-screen bg-black">
+
+      {/* Barra partner */}
+<section className="bg-black/80 py-2">
+  <motion.div
+    className="max-w-7xl mx-auto flex items-center justify-center space-x-8 px-4"
+    initial={{ opacity: 0, y: -20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.8 }}
+  >
+    <img
+      src="/images/partner/azione-universitaria.png"
+      alt="Azione Universitaria"
+      className="h-8 object-contain"
+    />
+    <img
+      src="/images/partner/sapienza-futura.png"
+      alt="Sapienza Futura"
+      className="h-8 object-contain"
+    />
+  </motion.div>
+</section>
+
+
       {/* Ultra Advanced Animated Background */}
       <div className="fixed inset-0 z-0">
         {/* Multi-layer gradient background */}
@@ -387,7 +410,7 @@ export default function UltimateLanding() {
                 >
                   {/* Animated graduation cap */}
                   <motion.div
-                    className="w-32 h-32 mb-8 inline-block"
+                    className="text-8xl md:text-9xl mb-8 inline-block"
                     animate={{
                       rotate: [0, 5, -5, 0],
                       scale: [1, 1.1, 1],
@@ -476,7 +499,6 @@ export default function UltimateLanding() {
           </div>
         </motion.section>
 
-        {/* Enhanced About Section */}
         {/* Enhanced About Section */}
         <section
           ref={aboutRef}
@@ -767,7 +789,7 @@ export default function UltimateLanding() {
                 <div className="bg-black/80 rounded-3xl p-12 backdrop-blur-xl">
                   <div className="text-7xl font-black mb-4">
                     <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                      39.99€
+                      34.99€
                     </span>
                     <span className="text-2xl text-gray-400 font-normal">/anno</span>
                   </div>
