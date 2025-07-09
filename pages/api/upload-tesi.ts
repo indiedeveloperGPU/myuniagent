@@ -95,6 +95,3 @@ const { data: uploadData, error: uploadError } = await supabase.storage
   });
 }
 
-
-
-

@@ -319,3 +319,5 @@ Mantieni la struttura modulare della risposta iniziale:
 - Titoli tipo: "Passo 1: ...", "Analisi della situazione", "Derivazione alternativa", "Generalizzazione"
 - Codice e formule sempre commentati e spiegati
 `;
+
+
