@@ -50,14 +50,42 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
   } = useProgressiveLoading(numPages, pageNumber, {
     preloadRadius: 2,
     maxCachedPages: 15,
-    fastModeQuality: 0.85, // Leggermente più alta visto che è automatica
+    fastModeQuality: 0.85,
     fullModeQuality: 1.0
   });
+
+  // Enterprise Text Layer Strategy
+  const getTextLayerStrategy = useCallback((pageNum: number) => {
+    const currentPage = pageNumber;
+    const distance = Math.abs(pageNum - currentPage);
+    
+    // Pagina corrente: sempre abilitato per selezione
+    if (pageNum === currentPage) {
+      return true;
+    }
+    
+    // Pagine adiacenti (±1): abilitate per quick navigation
+    if (distance <= 1) {
+      return true;
+    }
+    
+    // Documento piccolo (≤10 pagine): sempre abilitato
+    if (numPages && numPages <= 10) {
+      return true;
+    }
+    
+    // Documento medio (11-50 pagine): ±2 pagine
+    if (numPages && numPages <= 50 && distance <= 2) {
+      return true;
+    }
+    
+    // Documenti grandi: solo pagina corrente e ±1
+    return false;
+  }, [pageNumber, numPages]);
 
   // Auto-set loading mode basato su dimensione documento
   useEffect(() => {
     if (numPages) {
-      // Nessun toggle manuale, tutto automatico
       console.log(`📊 PDF con ${numPages} pagine - ${numPages > 20 ? 'Fast' : 'Full'} mode automatico`);
     }
   }, [numPages]);
@@ -87,9 +115,58 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
   // UI States
   const [fileType, setFileType] = useState<'pdf' | 'image' | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  // Rimosso viewMode - solo single mode
   
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Inject enterprise-grade CSS for text selection
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      /* Enterprise PDF text selection styles */
+      .react-pdf__Page {
+        user-select: text !important;
+        position: relative;
+      }
+      
+      .react-pdf__Page__textContent {
+        user-select: text !important;
+        pointer-events: auto !important;
+        z-index: 2;
+      }
+      
+      .react-pdf__Page__textContent > span {
+        user-select: text !important;
+        pointer-events: auto !important;
+      }
+      
+      /* Previeni interferenze con controlli */
+      .pdf-toolbar, 
+      .pdf-controls, 
+      button:not(.pdf-page button), 
+      input:not(.pdf-page input) {
+        user-select: none !important;
+      }
+      
+      /* Feedback visivo per selezione enterprise */
+      .react-pdf__Page__textContent ::selection {
+        background-color: #3b82f6 !important;
+        color: white !important;
+      }
+      
+      /* Performance hint per pagine senza text layer */
+      .react-pdf__Page:not([data-text-layer="true"]) {
+        opacity: 0.95;
+      }
+    `;
+    
+    document.head.appendChild(style);
+    
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+    };
+  }, []);
 
   // useEffect per gestire automaticamente i risultati OCR
   useEffect(() => {
@@ -128,7 +205,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
         return prev + prefix + job.result;
       });
     });
-  }, [jobs]);
+  }, [jobs, selections]);
 
   // Detect file type on file change
   useEffect(() => {
@@ -282,14 +359,39 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
     }
   }, [numPages, extractPageText]);
 
-  // Handle text selection
-  const handleTextSelection = () => {
+  // Enhanced enterprise text selection handler
+  const handleTextSelection = useCallback(() => {
     const selection = window.getSelection();
-    const selectedText = selection?.toString().trim();
-    if (selectedText && selectedText.length > 3) {
+    if (!selection || selection.rangeCount === 0) return;
+    
+    const selectedText = selection.toString().trim();
+    
+    // Validazione enterprise: controllo dell'area di selezione
+    const range = selection.getRangeAt(0);
+    const container = containerRef.current;
+    
+    // Assicurati che la selezione sia dentro il PDF viewer
+    if (container && !container.contains(range.commonAncestorContainer)) {
+      return;
+    }
+    
+    // Filtro qualità testo per enterprise (evita selezioni accidentali)
+    if (!selectedText || selectedText.length < 3) return;
+    
+    // Evita selezioni di UI elements (bottoni, etc)
+    const commonAncestor = range.commonAncestorContainer;
+    const parentElement = commonAncestor.nodeType === Node.TEXT_NODE 
+      ? commonAncestor.parentElement 
+      : commonAncestor as Element;
+      
+    if (parentElement?.closest('.pdf-toolbar, .pdf-controls, button, input')) {
+      return;
+    }
+    
+    try {
       const formattedText = formatSelectedText(selectedText);
       const newSelection: Selection = {
-        id: Date.now().toString(),
+        id: `manual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         text: formattedText,
         page: pageNumber,
         timestamp: Date.now(),
@@ -298,25 +400,36 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
       
       setSelections(prev => [...prev, newSelection]);
       setTempSelection((prev) => {
-        const newText = prev ? prev + "\n\n" + formattedText : formattedText;
-        return newText;
+        const separator = prev ? "\n\n" : "";
+        return prev + separator + formattedText;
       });
       
-      selection?.removeAllRanges();
+      // Rimozione pulita della selezione
+      setTimeout(() => {
+        try {
+          selection.removeAllRanges();
+        } catch (error) {
+          console.warn('Selection cleanup failed:', error);
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('Text selection processing failed:', error);
+      selection.removeAllRanges();
     }
-  };
+  }, [pageNumber]);
 
   // Formatting functions
-  const formatSelectedText = (text: string): string => {
+  const formatSelectedText = useCallback((text: string): string => {
     return text
       .replace(/\s+/g, ' ')
       .replace(/\.\s*([A-Z])/g, '.\n\n$1')
       .replace(/:\s*([A-Z])/g, ':\n$1')
       .replace(/;\s*([A-Z])/g, ';\n- $1')
       .trim();
-  };
+  }, []);
 
-  const formatPageText = (text: string): string => {
+  const formatPageText = useCallback((text: string): string => {
     return text
       .replace(/\n\s*\n\s*\n/g, '\n\n')
       .replace(/\.\s*\n([A-Z])/g, '.\n\n$1')
@@ -324,7 +437,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
       .replace(/\n(\d+[\.\)])\s*/g, '\n$1 ')
       .replace(/\n([-•])\s*/g, '\n$1 ')
       .trim();
-  };
+  }, []);
 
   // Toggle formatting
   const toggleFormatting = () => {
@@ -412,14 +525,6 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
   const imageJob = getJobStatus(imageJobId);
   const imageOCRProgress = imageJob?.progress || 0;
 
-  // Render single page only (continuous mode removed)
-  const renderCurrentPage = () => {
-    return pageNumber;
-  };
-
-  // Performance stats for development
-  const stats = getStats();
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {if (!open) onClose();}} modal={false}>
       <DialogContent
@@ -451,7 +556,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
             
             {/* Simplified Toolbar - Only for PDF */}
             {fileType === 'pdf' && (
-              <div className="flex gap-2 items-center mb-2 p-2 bg-gray-50 rounded">
+              <div className="flex gap-2 items-center mb-2 p-2 bg-gray-50 rounded pdf-toolbar">
                 {/* Zoom Controls */}
                 <div className="flex gap-2">
                   <button
@@ -511,7 +616,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
             <div 
               ref={containerRef} 
               onMouseUp={fileType === 'pdf' ? handleTextSelection : undefined}
-              className="flex-1 overflow-y-auto border rounded p-2 bg-white"
+              className="flex-1 overflow-y-auto border rounded p-2 bg-white pdf-page relative"
             >
               {fileType === 'pdf' && file && (
                 <Document
@@ -520,13 +625,13 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
                   loading="⚡ Caricamento PDF con Progressive Loading..."
                   error="Errore nel caricamento del PDF"
                 >
-                  {/* Single Page Mode con Progressive Loading */}
+                  {/* Single Page Mode con Progressive Loading e Enterprise Text Layer Strategy */}
                   <ProgressivePageLoader
                     pageNumber={pageNumber}
                     scale={scale}
                     quality={getPageQuality(pageNumber)}
                     shouldRender={shouldRenderPage(pageNumber)}
-                    shouldRenderTextLayer={shouldRenderTextLayer(pageNumber)}
+                    shouldRenderTextLayer={getTextLayerStrategy(pageNumber)}
                     shouldRenderAnnotationLayer={shouldRenderAnnotationLayer(pageNumber)}
                     onPageRender={observePage}
                     isCurrentPage={true}
@@ -541,6 +646,13 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
                     alt="Immagine caricata"
                     className="max-h-full max-w-full object-contain rounded"
                   />
+                </div>
+              )}
+
+              {/* Enterprise Text Layer Status Indicator (dev only) */}
+              {process.env.NODE_ENV === 'development' && fileType === 'pdf' && (
+                <div className="absolute top-2 left-2 text-xs bg-black bg-opacity-75 text-white px-2 py-1 rounded">
+                  Page {pageNumber}: {getTextLayerStrategy(pageNumber) ? '📝 Selectable' : '🚫 View Only'}
                 </div>
               )}
             </div>
@@ -635,7 +747,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
 
             {/* Navigation Controls - Only for PDF */}
             {fileType === 'pdf' && numPages && (
-              <div className="flex justify-between items-center mt-2">
+              <div className="flex justify-between items-center mt-2 pdf-controls">
                 <div className="flex gap-2">
                   <button
                     onClick={async () => {
@@ -718,13 +830,13 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
                       : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
                 >
-                  {isFormatted ? 'Raw' : 'Format'}
+                  {isFormatted ? 'Raw' : 'Formatta'}
                 </button>
                 <button
                   onClick={clearSelection}
                   className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
                 >
-                  Clear
+                  Pulisci
                 </button>
               </div>
             </div>
