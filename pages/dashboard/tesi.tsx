@@ -100,7 +100,7 @@ export default function ThesisProjectsIndexPage() {
           <div className="text-center p-12 bg-white dark:bg-gray-800 rounded-xl shadow-md border">
             <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Nessun progetto attivo trovato.</h3>
             <p className="mt-2 text-gray-500">Inizia la tua prima analisi di tesi per vederla comparire qui.</p>
-            <Link href="/analisi-tesi" legacyBehavior>
+            <Link href="/tools/analisi-tesi" legacyBehavior>
               <a className="mt-6 inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-semibold">
                 <PlusCircle className="w-5 h-5" />
                 Crea il Tuo Primo Progetto
