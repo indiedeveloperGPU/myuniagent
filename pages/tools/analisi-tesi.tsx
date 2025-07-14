@@ -142,3 +142,5 @@ export default function AnalisiTesiPage() {
     </DashboardLayout>
   );
 }
+
+AnalisiTesiPage.requireAuth = true;
