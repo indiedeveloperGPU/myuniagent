@@ -5,7 +5,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { OpenAI } from "openai";
 import { createClient } from "@supabase/supabase-js";
 import { TokenEstimationService } from "@/lib/tokenEstimation";
-import { createThesisAnalysisPrompt } from "@/lib/thesisPrompt";
 
 // 🎯 ENTERPRISE TYPESCRIPT INTERFACES
 interface AnalysisRequest {
@@ -236,16 +235,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log(`⚠️ Avvisi: ${limits.warnings.join(', ')}`);
     }
     
-    // 🧠 CREAZIONE PROMPT SPECIALIZZATO - Usa la funzione importata
-    const prompt = createThesisAnalysisPrompt(
-      cleanText,
-      {
-        faculty: faculty.trim(),
-        thesis_topic: thesis_topic.trim(),
-        level,
-        project_title: project_title.trim()
-      },
-      analysis_type
+    // 🧠 CREAZIONE PROMPT SPECIALIZZATO
+    const prompt = createAnalysisPrompt(
+      cleanText, 
+      faculty.trim(), 
+      thesis_topic.trim(), 
+      level, 
+      analysis_type, 
+      project_title.trim()
     );
 
     // 🚀 CHIAMATA GROQ
@@ -431,4 +428,198 @@ function getValidAnalysisTypes(level: 'triennale' | 'magistrale' | 'dottorato'):
   };
 
   return analysisTypes[level] || [];
+}
+
+// 🧠 CREAZIONE PROMPT SPECIALIZZATO PER ANALISI TESI
+function createAnalysisPrompt(
+  text: string, 
+  faculty: string, 
+  thesis_topic: string, 
+  level: 'triennale' | 'magistrale' | 'dottorato', 
+  analysis_type: string,
+  project_title: string
+): string {
+  const inputLength = text.length;
+  const targetLength = Math.ceil(inputLength * 0.5); // 50% per analisi più approfondite
+  
+  const basePrompt = `Agisci come AgenteFox, l'esperto relatore universitario più avanzato al mondo specializzato in valutazione di tesi accademiche.
+
+CONTESTO ACCADEMICO:
+- Facoltà: ${faculty}
+- Argomento tesi: ${thesis_topic}
+- Livello: ${level.toUpperCase()}
+- Progetto: ${project_title}
+- Tipo analisi: ${analysis_type}
+- Input: ${inputLength.toLocaleString()} caratteri
+- Target output: ~${targetLength.toLocaleString()} caratteri
+
+## OBIETTIVO SPECIALIZZATO
+
+Devi condurre un'analisi "${analysis_type}" approfondita e professionale del materiale di tesi fornito, secondo gli standard accademici più elevati per il livello ${level}.
+
+---
+
+## REGOLE FONDAMENTALI
+
+1. **Rigore Accademico:** Mantieni sempre il massimo rigore scientifico e la precisione terminologica
+2. **Aderenza al Testo:** Basati ESCLUSIVAMENTE sul contenuto fornito, senza aggiungere informazioni esterne
+3. **Professionalità:** Adotta il tono e l'approccio di un relatore esperto e autorevole
+4. **Completezza:** Fornisci un'analisi completa che copra tutti gli aspetti rilevanti per questo tipo di valutazione
+
+---
+
+${getSpecializedAnalysisInstructions(analysis_type, level, faculty)}
+
+---
+
+## STRUTTURA DELL'ANALISI
+
+La tua analisi deve seguire questa struttura professionale:
+
+### 1. INQUADRAMENTO GENERALE
+- Contestualizzazione dell'argomento nel campo di studio
+- Rilevanza del tema trattato
+
+### 2. ANALISI SPECIALIZZATA
+- Sviluppo completo dell'analisi richiesta secondo le istruzioni specifiche
+- Osservazioni dettagliate e motivate
+- Riferimenti puntuali al testo
+
+### 3. VALUTAZIONE CRITICA
+- Punti di forza identificati
+- Aree di miglioramento o criticità
+- Suggerimenti costruttivi
+
+### 4. CONCLUSIONI
+- Sintesi dei risultati dell'analisi
+- Valutazione complessiva secondo i criteri specifici del tipo di analisi
+
+---
+
+## IMPORTANTE
+
+Ricorda che stai valutando una tesi di livello ${level} in ${faculty}. Le tue osservazioni devono essere:
+- Appropriate al livello accademico
+- Costruttive e formative
+- Basate su evidenze concrete dal testo
+- Orientate al miglioramento della qualità accademica
+
+TESTO DA ANALIZZARE:
+${text}
+
+Procedi con l'analisi "${analysis_type}" seguendo rigorosamente le istruzioni specializzate per ${level} in ${faculty}.`;
+
+  return basePrompt;
+}
+
+// 🎯 ISTRUZIONI SPECIALIZZATE PER TIPO DI ANALISI
+function getSpecializedAnalysisInstructions(
+  analysis_type: string, 
+  level: 'triennale' | 'magistrale' | 'dottorato', 
+  faculty: string
+): string {
+  
+  const instructions: Record<string, Record<string, string>> = {
+    // TRIENNALE
+    'analisi_strutturale': {
+      triennale: `## ISTRUZIONI SPECIALIZZATE: ANALISI STRUTTURALE (TRIENNALE)
+
+Valuta l'organizzazione logica e la struttura del lavoro:
+- **Coerenza strutturale**: Verifica la sequenza logica delle argomentazioni
+- **Chiarezza espositiva**: Analizza la capacità di presentare idee in modo ordinato
+- **Equilibrio delle parti**: Valuta la proporzione tra le diverse sezioni
+- **Transizioni**: Esamina i collegamenti tra i capitoli/paragrafi
+- **Gerarchia informativa**: Verifica l'organizzazione gerarchica dei contenuti
+
+Criteri di valutazione per livello triennale:
+- Struttura semplice ma efficace
+- Logica consequenziale chiara
+- Capacità di organizzare il pensiero accademico`
+    },
+    
+    'analisi_metodologica': {
+      triennale: `## ISTRUZIONI SPECIALIZZATE: ANALISI METODOLOGICA (TRIENNALE)
+
+Valuta l'approccio metodologico adottato:
+- **Appropriatezza del metodo**: Verifica l'adeguatezza del metodo scelto rispetto agli obiettivi
+- **Descrizione metodologica**: Analizza la chiarezza nella presentazione del metodo
+- **Applicazione pratica**: Valuta l'implementazione concreta del metodo
+- **Limiti metodologici**: Identifica eventuali limitazioni nell'approccio
+- **Giustificazione delle scelte**: Esamina la motivazione delle decisioni metodologiche
+
+Criteri di valutazione per livello triennale:
+- Comprensione base dei principi metodologici
+- Applicazione corretta di metodi standard
+- Consapevolezza delle limitazioni metodologiche`
+    },
+
+    // MAGISTRALE
+    'analisi_strutturale_avanzata': {
+      magistrale: `## ISTRUZIONI SPECIALIZZATE: ANALISI STRUTTURALE AVANZATA (MAGISTRALE)
+
+Conduci un'analisi approfondita della struttura complessa:
+- **Architettura argomentativa**: Esamina la costruzione logica avanzata delle argomentazioni
+- **Interdipendenze concettuali**: Valuta i collegamenti tra concetti complessi
+- **Progressione teorica**: Analizza lo sviluppo teorico attraverso i capitoli
+- **Bilanciamento contenuti**: Verifica l'equilibrio tra teoria, analisi e applicazione
+- **Sofisticazione strutturale**: Valuta la complessità organizzativa appropriata al livello
+
+Criteri di valutazione per livello magistrale:
+- Struttura articolata e sofisticata
+- Capacità di gestire complessità concettuale
+- Originalità nell'organizzazione del pensiero critico`
+    },
+
+    // DOTTORATO
+    'analisi_originalita_scientifica': {
+      dottorato: `## ISTRUZIONI SPECIALIZZATE: ANALISI ORIGINALITÀ SCIENTIFICA (DOTTORATO)
+
+Valuta il contributo originale alla conoscenza scientifica:
+- **Novità teorica**: Identifica gli elementi di innovazione teorica
+- **Contributo empirico**: Valuta l'originalità dei dati e delle scoperte
+- **Avanzamento della conoscenza**: Analizza come il lavoro fa progredire il campo
+- **Significatività scientifica**: Valuta l'impatto potenziale sulla disciplina
+- **Originalità metodologica**: Esamina innovazioni negli approcci di ricerca
+
+Criteri di valutazione per livello dottorato:
+- Contributo significativo e originale alla conoscenza
+- Rilevanza scientifica internazionale
+- Potenziale di influenzare lo sviluppo futuro del campo`
+    }
+  };
+
+  // Ottieni istruzioni specifiche o fallback generico
+  const levelInstructions = instructions[analysis_type]?.[level] || 
+    generateGenericInstructions(analysis_type, level, faculty);
+
+  return levelInstructions;
+}
+
+// 🎯 GENERAZIONE ISTRUZIONI GENERICHE
+function generateGenericInstructions(
+  analysis_type: string, 
+  level: 'triennale' | 'magistrale' | 'dottorato', 
+  faculty: string
+): string {
+  const analysisName = analysis_type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  
+  const levelGuidelines = {
+    triennale: "Valuta secondo standard di base universitari, focalizzandoti su comprensione e applicazione corretta dei concetti.",
+    magistrale: "Applica criteri avanzati di valutazione, considerando approfondimento critico e capacità di sintesi specialistica.",
+    dottorato: "Usa standard di eccellenza scientifica internazionale, valutando originalità, rigore metodologico e contributo alla conoscenza."
+  };
+
+  return `## ISTRUZIONI SPECIALIZZATE: ${analysisName.toUpperCase()} (${level.toUpperCase()})
+
+Conduci un'analisi completa di "${analysisName}" secondo i più alti standard accademici per ${faculty}.
+
+${levelGuidelines[level]}
+
+Fornisci una valutazione approfondita che consideri:
+- Aspetti teorici e metodologici rilevanti
+- Qualità del contenuto in relazione al tipo di analisi
+- Appropriatezza per il livello accademico ${level}
+- Contributo specifico nell'ambito di ${faculty}
+
+La tua analisi deve essere costruttiva, dettagliata e orientata al miglioramento della qualità accademica.`;
 }
