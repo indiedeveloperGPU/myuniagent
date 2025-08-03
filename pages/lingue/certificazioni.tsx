@@ -228,3 +228,7 @@ export default function Certificazioni() {
   );
 }
 
+
+Certificazioni.requireAuth = true
+
+
