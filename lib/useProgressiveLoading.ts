@@ -1,4 +1,3 @@
-// hooks/useProgressiveLoading.ts
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 export type LoadingMode = 'fast' | 'full';
