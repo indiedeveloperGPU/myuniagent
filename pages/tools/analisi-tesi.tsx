@@ -10,7 +10,7 @@ import HITLTesiGuidaModal from "@/components/HITLTesiGuidaModal";
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 
-const SmartPdfReader = dynamic(() => import("@/components/SmartPdfReader"), { ssr: false });
+const SmartPdfReader = dynamic(() => import("@/components/ThesisSmartPdfReader"), { ssr: false });
 
 // 🎯 LIMITI OTTIMALI PER QUALITÀ
 const MAX_CHARS = 25000; // ~5k token, 7-10 pagine
@@ -1119,14 +1119,16 @@ export default function AnalisiTesiPage() {
       {/* 📖 SMART PDF READER MODAL */}
       {selectedPdfFile && (
         <SmartPdfReader
-          isOpen={isPdfModalOpen}
-          onClose={() => setIsPdfModalOpen(false)}
-          file={selectedPdfFile}
-          onTextSelected={(selectedText) => {
-            setText(selectedText);
-            toast.success(`📖 Testo selezionato: ${selectedText.length.toLocaleString()} caratteri`);
-          }}
-        />
+  isOpen={isPdfModalOpen}
+  onClose={() => setIsPdfModalOpen(false)}
+  file={selectedPdfFile}
+  onTextSelected={(selectedText) => {
+    setText(selectedText);
+    toast.success(`📖 Testo selezionato: ${selectedText.length.toLocaleString()} caratteri`);
+  }}
+  projectId={currentSession?.id || ""}
+  userId={""} // Questo verrà preso dal token di autenticazione nell'API
+/>
       )}
 
       {/* 📖 GUIDE MODAL */}

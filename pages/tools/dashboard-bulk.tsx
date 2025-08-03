@@ -1,9 +1,13 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, lazy, Suspense } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
 import { toast } from "react-hot-toast";
-import { TokenEstimationService } from "@/lib/tokenEstimation";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@radix-ui/react-dialog';
+import { ProjectCard } from '@/components/batch/ProjectCard';
+import { ChunkItem } from '@/components/batch/ChunkItem';
+import { BatchJobItem } from '@/components/batch/BatchJobItem';
+import { ResultItem } from '@/components/batch/ResultItem';
+const BatchProcessingModal = lazy(() => import('@/components/batch/BatchProcessingModal'));
+const BatchDetailsModal = lazy(() => import('@/components/batch/BatchDetailsModal'));
 
 // 🎯 TYPES
 interface Project {
@@ -16,6 +20,7 @@ interface Project {
   chunks_count?: number;
   total_chars?: number;
   ready_chunks?: number;
+  completed_chunks?: number;
 }
 
 interface Chunk {
@@ -44,7 +49,10 @@ interface BatchJob {
 
 interface BatchResult {
   id: string;
-  raw_chunk_id: string;
+  title: string;
+  section?: string;
+  char_count: number;
+  order_index: number;
   status: 'in_attesa' | 'elaborazione' | 'completato' | 'fallito';
   input_tokens?: number;
   output_tokens?: number;
@@ -52,9 +60,11 @@ interface BatchResult {
   processing_time_ms?: number;
   error_message?: string;
   completed_at?: string;
-  chunk_title?: string;
+  retry_count?: number;
+  has_result?: boolean;
 }
 
+// 🏠 MAIN DASHBOARD COMPONENT
 export default function DashboardBulkPage() {
   // 🔐 AUTH STATE
   const [userChecked, setUserChecked] = useState(false);
@@ -71,22 +81,21 @@ export default function DashboardBulkPage() {
   // 🔄 LOADING STATES
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingChunks, setIsLoadingChunks] = useState(false);
-  const [isLoadingBatch, setIsLoadingBatch] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   // 📋 UI STATES
   const [selectedChunks, setSelectedChunks] = useState<Set<string>>(new Set());
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [showBatchDetails, setShowBatchDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'chunks' | 'processing' | 'results'>('overview');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'created' | 'title' | 'chars'>('created');
-
   const [editingChunk, setEditingChunk] = useState<string | null>(null);
   const [editFormData, setEditFormData] = useState<{ title: string; section: string; }>({ title: '', section: '' });
-  const [isFinalizing, setIsFinalizing] = useState(false);
-
-  // 🧮 TOKEN SERVICE
-  const tokenService = new TokenEstimationService();
+  // PAGINAZIONE + VIRTUAL SCROLLING
+  const [projectsPage, setProjectsPage] = useState(0);
+  const [hasMoreProjects, setHasMoreProjects] = useState(false);
 
   // 🔐 AUTH CHECK
   useEffect(() => {
@@ -103,60 +112,69 @@ export default function DashboardBulkPage() {
   }, []);
 
   // 📊 LOAD PROJECTS
-  const loadProjects = useCallback(async () => {
-    if (!user) return;
+const ITEMS_PER_PAGE = 6; // Carichiamo 6 progetti alla volta (puoi cambiare questo valore)
 
-    try {
-      setIsLoading(true);
+const loadProjects = useCallback(async (page: number) => {
+  if (!user) return;
 
-      // Carica progetti con statistiche chunks
-      const { data: projectsData, error } = await supabase
-        .from('summary_sessions')
-        .select(`
+  try {
+    setIsLoading(true);
+
+    // Calcola il range per la query di Supabase
+    const from = page * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE - 1;
+
+    const { data: projectsData, error } = await supabase
+      .from('summary_sessions')
+      .select(`
+        id,
+        project_title,
+        facolta,
+        materia,
+        status,
+        created_at,
+        raw_chunks!inner(
           id,
-          project_title,
-          facolta,
-          materia,
-          status,
-          created_at,
-          raw_chunks!inner(
-            id,
-            char_count,
-            status
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+          char_count,
+          status
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .range(from, to); // <-- ESEGUIAMO LA PAGINAZIONE
 
-      if (error) throw error;
+    if (error) throw error;
 
-      // Processa statistiche per ogni progetto
-      const projectsWithStats: Project[] = projectsData?.map(project => {
-        const chunks = project.raw_chunks || [];
-        return {
-          id: project.id,
-          project_title: project.project_title,
-          facolta: project.facolta,
-          materia: project.materia,
-          status: project.status,
-          created_at: project.created_at,
-          chunks_count: chunks.length,
-          total_chars: chunks.reduce((sum: number, chunk: any) => sum + chunk.char_count, 0),
-          ready_chunks: chunks.filter((chunk: any) => chunk.status === 'pronto').length
-        };
-      }) || [];
+    const projectsWithStats: Project[] = projectsData?.map(project => {
+      const chunks = project.raw_chunks || [];
+      return {
+        id: project.id,
+        project_title: project.project_title,
+        facolta: project.facolta,
+        materia: project.materia,
+        status: project.status,
+        created_at: project.created_at,
+        chunks_count: chunks.length,
+        total_chars: chunks.reduce((sum: number, chunk: any) => sum + chunk.char_count, 0),
+        ready_chunks: chunks.filter((chunk: any) => chunk.status === 'pronto').length,
+        completed_chunks: chunks.filter((chunk: any) => chunk.status === 'completato').length
+      };
+    }) || [];
 
-      setProjects(projectsWithStats);
+    // Aggiunge i nuovi progetti a quelli esistenti invece di sostituirli
+    setProjects(prev => page === 0 ? projectsWithStats : [...prev, ...projectsWithStats]);
 
-    } catch (error) {
-      console.error('Errore caricamento progetti:', error);
-      toast.error('❌ Errore nel caricamento dei progetti');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
+    // Controlla se ci sono altre pagine da caricare
+    setHasMoreProjects(projectsWithStats.length === ITEMS_PER_PAGE);
 
-  // 📦 LOAD CHUNKS FOR PROJECT
+  } catch (error) {
+    console.error('Errore caricamento progetti:', error);
+    toast.error('❌ Errore nel caricamento dei progetti');
+  } finally {
+    setIsLoading(false);
+  }
+}, [user]);
+  
   const loadChunks = useCallback(async (projectId: string) => {
     try {
       setIsLoadingChunks(true);
@@ -183,7 +201,6 @@ export default function DashboardBulkPage() {
     }
   }, []);
 
-  // ⚡ LOAD BATCH JOBS FOR PROJECT
   const loadBatchJobs = useCallback(async (projectId: string) => {
     try {
       const { data, error } = await supabase
@@ -210,7 +227,6 @@ export default function DashboardBulkPage() {
     }
   }, [user]);
 
-  // 📄 LOAD BATCH RESULTS
   const loadBatchResults = useCallback(async (batchJobId: string) => {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -233,7 +249,6 @@ export default function DashboardBulkPage() {
     }
   }, []);
 
-  // 🚀 START BATCH PROCESSING
   const startBatchProcessing = async () => {
     if (!selectedProject || selectedChunks.size === 0) {
       toast.error('❌ Seleziona almeno un chunk per l\'elaborazione bulk');
@@ -272,12 +287,12 @@ export default function DashboardBulkPage() {
       
       toast.success(`🚀 Batch job avviato! ${chunkIds.length} chunks in elaborazione`);
       
-      // Refresh data
       await loadBatchJobs(selectedProject.id);
       await loadChunks(selectedProject.id);
       
       setSelectedChunks(new Set());
       setShowBatchModal(false);
+      setActiveTab('processing');
 
     } catch (error) {
       console.error('Errore batch processing:', error);
@@ -287,7 +302,6 @@ export default function DashboardBulkPage() {
     }
   };
 
-  // 🔄 UPDATE CHUNK STATUS
   const updateChunkStatus = async (chunkIds: string[], newStatus: string) => {
     if (!selectedProject) return;
 
@@ -321,117 +335,113 @@ export default function DashboardBulkPage() {
   };
 
   const deleteChunks = async (chunkIds: string[]) => {
-  if (!selectedProject) return;
+    if (!selectedProject) return;
 
-  const chunksToDelete = chunks.filter(c => chunkIds.includes(c.id));
-  const chunkTitles = chunksToDelete.map(c => c.title).join(', ');
-  
-  if (!confirm(`Sei sicuro di voler eliminare ${chunkIds.length} sezioni?\n\n${chunkTitles}\n\nQuesta azione non può essere annullata.`)) {
-    return;
-  }
-
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
+    const chunksToDelete = chunks.filter(c => chunkIds.includes(c.id));
+    const chunkTitles = chunksToDelete.map(c => c.title).join(', ');
     
-    if (!accessToken) throw new Error('Non autenticato');
-
-    const response = await fetch('/api/chunks/manage', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        chunk_ids: chunkIds
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Errore eliminazione chunks');
+    if (!confirm(`Sei sicuro di voler eliminare ${chunkIds.length} sezioni?\n\n${chunkTitles}\n\nQuesta azione non può essere annullata.`)) {
+      return;
     }
 
-    toast.success(`✅ ${chunkIds.length} sezioni eliminate con successo`);
-    
-    // Refresh data
-    await loadChunks(selectedProject.id);
-    
-    // Rimuovi dalle selezioni
-    setSelectedChunks(new Set());
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      
+      if (!accessToken) throw new Error('Non autenticato');
 
-  } catch (error) {
-    console.error('Errore eliminazione chunks:', error);
-    toast.error('❌ Errore nell\'eliminazione delle sezioni');
-  }
-};
+      const response = await fetch('/api/chunks/manage', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          chunk_ids: chunkIds
+        }),
+      });
 
-const updateChunk = async (chunkId: string, title: string, section: string) => {
-  if (!selectedProject) return;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Errore eliminazione chunks');
+      }
 
-  if (!title.trim() || title.trim().length < 3) {
-    toast.error('❌ Il titolo deve essere almeno 3 caratteri');
-    return;
-  }
+      toast.success(`✅ ${chunkIds.length} sezioni eliminate con successo`);
+      
+      await loadChunks(selectedProject.id);
+      setSelectedChunks(new Set());
 
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    
-    if (!accessToken) throw new Error('Non autenticato');
+    } catch (error) {
+      console.error('Errore eliminazione chunks:', error);
+      toast.error('❌ Errore nell\'eliminazione delle sezioni');
+    }
+  };
 
-    const response = await fetch('/api/chunks/manage', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        chunk_id: chunkId,
-        title: title.trim(),
-        section: section.trim() || null
-      }),
-    });
+  const updateChunk = async (chunkId: string, title: string, section: string) => {
+    if (!selectedProject) return;
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Errore aggiornamento chunk');
+    if (!title.trim() || title.trim().length < 3) {
+      toast.error('❌ Il titolo deve essere almeno 3 caratteri');
+      return;
     }
 
-    toast.success('✅ Sezione aggiornata con successo');
-    await loadChunks(selectedProject.id);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      
+      if (!accessToken) throw new Error('Non autenticato');
+
+      const response = await fetch('/api/chunks/manage', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          chunk_id: chunkId,
+          title: title.trim(),
+          section: section.trim() || null
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Errore aggiornamento chunk');
+      }
+
+      toast.success('✅ Sezione aggiornata con successo');
+      await loadChunks(selectedProject.id);
+      setEditingChunk(null);
+      setEditFormData({ title: '', section: '' });
+
+    } catch (error) {
+      console.error('Errore aggiornamento chunk:', error);
+      toast.error('❌ Errore nell\'aggiornamento della sezione');
+    }
+  };
+
+  const startEditing = (chunk: Chunk) => {
+    setEditingChunk(chunk.id);
+    setEditFormData({
+      title: chunk.title,
+      section: chunk.section || ''
+    });
+  };
+
+  const cancelEditing = () => {
     setEditingChunk(null);
     setEditFormData({ title: '', section: '' });
+  };
 
-  } catch (error) {
-    console.error('Errore aggiornamento chunk:', error);
-    toast.error('❌ Errore nell\'aggiornamento della sezione');
-  }
-};
+  const saveEditing = async () => {
+    if (!editingChunk) return;
+    await updateChunk(editingChunk, editFormData.title, editFormData.section);
+  };
 
-const startEditing = (chunk: Chunk) => {
-  setEditingChunk(chunk.id);
-  setEditFormData({
-    title: chunk.title,
-    section: chunk.section || ''
-  });
-};
+  const deleteSingleChunk = async (chunkId: string) => {
+    await deleteChunks([chunkId]);
+  };
 
-const cancelEditing = () => {
-  setEditingChunk(null);
-  setEditFormData({ title: '', section: '' });
-};
-
-const saveEditing = async () => {
-  if (!editingChunk) return;
-  await updateChunk(editingChunk, editFormData.title, editFormData.section);
-};
-
-const deleteSingleChunk = async (chunkId: string) => {
-  await deleteChunks([chunkId]);
-};
-
-  // 🗑️ DELETE PROJECT
   const deleteProject = async (projectId: string) => {
     if (!confirm('Sei sicuro di voler eliminare questo progetto? Tutti i chunks e i risultati verranno persi.')) {
       return;
@@ -447,7 +457,9 @@ const deleteSingleChunk = async (chunkId: string) => {
       if (error) throw error;
 
       toast.success('🗑️ Progetto eliminato con successo');
-      await loadProjects();
+      setProjectsPage(0); // Torna alla prima pagina
+      setProjects([]);     // Svuota la lista progetti attuale
+      await loadProjects(0); // Ricarica i progetti dall'inizio
       
       if (selectedProject?.id === projectId) {
         setSelectedProject(null);
@@ -462,7 +474,7 @@ const deleteSingleChunk = async (chunkId: string) => {
   };
 
   const handleFinalizeProject = async (projectId: string) => {
-    if (!confirm("Sei sicuro di voler finalizzare questo progetto? Verrà creato il documento unico con tutti i riassunti e non potrà più essere modificato.")) {
+    if (!confirm("Sei sicuro di voler finalizzare questo progetto? Verrà creato il documento unico con tutti i riassunti completati.")) {
       return;
     }
 
@@ -487,9 +499,9 @@ const deleteSingleChunk = async (chunkId: string) => {
       }
 
       toast.success("🎉 Progetto finalizzato! Il riassunto completo è pronto.");
-      
-      // Ricarica i dati per riflettere il nuovo stato "completed" del progetto
-      await loadProjects();
+      setProjectsPage(0); // Torna alla prima pagina
+      setProjects([]);     // Svuota la lista progetti attuale
+      await loadProjects(0); // Ricarica i progetti dall'inizio
       
     } catch (error: any) {
       console.error("Errore finalizzazione:", error);
@@ -501,10 +513,13 @@ const deleteSingleChunk = async (chunkId: string) => {
 
   // Load initial data
   useEffect(() => {
-    if (user) {
-      loadProjects();
-    }
-  }, [user, loadProjects]);
+  if (user) {
+    // Carica la prima pagina all'avvio
+    setProjectsPage(0);
+    setProjects([]); // Svuota i progetti prima di ricaricare
+    loadProjects(0);
+  }
+}, [user, loadProjects]); // abbiamo rimosso setProjects
 
   // Load chunks when project selected
   useEffect(() => {
@@ -514,26 +529,9 @@ const deleteSingleChunk = async (chunkId: string) => {
     }
   }, [selectedProject, loadChunks, loadBatchJobs]);
 
-  // 🔄 AUTO-REFRESH for active batch jobs
-  useEffect(() => {
-    if (!selectedProject) return;
-
-    const activeBatchJobs = batchJobs.filter(job => 
-      ['in_coda', 'elaborazione'].includes(job.status)
-    );
-
-    if (activeBatchJobs.length === 0) return;
-
-    const interval = setInterval(() => {
-      loadBatchJobs(selectedProject.id);
-      loadChunks(selectedProject.id);
-    }, 5000); // Refresh every 5 seconds
-
-    return () => clearInterval(interval);
-  }, [selectedProject, batchJobs, loadBatchJobs, loadChunks]);
-
   // Filter and sort chunks
-  const filteredChunks = chunks
+  const filteredChunks = useMemo(() => {
+  return chunks
     .filter(chunk => filterStatus === 'all' || chunk.status === filterStatus)
     .sort((a, b) => {
       switch (sortBy) {
@@ -545,729 +543,802 @@ const deleteSingleChunk = async (chunkId: string) => {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
     });
+}, [chunks, filterStatus, sortBy]);
 
-  // Calculate batch estimates
-  const selectedChunksData = chunks.filter(chunk => selectedChunks.has(chunk.id));
-  const totalChars = selectedChunksData.reduce((sum, chunk) => sum + chunk.char_count, 0);
-  const estimatedTokens = Math.ceil(totalChars / 4) * 1.5; // Stima con prompt overhead
-  const estimatedCost = (estimatedTokens / 1000000) * 0.1; // $0.1 per 1M tokens (esempio)
-
-  // Get status color
   const getStatusColor = (status: string) => {
-    // RIGA 396-405: Sostituisci TUTTO il contenuto dell'oggetto colors:
-const colors = {
-  bozza: 'bg-gray-100 text-gray-800',
-  pronto: 'bg-blue-100 text-blue-800', 
-  in_coda: 'bg-yellow-100 text-yellow-800',
-  elaborazione: 'bg-orange-100 text-orange-800',
-  completato: 'bg-green-100 text-green-800',
-  errore: 'bg-red-100 text-red-800',
-  attivo: 'bg-green-100 text-green-800',
-  annullato: 'bg-gray-100 text-gray-800',
-  fallito: 'bg-red-100 text-red-800'
-};
+    const colors = {
+      bozza: 'bg-gray-100 text-gray-800',
+      pronto: 'bg-blue-100 text-blue-800', 
+      in_coda: 'bg-yellow-100 text-yellow-800',
+      elaborazione: 'bg-orange-100 text-orange-800',
+      completato: 'bg-green-100 text-green-800',
+      errore: 'bg-red-100 text-red-800',
+      attivo: 'bg-green-100 text-green-800',
+      annullato: 'bg-gray-100 text-gray-800',
+      fallito: 'bg-red-100 text-red-800'
+    };
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getWorkflowStep = () => {
+    if (!selectedProject || !chunks.length) return 0;
+    
+    const completedChunks = chunks.filter(c => c.status === 'completato').length;
+    const totalChunks = chunks.length;
+    
+    if (selectedProject.status === 'completato') return 4;
+    if (completedChunks > 0 && completedChunks === totalChunks) return 3;
+    if (completedChunks > 0) return 2;
+    if (chunks.some(c => c.status === 'pronto')) return 1;
+    return 0;
   };
 
   if (!userChecked) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Caricamento dashboard...</p>
+          </div>
         </div>
       </DashboardLayout>
     );
   }
 
-  return (
-    <DashboardLayout>
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
-          📚 Dashboard Bulk Processing
-        </h1>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  // 🏠 PROJECTS OVERVIEW (when no project selected)
+  if (!selectedProject) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-7xl mx-auto space-y-8">
           
-          {/* 📋 PROJECTS LIST */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    📋 I Tuoi Progetti
-                  </h2>
-                  <button
-                    onClick={() => window.location.href = '/riassunto'}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm transition-all"
-                  >
-                    + Nuovo
-                  </button>
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                📚 I Tuoi Progetti
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 text-lg">
+                Gestisci i tuoi progetti di riassunto con elaborazione bulk
+              </p>
+            </div>
+            <button
+              onClick={() => window.location.href = '/tools/riassunto'}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg"
+            >
+              ✨ Nuovo Progetto
+            </button>
+          </div>
+
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl p-6 border border-blue-200 dark:border-blue-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-600 dark:text-blue-400 text-sm font-medium mb-1">Progetti Totali</p>
+                  <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">{projects.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-blue-200 dark:bg-blue-700 rounded-xl flex items-center justify-center">
+                  📋
                 </div>
               </div>
+            </div>
 
-              <div className="max-h-96 overflow-y-auto">
-                {isLoading ? (
-                  <div className="p-6 text-center">
-                    <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-                    <p className="text-sm text-gray-500 mt-2">Caricamento progetti...</p>
-                  </div>
-                ) : projects.length === 0 ? (
-                  <div className="p-6 text-center">
-                    <p className="text-gray-500 dark:text-gray-400">
-                      📭 Nessun progetto bulk trovato
-                    </p>
-                    <button
-                      onClick={() => window.location.href = '/riassunto'}
-                      className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                    >
-                      Crea il primo progetto
-                    </button>
-                  </div>
-                ) : (
-                  projects.map((project) => (
-                    <div
-                      key={project.id}
-                      onClick={() => setSelectedProject(project)}
-                      className={`p-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer transition-all hover:bg-gray-50 dark:hover:bg-gray-700 ${
-                        selectedProject?.id === project.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' : ''
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-medium text-gray-900 dark:text-gray-100 line-clamp-2">
-                          {project.project_title}
-                        </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
-                          {project.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {project.facolta} • {project.materia}
-                      </p>
-                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-500">
-                        <span>{project.chunks_count || 0} chunks</span>
-                        <span>{((project.total_chars || 0) / 1000).toFixed(1)}k chars</span>
-                      </div>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-xs text-gray-400">
-                          {new Date(project.created_at).toLocaleDateString('it-IT')}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteProject(project.id);
-                          }}
-                          className="text-red-500 hover:text-red-700 text-xs"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
+            <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-2xl p-6 border border-green-200 dark:border-green-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-600 dark:text-green-400 text-sm font-medium mb-1">Completati</p>
+                  <p className="text-3xl font-bold text-green-900 dark:text-green-100">
+                    {projects.filter(p => p.status === 'completato').length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-green-200 dark:bg-green-700 rounded-xl flex items-center justify-center">
+                  ✅
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-2xl p-6 border border-orange-200 dark:border-orange-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-600 dark:text-orange-400 text-sm font-medium mb-1">In Lavorazione</p>
+                  <p className="text-3xl font-bold text-orange-900 dark:text-orange-100">
+                    {projects.filter(p => p.status === 'attivo').length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-orange-200 dark:bg-orange-700 rounded-xl flex items-center justify-center">
+                  🔄
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-2xl p-6 border border-purple-200 dark:border-purple-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-600 dark:text-purple-400 text-sm font-medium mb-1">Sezioni Totali</p>
+                  <p className="text-3xl font-bold text-purple-900 dark:text-purple-100">
+                    {projects.reduce((sum, p) => sum + (p.chunks_count || 0), 0)}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-purple-200 dark:bg-purple-700 rounded-xl flex items-center justify-center">
+                  📦
+                </div>
               </div>
             </div>
           </div>
 
-          {/* 📦 PROJECT DETAILS */}
-          <div className="lg:col-span-2">
-            {selectedProject ? (
-              <div className="space-y-6">
-                
-                {/* PROJECT HEADER */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                        {selectedProject.project_title}
-                      </h2>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        {selectedProject.facolta} • {selectedProject.materia}
-                      </p>
+          {/* Projects Grid */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 animate-pulse">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded mb-6"></div>
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  </div>
+                  <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
+              ))}
+            </div>
+          ) : projects.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-8xl mb-6">📚</div>
+              <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Inizia il tuo primo progetto
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+                Crea un nuovo progetto di riassunto per organizzare e elaborare i tuoi documenti con l'AI bulk processing.
+              </p>
+              <button
+                onClick={() => window.location.href = '/tools/riassunto'}
+                className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg text-lg"
+              >
+                🚀 Crea il Primo Progetto
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {projects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    onSelect={() => setSelectedProject(project)}
+                    onDelete={() => deleteProject(project.id)}
+                  />
+                ))}
+              </div>
+
+              {/* Pulsante Carica Altri */}
+              {hasMoreProjects && (
+                <div className="text-center mt-8">
+                  <button
+                    onClick={() => {
+                      const nextPage = projectsPage + 1;
+                      setProjectsPage(nextPage);
+                      loadProjects(nextPage);
+                    }}
+                    disabled={isLoading}
+                    className="px-8 py-4 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl font-semibold border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all disabled:opacity-50"
+                  >
+                    {isLoading ? '⏳ Caricamento...' : 'Carica Altri Progetti'}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // 🎯 PROJECT DETAIL VIEW
+  return (
+    <DashboardLayout>
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <button 
+            onClick={() => setSelectedProject(null)}
+            className="hover:text-blue-600 transition-colors"
+          >
+            📚 Progetti
+          </button>
+          <span>→</span>
+          <span className="text-gray-900 dark:text-gray-100 font-medium">
+            {selectedProject.project_title}
+          </span>
+        </div>
+
+        {/* Project Header */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8">
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                  {selectedProject.project_title}
+                </h1>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedProject.status)}`}>
+                  {selectedProject.status === 'completato' ? '✅ Completato' : 
+                   selectedProject.status === 'annullato' ? '❌ Annullato' : '🔄 Attivo'}
+                </span>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 text-lg">
+                {selectedProject.facolta} • {selectedProject.materia}
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSelectedProject(null)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+              >
+                ← Indietro
+              </button>
+              {selectedProject.status !== 'completato' && (
+                <button
+                  onClick={() => handleFinalizeProject(selectedProject.id)}
+                  disabled={isFinalizing || chunks.every(c => c.status !== 'completato')}
+                  className="px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-xl font-semibold hover:from-green-700 hover:to-teal-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+                >
+                  {isFinalizing ? '⏳ Finalizzazione...' : '🏆 Finalizza Progetto'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Workflow Progress */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Progresso del Workflow</h3>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Step {getWorkflowStep()}/4
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              {[
+                { step: 0, label: 'Import', icon: '📄', desc: 'Caricamento documenti' },
+                { step: 1, label: 'Prepare', icon: '⚙️', desc: 'Preparazione sezioni' },
+                { step: 2, label: 'Process', icon: '🚀', desc: 'Elaborazione AI' },
+                { step: 3, label: 'Review', icon: '👁️', desc: 'Revisione risultati' },
+                { step: 4, label: 'Finalize', icon: '🏆', desc: 'Documento finale' }
+              ].map((item, index) => (
+                <div key={item.step} className="flex-1">
+                  <div className="flex items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
+                      getWorkflowStep() >= item.step 
+                        ? 'bg-green-500 text-white' 
+                        : getWorkflowStep() === item.step - 1
+                          ? 'bg-blue-500 text-white animate-pulse'
+                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
+                    }`}>
+                      {item.icon}
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedProject.status)}`}>
-                      {selectedProject.status}
-                    </span>
+                    {index < 4 && (
+                      <div className={`flex-1 h-1 mx-2 ${
+                        getWorkflowStep() > item.step ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'
+                      }`} />
+                    )}
+                  </div>
+                  <div className="mt-2 text-center">
+                    <div className="text-xs font-medium text-gray-900 dark:text-gray-100">{item.label}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{item.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Key Metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">
+                {chunks.length}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Sezioni Totali</div>
+            </div>
+            <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-700">
+              <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">
+                {chunks.filter(c => c.status === 'completato').length}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Elaborate</div>
+            </div>
+            <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-700">
+              <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">
+                {chunks.filter(c => c.status === 'pronto').length}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Pronte</div>
+            </div>
+            <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-700">
+              <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-1">
+                {Math.round(chunks.reduce((sum, c) => sum + c.char_count, 0) / 1000)}k
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Caratteri</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="border-b border-gray-200 dark:border-gray-700">
+            <nav className="flex">
+              {[
+                { id: 'overview', label: 'Panoramica', icon: '📊' },
+                { id: 'chunks', label: 'Gestione Sezioni', icon: '📦' },
+                { id: 'processing', label: 'Elaborazioni', icon: '⚡' },
+                { id: 'results', label: 'Risultati', icon: '📋' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex-1 px-6 py-4 text-sm font-medium transition-all ${
+                    activeTab === tab.id
+                      ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  <span className="mr-2">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6">
+            
+            {/* OVERVIEW TAB */}
+            {activeTab === 'overview' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* Project Summary */}
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                      📋 Riepilogo Progetto
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Data creazione:</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {new Date(selectedProject.created_at).toLocaleDateString('it-IT', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Stato:</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedProject.status)}`}>
+                          {selectedProject.status}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600 dark:text-gray-400">Progresso:</span>
+                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                          {chunks.length > 0 ? Math.round((chunks.filter(c => c.status === 'completato').length / chunks.length) * 100) : 0}%
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        {chunks.length}
-                      </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Chunks Totali</div>
-                    </div>
-                    <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                        {chunks.filter(c => c.status === 'pronto').length}
-                      </div>
-                     <div className="text-sm text-gray-600 dark:text-gray-400">Pronte</div>
-                    </div>
-                    <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                        {Math.round(chunks.reduce((sum, c) => sum + c.char_count, 0) / 1000)}k
-                      </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">Caratteri</div>
+                  {/* Recent Activity */}
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                      ⚡ Attività Recente
+                    </h3>
+                    <div className="space-y-3">
+                      {batchJobs.slice(0, 3).map((job) => (
+                        <div key={job.id} className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                              Batch Processing
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {job.processed_chunks}/{job.total_chunks} sezioni
+                            </div>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
+                            {job.status}
+                          </span>
+                        </div>
+                      ))}
+                      {batchJobs.length === 0 && (
+                        <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
+                          Nessuna elaborazione ancora avviata
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* 🏆 BOTTONE DI FINALIZZAZIONE */}
-                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                {/* Quick Actions */}
+                <div className="bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 rounded-xl p-6 border border-green-200 dark:border-green-700">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                    🚀 Azioni Rapide
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button
-                      onClick={() => handleFinalizeProject(selectedProject.id)}
-                      disabled={
-                        isFinalizing ||
-                        selectedProject.status === 'completato' ||
-                        chunks.every(c => c.status !== 'completato')
-                      }
-                      className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg font-medium text-lg hover:from-green-700 hover:to-teal-700 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                      onClick={() => setActiveTab('chunks')}
+                      className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all group"
                     >
-                      {isFinalizing
-                        ? '⏳ Finalizzazione in corso...'
-                        : selectedProject.status === 'completato'
-                          ? '✅ Progetto Finalizzato'
-                          : '🏆 Crea Riassunto Finale'}
+                      <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📦</div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">Gestisci Sezioni</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Modifica e organizza</div>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        const readyChunks = chunks.filter(c => c.status === 'pronto').map(c => c.id);
+                        if (readyChunks.length > 0) {
+                          setSelectedChunks(new Set(readyChunks));
+                          setShowBatchModal(true);
+                        } else {
+                          toast.error('❌ Nessuna sezione pronta per l\'elaborazione');
+                        }
+                      }}
+                      disabled={chunks.filter(c => c.status === 'pronto').length === 0}
+                      className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">⚡</div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">Elabora Bulk</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {chunks.filter(c => c.status === 'pronto').length} pronte
+                      </div>
                     </button>
 
-                    {/* Messaggio di aiuto se il bottone è disabilitato */}
-                    {(selectedProject.status !== 'completato' && chunks.every(c => c.status !== 'completato')) && (
-                        <p className="text-center text-xs text-gray-500 mt-2">
-                            Devi prima elaborare almeno un chunk per poter finalizzare il progetto.
-                        </p>
-                    )}
+                    <button
+                      onClick={() => setActiveTab('results')}
+                      className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-all group"
+                    >
+                      <div className="text-2xl mb-2 group-hover:scale-110 transition-transform">📋</div>
+                      <div className="font-medium text-gray-900 dark:text-gray-100">Vedi Risultati</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {chunks.filter(c => c.status === 'completato').length} completate
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CHUNKS TAB */}
+            {activeTab === 'chunks' && (
+              <div className="space-y-6">
+                
+                {/* Controls */}
+                <div className="flex flex-wrap gap-4 items-center justify-between">
+                  <div className="flex gap-3">
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">Tutti gli stati</option>
+                      <option value="bozza">Bozza</option>
+                      <option value="pronto">Pronto</option>
+                      <option value="in_coda">In Coda</option>
+                      <option value="elaborazione">Elaborazione</option>
+                      <option value="completato">Completato</option>
+                      <option value="errore">Errore</option>
+                    </select>
+
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="created">Data creazione</option>
+                      <option value="title">Titolo</option>
+                      <option value="chars">Caratteri</option>
+                    </select>
                   </div>
 
-                {/* BATCH JOBS STATUS */}
-                {batchJobs.length > 0 && (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                      ⚡ Elaborazioni Chunk
-                    </h3>
-                    <div className="space-y-3">
-                      {batchJobs.slice(0, 3).map((job) => (
-                        <div
-                          key={job.id}
-                          onClick={() => {
-                            setSelectedBatchJob(job);
-                            loadBatchResults(job.id);
-                            setShowBatchDetails(true);
-                          }}
-                          className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        const readyChunks = chunks.filter(c => c.status === 'pronto').map(c => c.id);
+                        setSelectedChunks(new Set(readyChunks));
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-all"
+                    >
+                      ✅ Seleziona Pronte
+                    </button>
+                    
+                    <button
+                      onClick={() => setShowBatchModal(true)}
+                      disabled={selectedChunks.size === 0}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-all"
+                    >
+                      ⚡ Elabora ({selectedChunks.size})
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bulk Actions */}
+                {selectedChunks.size > 0 && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-blue-800 dark:text-blue-200 font-medium">
+                        {selectedChunks.size} sezioni selezionate
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateChunkStatus(Array.from(selectedChunks), 'pronto')}
+                          className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm transition-all"
                         >
-                          <div className="flex justify-between items-center mb-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                              {job.status}
-                            </span>
-                            <span className="text-sm text-gray-500">
-                              {new Date(job.created_at).toLocaleDateString('it-IT')}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-    {job.processed_chunks}/{job.total_chunks} chunks
-  </span>
-  <span className="text-xs text-gray-400">
-    ID: {job.id.slice(-8)}
-  </span>
-</div>
-                          {job.status === 'elaborazione' && (
-                            <div className="mt-2">
-                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div 
-                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                  style={{ width: `${job.progress_percentage}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-xs text-gray-500 mt-1">
-                                {job.progress_percentage}% completato
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                          ✅ Segna Pronte
+                        </button>
+                        <button
+                          onClick={() => updateChunkStatus(Array.from(selectedChunks), 'bozza')}
+                          className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm transition-all"
+                        >
+                          📝 Segna Bozze
+                        </button>
+                        <button
+                          onClick={() => deleteChunks(Array.from(selectedChunks))}
+                          className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm transition-all"
+                        >
+                          🗑️ Elimina
+                        </button>
+                        <button
+                          onClick={() => setSelectedChunks(new Set())}
+                          className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm transition-all"
+                        >
+                          ❌ Deseleziona
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* CHUNKS MANAGEMENT */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                  <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        📦 Gestione Chunks
+                {/* Chunks List */}
+                <div className="space-y-3">
+                  {isLoadingChunks ? (
+                    <div className="text-center py-12">
+                      <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                      <p className="text-gray-600 dark:text-gray-400">Caricamento sezioni...</p>
+                    </div>
+                  ) : filteredChunks.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-6xl mb-4">📦</div>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        Nessuna sezione trovata
                       </h3>
-                      <div className="flex gap-2">
+                      <p className="text-gray-600 dark:text-gray-400 mb-6">
+                        {filterStatus !== 'all' 
+                          ? `Nessuna sezione con stato "${filterStatus}"`
+                          : 'Questo progetto non ha ancora sezioni'
+                        }
+                      </p>
+                      {filterStatus !== 'all' && (
                         <button
-                          onClick={() => setShowBatchModal(true)}
-                          disabled={selectedChunks.size === 0}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-all"
+                          onClick={() => setFilterStatus('all')}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
                         >
-                          ⚡ Elaborazione Chunk ({selectedChunks.size})
+                          Mostra Tutte le Sezioni
                         </button>
-                      </div>
+                      )}
                     </div>
-
-                    {/* FILTERS AND ACTIONS */}
-                    <div className="flex flex-wrap gap-3 mb-4">
-                      <select
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="all">Tutti gli stati</option>
-                        <option value="bozza">Bozza</option>
-<option value="pronto">Pronto</option>
-<option value="in_coda">In Coda</option>
-<option value="elaborazione">Elaborazione</option>
-<option value="completato">Completato</option>
-<option value="errore">Errore</option>
-                      </select>
-
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as any)}
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="created">Data creazione</option>
-                        <option value="title">Titolo</option>
-                        <option value="chars">Caratteri</option>
-                      </select>
-
-                      {selectedChunks.size > 0 && (
-  <div className="flex gap-2">
-    <button
-      onClick={() => updateChunkStatus(Array.from(selectedChunks), 'pronto')}
-      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-    >
-      ✅ Segna Pronte
-    </button>
-    <button
-      onClick={() => updateChunkStatus(Array.from(selectedChunks), 'bozza')}
-      className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
-    >
-      📝 Segna Bozze
-    </button>
-    <button
-      onClick={() => deleteChunks(Array.from(selectedChunks))}
-      className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-    >
-      🗑️ Elimina ({selectedChunks.size})
-    </button>
-    <button
-      onClick={() => setSelectedChunks(new Set())}
-      className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
-    >
-      ❌ Deseleziona Tutto
-    </button>
-  </div>
-)}
-
-                      <div className="flex gap-2 ml-auto">
-                        <button
-                          onClick={() => {
-                            const readyChunks = chunks.filter(c => c.status === 'pronto').map(c => c.id);
-                            setSelectedChunks(new Set(readyChunks));
-                          }}
-                          className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                        >
-                          ✅ Seleziona Tutti i Pronti
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* CHUNKS LIST */}
-                  <div className="max-h-96 overflow-y-auto">
-                    {isLoadingChunks ? (
-                      <div className="p-6 text-center">
-                        <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
-                        <p className="text-sm text-gray-500 mt-2">Caricamento chunks...</p>
-                      </div>
-                    ) : filteredChunks.length === 0 ? (
-                      <div className="p-6 text-center">
-                        <p className="text-gray-500 dark:text-gray-400">
-                          📭 Nessuna sezione trovata per questo progetto
-                        </p>
-                        <button
-                          onClick={() => window.location.href = '/riassunto'}
-                          className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                        >
-                          Aggiungi sezioni
-                        </button>
-                      </div>
-                    ) : (
-                      filteredChunks.map((chunk) => (
-                        <div
-                          key={chunk.id}
-                          className={`group p-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all ${
-                            selectedChunks.has(chunk.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={selectedChunks.has(chunk.id)}
-                              onChange={(e) => {
-                                const newSelected = new Set(selectedChunks);
-                                if (e.target.checked) {
-                                  newSelected.add(chunk.id);
-                                } else {
-                                  newSelected.delete(chunk.id);
-                                }
-                                setSelectedChunks(newSelected);
-                              }}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            
-                            <div className="flex-1">
-  {editingChunk === chunk.id ? (
-    // 📝 EDIT MODE
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={editFormData.title}
-          onChange={(e) => setEditFormData(prev => ({ ...prev, title: e.target.value }))}
-          className="flex-1 px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600"
-          placeholder="Titolo sezione..."
-          autoFocus
-        />
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(chunk.status)}`}>
-          {chunk.status}
-        </span>
-      </div>
-      
-      <input
-        type="text"
-        value={editFormData.section}
-        onChange={(e) => setEditFormData(prev => ({ ...prev, section: e.target.value }))}
-        className="w-full px-2 py-1 text-sm border rounded focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600"
-        placeholder="Sezione (opzionale)..."
-      />
-      
-      <div className="flex gap-2">
-        <button
-          onClick={saveEditing}
-          disabled={!editFormData.title.trim() || editFormData.title.trim().length < 3}
-          className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50"
-        >
-          ✅ Salva
-        </button>
-        <button
-          onClick={cancelEditing}
-          className="px-3 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700"
-        >
-          ❌ Annulla
-        </button>
-      </div>
-    </div>
-  ) : (
-    // 👁️ VIEW MODE
-    <div>
-      <div className="flex justify-between items-start mb-2">
-        <h4 
-          className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1 cursor-pointer hover:text-blue-600 transition-colors"
-          onClick={() => startEditing(chunk)}
-          title="Clicca per modificare"
-        >
-          {chunk.title}
-        </h4>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(chunk.status)}`}>
-          {chunk.status}
-        </span>
-      </div>
-      
-      {chunk.section ? (
-        <p 
-          className="text-sm text-gray-600 dark:text-gray-400 mb-1 cursor-pointer hover:text-blue-600 transition-colors"
-          onClick={() => startEditing(chunk)}
-          title="Clicca per modificare"
-        >
-          📚 {chunk.section}
-        </p>
-      ) : (
-        <p 
-          className="text-sm text-gray-400 mb-1 cursor-pointer hover:text-blue-600 transition-colors italic"
-          onClick={() => startEditing(chunk)}
-          title="Clicca per aggiungere sezione"
-        >
-          📚 Aggiungi sezione...
-        </p>
-      )}
-    </div>
-  )}
-  
-  <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-500">
-    <div className="flex gap-4">
-      <span>{chunk.char_count.toLocaleString()} caratteri</span>
-      <span>{chunk.word_count.toLocaleString()} parole</span>
-      {chunk.page_range && <span>📄 {chunk.page_range}</span>}
-    </div>
-    <span>#{chunk.order_index}</span>
-  </div>
-  
-  <div className="flex justify-between items-center mt-2">
-    <span className="text-xs text-gray-400">
-      {new Date(chunk.created_at).toLocaleDateString('it-IT', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })}
-    </span>
-    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          startEditing(chunk);
-        }}
-        className="text-blue-500 hover:text-blue-700 text-xs"
-      >
-        ✏️ Modifica
-      </button>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          deleteSingleChunk(chunk.id);
-        }}
-        className="text-red-500 hover:text-red-700 text-xs"
-      >
-        🗑️ Elimina
-      </button>
-    </div>
-  </div>
-</div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  ) : (
+                    filteredChunks.map((chunk) => (
+                      <ChunkItem
+                        key={chunk.id}
+                        chunk={chunk}
+                        isSelected={selectedChunks.has(chunk.id)}
+                        isEditing={editingChunk === chunk.id}
+                        editFormData={editFormData}
+                        onToggleSelect={(id, checked) => {
+                          const newSelected = new Set(selectedChunks);
+                          if (checked) {
+                            newSelected.add(id);
+                          } else {
+                            newSelected.delete(id);
+                          }
+                          setSelectedChunks(newSelected);
+                        }}
+                        onStartEditing={startEditing}
+                        onCancelEditing={cancelEditing}
+                        onSaveEditing={saveEditing}
+                        onDelete={deleteSingleChunk}
+                        onEditFormChange={(e) => setEditFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))}
+                        getStatusColor={getStatusColor}
+                      />
+                    ))
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
-                <div className="text-6xl mb-4">📚</div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Seleziona un Progetto
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Scegli un progetto dalla lista a sinistra per visualizzare e gestire i suoi chunks.
-                </p>
-                <button
-                  onClick={() => window.location.href = '/riassunto'}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-                >
-                  Crea Nuovo Progetto
-                </button>
+            )}
+
+            {/* PROCESSING TAB */}
+            {activeTab === 'processing' && (
+              <div className="space-y-6">
+                
+                {/* Header with Refresh */}
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    ⚡ Elaborazioni Batch
+                  </h3>
+                  <button
+                    onClick={async () => {
+                      if (!selectedProject) return;
+                      
+                      const activeBatches = batchJobs.filter(job => 
+                        ['in_coda', 'elaborazione', 'fallito'].includes(job.status)
+                      );
+                      
+                      if (activeBatches.length === 0) {
+                        loadBatchJobs(selectedProject.id);
+                        loadChunks(selectedProject.id);
+                        toast('🔄 Dati aggiornati');
+                        return;
+                      }
+                      
+                      toast('🔄 Controllo aggiornamenti da Groq...');
+                      
+                      try {
+                        const { data: sessionData } = await supabase.auth.getSession();
+                        const accessToken = sessionData.session?.access_token;
+                        
+                        for (const batch of activeBatches) {
+                          const response = await fetch(`/api/batch/sync-groq/${batch.id}`, {
+                            method: 'POST',
+                            headers: { Authorization: `Bearer ${accessToken}` }
+                          });
+                          
+                          if (response.ok) {
+                            const result = await response.json();
+                            console.log(`Batch ${batch.id}: ${result.message}`);
+                          }
+                        }
+                        
+                        await loadBatchJobs(selectedProject.id);
+                        await loadChunks(selectedProject.id);
+                        
+                        toast.success('✅ Aggiornamenti completati!');
+                        
+                      } catch (error) {
+                        console.error('Errore sync Groq:', error);
+                        toast.error('❌ Errore durante il controllo');
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-all flex items-center gap-2"
+                  >
+                    🔄 Sincronizza
+                  </button>
+                </div>
+
+                {/* Batch Jobs List */}
+                {batchJobs.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-6xl mb-4">⚡</div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                      Nessuna elaborazione avviata
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                      Vai alla sezione "Gestione Sezioni" per avviare un'elaborazione bulk
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('chunks')}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+                    >
+                      📦 Gestisci Sezioni
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {batchJobs.map((job) => (
+                      <BatchJobItem
+                        key={job.id}
+                        job={job}
+                        onSelect={(selectedJob) => {
+                          setSelectedBatchJob(selectedJob);
+                          loadBatchResults(selectedJob.id);
+                          setShowBatchDetails(true);
+                        }}
+                        getStatusColor={getStatusColor}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* RESULTS TAB */}
+            {activeTab === 'results' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    📋 Risultati Elaborazione
+                  </h3>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    {chunks.filter(c => c.status === 'completato').length} sezioni completate
+                  </div>
+                </div>
+
+                {chunks.filter(c => c.status === 'completato').length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="text-6xl mb-4">📋</div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                      Nessun risultato disponibile
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                      Avvia un'elaborazione bulk per vedere i risultati qui
+                    </p>
+                    <button
+                      onClick={() => setActiveTab('chunks')}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+                    >
+                      🚀 Inizia Elaborazione
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {chunks
+                      .filter(c => c.status === 'completato')
+                      .sort((a, b) => a.order_index - b.order_index)
+                      .map((chunk) => (
+                        <ResultItem key={chunk.id} chunk={chunk} />
+                      ))}
+                  </div>
+                )}
+
+                {/* Finalize Project CTA */}
+                {chunks.filter(c => c.status === 'completato').length > 0 && selectedProject.status !== 'completato' && (
+                  <div className="bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 rounded-xl p-6 border border-green-200 dark:border-green-700">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                          🏆 Pronto per la finalizzazione
+                        </h4>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm">
+                          Hai {chunks.filter(c => c.status === 'completato').length} sezioni elaborate. 
+                          Crea il documento finale combinando tutti i riassunti.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleFinalizeProject(selectedProject.id)}
+                        disabled={isFinalizing}
+                        className="px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-xl font-semibold hover:from-green-700 hover:to-teal-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+                      >
+                        {isFinalizing ? '⏳ Finalizzazione...' : '🏆 Finalizza Progetto'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
         {/* 🚀 BATCH PROCESSING MODAL */}
-        <Dialog open={showBatchModal} onOpenChange={setShowBatchModal}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogTitle className="text-xl font-semibold text-gray-900 mb-4">
-              ⚡ Avvia Elaborazione Lotti
-            </DialogTitle>
-            <DialogDescription className="text-gray-600 mb-6">
-  Confermi di voler avviare l'elaborazione in lotti per le <strong>{selectedChunks.size}</strong> sezioni selezionate? L'operazione verrà eseguita in background.
-</DialogDescription>
-
-            {/* BATCH PREVIEW */}
-            
-
-            {/* ACTION BUTTONS */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowBatchModal(false)}
-                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-              >
-                Annulla
-              </button>
-              <button
-                onClick={startBatchProcessing}
-                disabled={isProcessing || selectedChunks.size === 0}
-                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {isProcessing ? '⏳ Avviando...' : `🚀 Avvia Elaborazione (${selectedChunks.size} chunks)`}
-              </button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* 📊 BATCH DETAILS MODAL */}
-        <Dialog open={showBatchDetails} onOpenChange={setShowBatchDetails}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogTitle className="text-xl font-semibold text-gray-900 mb-4">
-              📊 Dettagli Elaborazione Chunk
-            </DialogTitle>
-
-            {selectedBatchJob && (
-              <div className="space-y-6">
-                {/* JOB OVERVIEW */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
-                    <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                      {selectedBatchJob.processed_chunks}/{selectedBatchJob.total_chunks}
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Sezioni</div>
-                  </div>
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
-                    <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                      {selectedBatchJob.progress_percentage || 0}%
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Progresso</div>
-                  </div>
-                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-center">
-                    <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
-                      ${selectedBatchJob.estimated_cost_usd.toFixed(4)}
-                    </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">Costo Stimato</div>
-                  </div>
-                  <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-center">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedBatchJob.status)}`}>
-                      {selectedBatchJob.status === 'in_coda' ? 'In Coda' :
- selectedBatchJob.status === 'elaborazione' ? 'Elaborazione' :
- selectedBatchJob.status === 'completato' ? 'Completato' :
- selectedBatchJob.status === 'fallito' ? 'Fallito' :
- selectedBatchJob.status === 'annullato' ? 'Annullato' :
- selectedBatchJob.status}
-                    </span>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">Stato</div>
-                  </div>
-                </div>
-
-                {/* PROGRESS BAR */}
-                {selectedBatchJob.status === 'elaborazione' && (
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                        Elaborazione in corso...
-                      </span>
-                      <span className="text-sm text-blue-700 dark:text-blue-300">
-                        {selectedBatchJob.progress_percentage}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3">
-                      <div 
-                        className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                        style={{ width: `${selectedBatchJob.progress_percentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
-                {/* RESULTS TABLE */}
-                <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
-  <div className="p-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-    <h4 className="font-medium text-gray-900 dark:text-gray-100">
-      📄 Risultati per Sezione
-    </h4>
-  </div>
-
-  {/* Mostra l'errore se il lotto è fallito */}
-  {selectedBatchJob.status === 'fallito' ? (
-    <div className="p-4 bg-red-50 dark:bg-red-900/20">
-      <h5 className="font-semibold text-red-800 dark:text-red-200">Lotto Fallito</h5>
-      <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-        L'elaborazione non è stata avviata. Causa probabile: il piano attuale non supporta la modalità batch.
-      </p>
-    </div>
-  ) : batchResults.length === 0 && selectedBatchJob.status !== 'elaborazione' ? (
-     <div className="p-6 text-center text-gray-500 dark:text-gray-400">Nessun risultato da mostrare.</div>
-  ) : (
-                    <div className="max-h-96 overflow-y-auto">
-                      {batchResults.map((result, index) => (
-                        <div key={result.id} className="p-4 border-b border-gray-200 dark:border-gray-600 last:border-b-0">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="font-medium text-gray-900 dark:text-gray-100">
-                              {index + 1}. {result.chunk_title || `Sezione ${result.raw_chunk_id.slice(-8)}`}
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(result.status)}`}>
-                              {result.status === 'in_attesa' ? 'In Attesa' :
- result.status === 'elaborazione' ? 'Elaborazione' :
- result.status === 'completato' ? 'Completato' :
- result.status === 'fallito' ? 'Fallito' :
- result.status}
-                            </span>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-500 dark:text-gray-400">
-                            {result.input_tokens && (
-                              <div>
-                                <span className="font-medium">Input:</span> {result.input_tokens.toLocaleString()} tokens
-                              </div>
-                            )}
-                            {result.output_tokens && (
-                              <div>
-                                <span className="font-medium">Output:</span> {result.output_tokens.toLocaleString()} tokens
-                              </div>
-                            )}
-                            {result.cost_usd && (
-                              <div>
-                                <span className="font-medium">Costo:</span> ${result.cost_usd.toFixed(6)}
-                              </div>
-                            )}
-                            {result.processing_time_ms && (
-                              <div>
-                                <span className="font-medium">Tempo:</span> {(result.processing_time_ms / 1000).toFixed(1)}s
-                              </div>
-                            )}
-                          </div>
-                          
-                          {result.error_message && (
-                            <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded text-xs text-red-800 dark:text-red-200">
-                              <strong>Errore:</strong> {result.error_message}
-                            </div>
-                          )}
-                          
-                          {result.completed_at && (
-                            <div className="mt-2 text-xs text-gray-400">
-                              Completato: {new Date(result.completed_at).toLocaleString('it-IT')}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* JOB ACTIONS */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowBatchDetails(false)}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
-                  >
-                    Chiudi
-                  </button>
-                  {selectedBatchJob.status === 'completato' && (
-                    <button
-                      onClick={() => {
-                        // TODO: Navigate to results view
-                        toast('🚧 Visualizzazione risultati in sviluppo');
-                      }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-                    >
-                      📄 Visualizza Riassunti
-                    </button>
-                  )}
-                  {['fallito', 'completato'].includes(selectedBatchJob.status) && (
-                    <button
-                      onClick={() => {
-                        // TODO: Implement retry failed chunks
-                        toast('🚧 Riprova sezioni fallite in sviluppo');
-                      }}
-                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all"
-                    >
-                      🔄 Riprova Fallite
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        <Suspense fallback={null}>
+  {showBatchModal && (
+    <BatchProcessingModal
+      isOpen={showBatchModal}
+      onClose={() => setShowBatchModal(false)}
+      selectedChunks={selectedChunks}
+      chunks={chunks}
+      onStartProcessing={startBatchProcessing}
+      isProcessing={isProcessing}
+    />
+  )}
+  {showBatchDetails && (
+    <BatchDetailsModal
+      isOpen={showBatchDetails}
+      onClose={() => setShowBatchDetails(false)}
+      batchJob={selectedBatchJob}
+      batchResults={batchResults}
+      onLoadResults={loadBatchResults}
+      getStatusColor={getStatusColor}
+    />
+  )}
+</Suspense>
       </div>
     </DashboardLayout>
   );

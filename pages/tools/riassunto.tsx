@@ -449,7 +449,7 @@ export default function RiassuntoPage() {
                 📄 Riassunto Singolo
               </div>
               <div className="text-sm text-blue-700 dark:text-blue-300">
-                Per documenti brevi (fino a 20k caratteri)
+                Per documenti brevi (fino a 25k caratteri)
               </div>
               <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                 ✅ Risultato immediato • Salvato direttamente in Biblioteca
@@ -780,7 +780,7 @@ export default function RiassuntoPage() {
           onClick={() => fileInputRef.current?.click()} 
           className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 px-4 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-100 transition-all transform hover:scale-105"
         >
-          📁 Carica file {workMode === 'project' ? '(consigliato: PDF per SmartReaderBulk)' : '(consigliato: PDF per SmartReader)'}
+          📁 Carica file {workMode === 'project' ? '' : ''}
         </button>
         {caricamentoFile && (
           <div className="w-full mt-3 h-2 rounded bg-gray-200 dark:bg-gray-700 overflow-hidden">
