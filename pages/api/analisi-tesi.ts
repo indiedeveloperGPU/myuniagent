@@ -260,7 +260,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ],
       temperature: 0.1, // Temperatura molto bassa per consistenza
       top_p: 0.82,
-      max_tokens: Math.min(tokenEstimate.maxOutputTokens, 4000),
+      max_tokens: Math.min(tokenEstimate.maxOutputTokens, 8000),
       stream: true,
     });
 

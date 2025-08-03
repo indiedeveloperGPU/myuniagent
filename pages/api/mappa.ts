@@ -7,7 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 // Assicurati che la variabile d'ambiente TOGETHER_API_KEY sia impostata.
 const openai = new OpenAI({
   apiKey: process.env.TOGETHER_API_KEY!,
-  baseURL: "https://api.together.xyz/v1",
+  baseURL: "https://api.groq.com/openai/v1",
 });
 
 const supabase = createClient(
@@ -15,8 +15,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// 2. Definizione del modello Llama 4 Scout da utilizzare
-const modelloMappa = "meta-llama/Llama-4-Scout-17B-16E-Instruct";
+const modelloMappa = "meta-llama/llama-4-maverick-17b-128e-instruct";
 
 export default async function handler(
   req: NextApiRequest,
