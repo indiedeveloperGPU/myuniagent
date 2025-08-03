@@ -44,10 +44,11 @@ const navigationCategories = [
     type: "dropdown",
     items: [
       { href: "/tools/riassunto", label: "Riassunto", icon: FileText, description: "Genera riassunti automatici" },
-      { href: "/tools/dashboard-bulk", label: "Dashboard Riassunti Bulk", icon: FileText, description: "Riassumi più documenti contemporaneamente." },
+      { href: "/tools/dashboard-bulk", label: "Dashboard Riassunti", icon: FileText, description: "Riassumi più documenti contemporaneamente" },
       { href: "/tools/spiegazione", label: "Spiegazione", icon: BookOpen, description: "Spiegazioni dettagliate" },
       { href: "/tools/mappa", label: "Mappa Concettuale", icon: Brain, description: "Crea mappe concettuali" },
       { href: "/tools/analisi-tesi", label: "Analisi Tesi", icon: Search, description: "Analizza documenti di tesi" },
+      { href: "/tools/dashboard-tesi", label: "Dashboard Tesi", icon: Search, description: "Analizza documenti di tesi contemporaneamente" },
     ]
   },
   {

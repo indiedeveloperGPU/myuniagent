@@ -539,7 +539,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
             <span className="ml-2 text-sm text-red-600">⚠️ OCR Worker Error</span>
           )}
           {isWorkerReady && (
-            <span className="ml-2 text-sm text-green-600">🧠 OCR Ready</span>
+            <span className="ml-2 text-sm text-green-600">🧠 OCR Attivo</span>
           )}
         </DialogTitle>
         <DialogDescription className="text-sm text-gray-500 mb-4">
@@ -851,6 +851,7 @@ export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected }
               <div className="text-xs text-gray-500 mt-1 mb-2">
                 {tempSelection.length} caratteri | {selections.length} selezioni
               </div>
+              
 
               {/* Action Buttons */}
               <div className="flex flex-col gap-2 mt-auto pt-2">

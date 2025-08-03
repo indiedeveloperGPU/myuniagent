@@ -6,11 +6,11 @@ import { useTableDetection } from '@/lib/useTableDetection';
 import { useOCRWorker } from '@/lib/useOCRWorker';
 import { useProgressiveLoading } from '@/lib/useProgressiveLoading';
 import ProgressivePageLoader from '@/components/ProgressivePageLoader';
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'react-hot-toast';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { supabase } from '@/lib/supabaseClient';
 
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf-worker/pdf.worker.min.js";
 
@@ -22,44 +22,118 @@ interface Selection {
   type: 'manual' | 'ocr';
 }
 
-interface ChunkToSave {
-  title: string;
-  section?: string;
-  content: string;
-  pageRange?: string;
-}
-
-interface SmartPdfReaderBulkProps {
+interface SmartPdfReaderProps {
   isOpen: boolean;
   onClose: () => void;
   file: File | null;
+  onTextSelected: (text: string) => void;
   projectId: string;
-  onChunkSaved?: (chunk: any) => void;
+  userId: string;
 }
 
-export default function SmartPdfReaderBulk({ 
-  isOpen, 
-  onClose, 
-  file, 
-  projectId,
-  onChunkSaved 
-}: SmartPdfReaderBulkProps) {
-  
-  // 🔄 DEBUG LOGS
-  console.log('🔍 SmartPdfReaderBulk Props:', {
-    isOpen,
-    file: file?.name,
-    fileType: file?.type,
-    fileSize: file?.size,
-    projectId
-  });
+interface SaveChunkModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (title: string, section?: string) => void;
+  isLoading: boolean;
+}
 
-  // 🔄 STATI BULK-SPECIFICI
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [chunkToSave, setChunkToSave] = useState<ChunkToSave | null>(null);
-  const [savedChunks, setSavedChunks] = useState<any[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  
+// Modale per salvare chunk
+function SaveChunkModal({ isOpen, onClose, onSave, isLoading }: SaveChunkModalProps) {
+  const [title, setTitle] = useState('');
+  const [section, setSection] = useState('');
+
+  const handleSave = () => {
+    if (title.trim()) {
+      onSave(title.trim(), section.trim() || undefined);
+      setTitle('');
+      setSection('');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => {if (!open) onClose();}}>
+      <DialogContent className="max-w-md">
+        <DialogTitle className="text-lg font-semibold text-gray-800">
+          Salva Chunk di Testo
+        </DialogTitle>
+        <DialogDescription className="text-sm text-gray-600 mb-4">
+          Assegna un titolo al chunk per poterlo riconoscere facilmente in seguito.
+        </DialogDescription>
+
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="chunk-title" className="block text-sm font-medium text-gray-700 mb-1">
+              Titolo *
+            </label>
+            <input
+              id="chunk-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Es: Introduzione teorica, Metodologia..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              autoFocus
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="chunk-section" className="block text-sm font-medium text-gray-700 mb-1">
+              Sezione (opzionale)
+            </label>
+            <input
+              id="chunk-section"
+              type="text"
+              value={section}
+              onChange={(e) => setSection(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Es: Capitolo 1, Appendice A..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={isLoading}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <DialogClose asChild>
+            <button
+              type="button"
+              className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 disabled:opacity-50"
+              disabled={isLoading}
+            >
+              Annulla
+            </button>
+          </DialogClose>
+          <button
+            onClick={handleSave}
+            disabled={!title.trim() || isLoading}
+            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                Salvando...
+              </>
+            ) : (
+              '💾 Salva Chunk'
+            )}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default function SmartPdfReader({ isOpen, onClose, file, onTextSelected, projectId, userId }: SmartPdfReaderProps) {
   // PDF States
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
@@ -69,7 +143,7 @@ export default function SmartPdfReaderBulk({
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
   const [allPagesText, setAllPagesText] = useState<{[key: number]: string}>({});
   
-  // Progressive Loading Hook
+  // Progressive Loading Hook con auto-mode
   const {
     loadingMode,
     shouldRenderPage,
@@ -91,10 +165,27 @@ export default function SmartPdfReaderBulk({
     const currentPage = pageNumber;
     const distance = Math.abs(pageNum - currentPage);
     
-    if (pageNum === currentPage) return true;
-    if (distance <= 1) return true;
-    if (numPages && numPages <= 10) return true;
-    if (numPages && numPages <= 50 && distance <= 2) return true;
+    // Pagina corrente: sempre abilitato per selezione
+    if (pageNum === currentPage) {
+      return true;
+    }
+    
+    // Pagine adiacenti (±1): abilitate per quick navigation
+    if (distance <= 1) {
+      return true;
+    }
+    
+    // Documento piccolo (≤10 pagine): sempre abilitato
+    if (numPages && numPages <= 10) {
+      return true;
+    }
+    
+    // Documento medio (11-50 pagine): ±2 pagine
+    if (numPages && numPages <= 50 && distance <= 2) {
+      return true;
+    }
+    
+    // Documenti grandi: solo pagina corrente e ±1
     return false;
   }, [pageNumber, numPages]);
 
@@ -104,8 +195,8 @@ export default function SmartPdfReaderBulk({
       console.log(`📊 PDF con ${numPages} pagine - ${numPages > 20 ? 'Fast' : 'Full'} mode automatico`);
     }
   }, [numPages]);
-
-  // OCR States
+  
+  // OCR States con Web Worker
   const [ocrPages, setOcrPages] = useState<{[key: number]: string}>({});
   const { 
     startOCR, 
@@ -124,6 +215,11 @@ export default function SmartPdfReaderBulk({
   const [isFormatted, setIsFormatted] = useState(false);
   const [selections, setSelections] = useState<Selection[]>([]);
   
+  // Chunk Saving States
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isSavingChunk, setIsSavingChunk] = useState(false);
+  const [savedChunksCount, setSavedChunksCount] = useState(0);
+  
   // Table Detection
   const { detectedTables, isDetecting, detectTablesInPage, selectTable } = useTableDetection();
   
@@ -133,101 +229,55 @@ export default function SmartPdfReaderBulk({
   
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Inject CSS for text selection
+  // Inject enterprise-grade CSS for text selection
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
+      /* Enterprise PDF text selection styles */
       .react-pdf__Page {
         user-select: text !important;
         position: relative;
       }
+      
       .react-pdf__Page__textContent {
         user-select: text !important;
         pointer-events: auto !important;
         z-index: 2;
       }
+      
       .react-pdf__Page__textContent > span {
         user-select: text !important;
         pointer-events: auto !important;
       }
+      
+      /* Previeni interferenze con controlli */
       .pdf-toolbar, 
       .pdf-controls, 
       button:not(.pdf-page button), 
       input:not(.pdf-page input) {
         user-select: none !important;
       }
+      
+      /* Feedback visivo per selezione enterprise */
       .react-pdf__Page__textContent ::selection {
         background-color: #3b82f6 !important;
         color: white !important;
       }
+      
+      /* Performance hint per pagine senza text layer */
       .react-pdf__Page:not([data-text-layer="true"]) {
         opacity: 0.95;
       }
     `;
+    
     document.head.appendChild(style);
+    
     return () => {
       if (document.head.contains(style)) {
         document.head.removeChild(style);
       }
     };
   }, []);
-
-  // 🔄 NUOVO: Salvataggio chunk
-  const saveChunk = async (chunkData: ChunkToSave) => {
-    setIsSaving(true);
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      
-      if (!accessToken) {
-        throw new Error('Utente non autenticato');
-      }
-
-      const sanitizedContent = sanitizeTextForDB(chunkData.content);
-
-const response = await fetch('/api/chunks/create', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${accessToken}`,
-  },
-  body: JSON.stringify({
-    project_id: projectId,
-    title: chunkData.title,
-    section: chunkData.section,
-    content: sanitizedContent,  // ✅ TESTO SANITIZZATO
-    page_range: chunkData.pageRange,
-    word_count: sanitizedContent.split(/\s+/).length,
-    char_count: sanitizedContent.length,
-  }),
-});
-
-      if (!response.ok) {
-        throw new Error('Errore nel salvataggio del chunk');
-      }
-
-      const savedChunk = await response.json();
-      setSavedChunks(prev => [...prev, savedChunk.chunk]);
-      
-      toast.success(`✅ Chunk "${chunkData.title}" salvato nel progetto!`, {
-        duration: 3000,
-      });
-
-      if (onChunkSaved) {
-        onChunkSaved(savedChunk.chunk);
-      }
-
-      clearSelection();
-      setShowSaveModal(false);
-      setChunkToSave(null);
-
-    } catch (error) {
-      console.error('Errore salvataggio chunk:', error);
-      toast.error('❌ Errore nel salvataggio del chunk');
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   // useEffect per gestire automaticamente i risultati OCR
   useEffect(() => {
@@ -238,7 +288,9 @@ const response = await fetch('/api/chunks/create', {
         s.id === `ocr-${job.id}-processed` || s.text === job.result
       );
       
-      if (jobAlreadyProcessed) return;
+      if (jobAlreadyProcessed) {
+        return;
+      }
       
       const isPageJob = job.id.startsWith('page-');
       
@@ -268,8 +320,6 @@ const response = await fetch('/api/chunks/create', {
 
   // Detect file type on file change
   useEffect(() => {
-    console.log('📁 File detection in Bulk:', { file: file?.name, fileType });
-    
     if (!file) {
       setFileType(null);
       setImageUrl(null);
@@ -278,7 +328,6 @@ const response = await fetch('/api/chunks/create', {
 
     if (file.type === 'application/pdf') {
       setFileType('pdf');
-      console.log('✅ PDF detected in Bulk mode');
     } else if (file.type.startsWith('image/')) {
       setFileType('image');
       const url = URL.createObjectURL(file);
@@ -421,42 +470,26 @@ const response = await fetch('/api/chunks/create', {
     }
   }, [numPages, extractPageText]);
 
-  // Sanitize text for database storage to prevent JSONL parsing errors
-const sanitizeTextForDB = useCallback((text: string): string => {
-  return text
-    // Smart quotes → quotes normali
-    .replace(/['']/g, "'")           // U+2018, U+2019 → '
-    .replace(/[""]/g, '"')           // U+201C, U+201D → "
-    // Altri caratteri problematici
-    .replace(/[–—]/g, '-')           // En dash, Em dash → hyphen
-    .replace(/…/g, '...')            // Ellipsis → tre punti
-    .replace(/[\u00A0]/g, ' ')       // Non-breaking space → space normale
-    // Caratteri di controllo
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
-    // Normalizza line endings
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    // Rimuovi spazi multipli
-    .replace(/[ \t]+/g, ' ')
-    .trim();
-}, []);
-
-  // Enhanced text selection handler per bulk
+  // Enhanced enterprise text selection handler
   const handleTextSelection = useCallback(() => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
     
     const selectedText = selection.toString().trim();
     
+    // Validazione enterprise: controllo dell'area di selezione
     const range = selection.getRangeAt(0);
     const container = containerRef.current;
     
+    // Assicurati che la selezione sia dentro il PDF viewer
     if (container && !container.contains(range.commonAncestorContainer)) {
       return;
     }
     
+    // Filtro qualità testo per enterprise (evita selezioni accidentali)
     if (!selectedText || selectedText.length < 3) return;
     
+    // Evita selezioni di UI elements (bottoni, etc)
     const commonAncestor = range.commonAncestorContainer;
     const parentElement = commonAncestor.nodeType === Node.TEXT_NODE 
       ? commonAncestor.parentElement 
@@ -482,11 +515,7 @@ const sanitizeTextForDB = useCallback((text: string): string => {
         return prev + separator + formattedText;
       });
       
-      // 🔄 Auto-trigger save modal se selezione significativa
-      if (formattedText.length > 100) {
-        triggerSaveModal(formattedText);
-      }
-      
+      // Rimozione pulita della selezione
       setTimeout(() => {
         try {
           selection.removeAllRanges();
@@ -521,43 +550,133 @@ const sanitizeTextForDB = useCallback((text: string): string => {
       .trim();
   }, []);
 
-  // 🔄 Trigger save modal
-  const triggerSaveModal = (content: string) => {
-    const pageRange = pageNumber ? `p. ${pageNumber}` : undefined;
-    setChunkToSave({
-      title: '',
-      section: '',
-      content: content,
-      pageRange: pageRange
-    });
-    setShowSaveModal(true);
+  // Sanitize text for database storage to prevent JSONL parsing errors
+const sanitizeTextForDB = useCallback((text: string): string => {
+  return text
+    // Smart quotes → quotes normali
+    .replace(/['']/g, "'")           // U+2018, U+2019 → '
+    .replace(/[""]/g, '"')           // U+201C, U+201D → "
+    // Altri caratteri problematici
+    .replace(/[–—]/g, '-')           // En dash, Em dash → hyphen
+    .replace(/…/g, '...')            // Ellipsis → tre punti
+    .replace(/[\u00A0]/g, ' ')       // Non-breaking space → space normale
+    // Caratteri di controllo
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ')
+    // Normalizza line endings
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    // Rimuovi spazi multipli
+    .replace(/[ \t]+/g, ' ')
+    .trim();
+}, []);
+
+  // Function to save chunk to database
+  const saveChunkToDatabase = async (title: string, section?: string) => {
+    setIsSavingChunk(true);
+    
+    try {
+      // Get current page range for the selection
+      const pageRange = getCurrentPageRange();
+      
+      // Sanitize content for database storage
+const sanitizedContent = sanitizeTextForDB(tempSelection);
+
+// Calculate word and character counts
+const charCount = sanitizedContent.length;
+const wordCount = sanitizedContent.trim().split(/\s+/).length;
+      
+      // Get next order index
+      const orderIndex = savedChunksCount + 1;
+      
+      // Prepare source metadata
+      const sourceMetadata = {
+        fileName: file?.name || 'unknown',
+        fileType: fileType,
+        extractionDate: new Date().toISOString(),
+        selectionsCount: selections.length,
+        hasOCR: selections.some(s => s.type === 'ocr'),
+        extractionPages: selections.map(s => s.page).filter(Boolean)
+      };
+
+      const chunkData = {
+        project_id: projectId,
+        user_id: userId,
+        title: title,
+        section: section,
+        page_range: pageRange,
+        order_index: orderIndex,
+        content: sanitizedContent,
+        char_count: charCount,
+        word_count: wordCount,
+        status: 'bozza',
+        source_metadata: sourceMetadata
+      };
+
+      // Get authentication token
+const { data: sessionData } = await supabase.auth.getSession();
+const accessToken = sessionData.session?.access_token;
+if (!accessToken) {
+  throw new Error('Utente non autenticato');
+}
+
+// Make API call to save chunk
+const response = await fetch('/api/thesis-chunks', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${accessToken}`
+  },
+  body: JSON.stringify(chunkData)
+});
+
+if (!response.ok) {
+  const errorData = await response.json();
+  console.error('API Error Details:', errorData);
+  throw new Error(errorData.error || `Errore HTTP ${response.status}: ${response.statusText}`);
+}
+
+      // Success: clear the textarea and update counts
+      setTempSelection('');
+      setSelections([]);
+      setIsFormatted(false);
+      setSavedChunksCount(prev => prev + 1);
+      
+      // Close the modal
+      setIsSaveModalOpen(false);
+      
+      // You could also show a success notification here
+      console.log('✅ Chunk salvato con successo:', title);
+toast.success(`💾 Chunk "${title}" salvato con successo!`, {
+  duration: 4000,
+  position: 'top-right'
+});
+      
+    } catch (error) {
+      console.error('❌ Errore nel salvare il chunk:', error);
+      // You could show an error notification here
+      alert('Errore nel salvare il chunk. Riprova.');
+    } finally {
+      setIsSavingChunk(false);
+    }
   };
 
-  // 🔄 Manual save trigger
-  const handleManualSave = () => {
-    if (!tempSelection.trim()) {
-      toast.error('❌ Nessun testo selezionato da salvare');
-      return;
-    }
-
+  // Helper function to get current page range
+  const getCurrentPageRange = (): string => {
     const pages = selections
-      .filter(s => s.page)
-      .map(s => s.page!)
+      .map(s => s.page)
+      .filter((page): page is number => page !== undefined)
       .sort((a, b) => a - b);
     
-    const pageRange = pages.length > 0 
-      ? pages.length === 1 
-        ? `p. ${pages[0]}`
-        : `pp. ${pages[0]}-${pages[pages.length - 1]}`
-      : undefined;
-
-    setChunkToSave({
-      title: '',
-      section: '',
-      content: tempSelection.trim(),
-      pageRange: pageRange
-    });
-    setShowSaveModal(true);
+    if (pages.length === 0) return '';
+    if (pages.length === 1) return `p. ${pages[0]}`;
+    
+    const uniquePages = [...new Set(pages)];
+    if (uniquePages.length === 1) return `p. ${uniquePages[0]}`;
+    
+    const firstPage = uniquePages[0];
+    const lastPage = uniquePages[uniquePages.length - 1];
+    
+    return `pp. ${firstPage}-${lastPage}`;
   };
 
   // Toggle formatting
@@ -646,13 +765,6 @@ const sanitizeTextForDB = useCallback((text: string): string => {
   const imageJob = getJobStatus(imageJobId);
   const imageOCRProgress = imageJob?.progress || 0;
 
-  console.log('🎭 Modal state:', { 
-    isOpen, 
-    fileType, 
-    hasFile: !!file,
-    numPages 
-  });
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => {if (!open) onClose();}} modal={false}>
@@ -663,34 +775,32 @@ const sanitizeTextForDB = useCallback((text: string): string => {
           className="max-w-[98vw] max-h-[98vh] overflow-hidden data-[state=closed]:hidden"
         >
           <DialogTitle className="text-lg font-semibold text-gray-800">
-            📚 Smart PDF Reader - Modalità Bulk
+            Smart PDF & Image Reader
             {workerError && (
               <span className="ml-2 text-sm text-red-600">⚠️ OCR Worker Error</span>
             )}
             {isWorkerReady && (
-              <span className="ml-2 text-sm text-green-600">🧠 OCR Ready</span>
+              <span className="ml-2 text-sm text-green-600">🧠 OCR Attivo</span>
             )}
-            {savedChunks.length > 0 && (
-              <span className="ml-2 text-sm text-green-600">
-                ✅ {savedChunks.length} chunks salvati
-              </span>
+            {savedChunksCount > 0 && (
+              <span className="ml-2 text-sm text-purple-600">📚 {savedChunksCount} chunk salvati</span>
             )}
           </DialogTitle>
           <DialogDescription className="text-sm text-gray-500 mb-4">
             {fileType === 'pdf' 
-              ? "Seleziona il testo e salvalo automaticamente come chunk nel progetto"
+              ? "Navigazione ottimizzata con caricamento intelligente - Salva chunk per riutilizzarli"
               : "Estrazione automatica del testo dall'immagine con OCR"
             }
           </DialogDescription>
 
           <div className="flex gap-4 h-[85vh] overflow-hidden">
             
-            {/* Content Section */}
+            {/* Content Section - PDF or Image */}
             <div className="w-1/2 flex flex-col">
               
-              {/* Toolbar per PDF */}
+              {/* Simplified Toolbar - Only for PDF */}
               {fileType === 'pdf' && (
-                <div className="flex gap-2 items-center mb-2 p-2 bg-purple-50 rounded pdf-toolbar border border-purple-200">
+                <div className="flex gap-2 items-center mb-2 p-2 bg-gray-50 rounded pdf-toolbar">
                   {/* Zoom Controls */}
                   <div className="flex gap-2">
                     <button
@@ -706,11 +816,6 @@ const sanitizeTextForDB = useCallback((text: string): string => {
                     >
                       +
                     </button>
-                  </div>
-
-                  {/* BULK INDICATOR */}
-                  <div className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
-                    📚 Modalità Bulk Attiva
                   </div>
 
                   {/* Search */}
@@ -751,7 +856,7 @@ const sanitizeTextForDB = useCallback((text: string): string => {
                 </div>
               )}
 
-              {/* Content Viewer */}
+              {/* Content Viewer with Progressive Loading */}
               <div 
                 ref={containerRef} 
                 onMouseUp={fileType === 'pdf' ? handleTextSelection : undefined}
@@ -764,6 +869,7 @@ const sanitizeTextForDB = useCallback((text: string): string => {
                     loading="⚡ Caricamento PDF con Progressive Loading..."
                     error="Errore nel caricamento del PDF"
                   >
+                    {/* Single Page Mode con Progressive Loading e Enterprise Text Layer Strategy */}
                     <ProgressivePageLoader
                       pageNumber={pageNumber}
                       scale={scale}
@@ -787,12 +893,7 @@ const sanitizeTextForDB = useCallback((text: string): string => {
                   </div>
                 )}
 
-                {/* BULK MODE INDICATOR overlay */}
-                <div className="absolute top-2 right-2 bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
-                  📚 Bulk Mode
-                </div>
-
-                {/* Debug indicator */}
+                {/* Enterprise Text Layer Status Indicator (dev only) */}
                 {process.env.NODE_ENV === 'development' && fileType === 'pdf' && (
                   <div className="absolute top-2 left-2 text-xs bg-black bg-opacity-75 text-white px-2 py-1 rounded">
                     Page {pageNumber}: {getTextLayerStrategy(pageNumber) ? '📝 Selectable' : '🚫 View Only'}
@@ -880,7 +981,7 @@ const sanitizeTextForDB = useCallback((text: string): string => {
                 </div>
               )}
 
-              {/* Table Preview */}
+              {/* Table Preview - Only for PDF */}
               {fileType === 'pdf' && (
                 <TablePreview 
                   tables={detectedTables}
@@ -888,7 +989,7 @@ const sanitizeTextForDB = useCallback((text: string): string => {
                 />
               )}
 
-              {/* Navigation Controls */}
+              {/* Navigation Controls - Only for PDF */}
               {fileType === 'pdf' && numPages && (
                 <div className="flex justify-between items-center mt-2 pdf-controls">
                   <div className="flex gap-2">
@@ -952,7 +1053,7 @@ const sanitizeTextForDB = useCallback((text: string): string => {
               )}
             </div>
 
-            {/* Text Selection Panel con funzionalità bulk */}
+            {/* Text Selection Panel */}
             <div className="w-1/2 flex flex-col overflow-hidden">
               <div className="flex justify-between items-center mb-2">
                 <p className="text-sm text-gray-600">
@@ -965,14 +1066,6 @@ const sanitizeTextForDB = useCallback((text: string): string => {
                   )}
                 </p>
                 <div className="flex gap-2">
-                  {/* Save Chunk Button */}
-                  <button
-                    onClick={handleManualSave}
-                    disabled={!tempSelection.trim()}
-                    className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    💾 Salva Chunk
-                  </button>
                   <button
                     onClick={toggleFormatting}
                     className={`px-3 py-1 text-xs rounded ${
@@ -987,7 +1080,7 @@ const sanitizeTextForDB = useCallback((text: string): string => {
                     onClick={clearSelection}
                     className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
                   >
-                    🧹 Pulisci
+                    Pulisci
                   </button>
                 </div>
               </div>
@@ -997,36 +1090,53 @@ const sanitizeTextForDB = useCallback((text: string): string => {
                   value={tempSelection}
                   onChange={(e) => setTempSelection(e.target.value)}
                   className="w-full flex-1 p-3 border rounded bg-gray-50 text-sm resize-none font-mono leading-relaxed"
-                  placeholder="Il testo selezionato comparirà qui. Seleziona il testo nel PDF e salvalo come chunk..."
+                  placeholder="Il testo selezionato o estratto con OCR comparirà qui. Puoi modificarlo prima dell'invio o del salvataggio..."
                 />
                 <div className="text-xs text-gray-500 mt-1 mb-2">
-                  {tempSelection.length} caratteri | {selections.length} selezioni | {savedChunks.length} chunks salvati
+                  {tempSelection.length} caratteri | {selections.length} selezioni
                 </div>
-
-                {/* Chunks salvati preview */}
-                {savedChunks.length > 0 && (
-                  <div className="mb-3 max-h-32 overflow-y-auto bg-green-50 border border-green-200 rounded p-2">
-                    <p className="text-xs font-medium text-green-800 mb-2">
-                      ✅ Chunks salvati in questo progetto:
-                    </p>
-                    {savedChunks.map((chunk, index) => (
-                      <div key={chunk.id} className="text-xs text-green-700 mb-1">
-                        {index + 1}. {chunk.title} ({chunk.char_count} caratteri)
-                      </div>
-                    ))}
-                  </div>
-                )}
+                
 
                 {/* Action Buttons */}
                 <div className="flex flex-col gap-2 mt-auto pt-2">
+                  {/* Nuovo pulsante per salvare chunk */}
+                  <button
+                    onClick={() => setIsSaveModalOpen(true)}
+                    disabled={!tempSelection.trim() || isSavingChunk}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {isSavingChunk ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                        Salvando...
+                      </>
+                    ) : (
+                      '💾 Salva Chunk'
+                    )}
+                  </button>
+
                   <DialogClose asChild>
                     <button
                       type="button"
                       className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
                     >
-                      ← Torna al Progetto
+                      Annulla
                     </button>
                   </DialogClose>
+                  
+                  <button
+                    onClick={() => {
+                      if (tempSelection.trim()) {
+                        onTextSelected(tempSelection.trim());
+                        onClose();
+                        clearSelection();
+                      }
+                    }}
+                    disabled={!tempSelection.trim()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Usa questo testo
+                  </button>
                 </div>
               </div>
             </div>
@@ -1035,71 +1145,12 @@ const sanitizeTextForDB = useCallback((text: string): string => {
       </Dialog>
 
       {/* Save Chunk Modal */}
-      {showSaveModal && chunkToSave && (
-        <Dialog open={showSaveModal} onOpenChange={setShowSaveModal}>
-          <DialogContent className="max-w-md">
-            <DialogTitle className="text-lg font-semibold text-gray-800 mb-4">
-              💾 Salva Chunk nel Progetto
-            </DialogTitle>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  📝 Titolo Chunk *
-                </label>
-                <input
-                  type="text"
-                  value={chunkToSave.title}
-                  onChange={(e) => setChunkToSave(prev => prev ? {...prev, title: e.target.value} : null)}
-                  placeholder="Es. Introduzione ai Contratti"
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                  autoFocus
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  📚 Sezione (opzionale)
-                </label>
-                <input
-                  type="text"
-                  value={chunkToSave.section || ''}
-                  onChange={(e) => setChunkToSave(prev => prev ? {...prev, section: e.target.value} : null)}
-                  placeholder="Es. Cap 1.1-1.3"
-                  className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              {chunkToSave.pageRange && (
-                <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                  <p className="text-sm text-blue-800">
-                    📄 <strong>Pagine:</strong> {chunkToSave.pageRange}
-                  </p>
-                  <p className="text-xs text-blue-600 mt-1">
-                    {chunkToSave.content.length} caratteri • {chunkToSave.content.split(/\s+/).length} parole
-                  </p>
-                </div>
-              )}
-              
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setShowSaveModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
-                >
-                  Annulla
-                </button>
-                <button
-                  onClick={() => saveChunk(chunkToSave)}
-                  disabled={!chunkToSave.title.trim() || isSaving}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? '⏳ Salvando...' : '💾 Salva Chunk'}
-                </button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      <SaveChunkModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        onSave={saveChunkToDatabase}
+        isLoading={isSavingChunk}
+      />
     </>
   );
 }
